@@ -1,0 +1,21 @@
+# Environment
+.env
+
+# Deno
+deno.lock
+
+# Build output
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Node (should never exist, but just in case)
+node_modules/
+package.json
+package-lock.json

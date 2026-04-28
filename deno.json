@@ -1,0 +1,29 @@
+{
+  "name": "denolith",
+  "version": "3.0.0",
+  "exports": "./main.ts",
+  "tasks": {
+    "dev": "deno run -A --env --watch main.ts",
+    "start": "deno run -A --env main.ts",
+    "migrate": "deno run -A --env scripts/migrate.ts up",
+    "migrate:down": "deno run -A --env scripts/migrate.ts down",
+    "migrate:status": "deno run -A --env scripts/migrate.ts status",
+    "migrate:reset": "deno run -A --env scripts/migrate.ts reset",
+    "migrate:generate": "deno run -A --env scripts/generate-migration.ts",
+    "seed": "deno run -A --env scripts/seed.ts",
+    "compile": "deno compile -A --env --output ./dist/denolith main.ts",
+    "compile:linux": "deno compile -A --env --target x86_64-unknown-linux-gnu --output ./dist/denolith-linux main.ts"
+  },
+  "imports": {
+    "@hono/core": "jsr:@hono/hono",
+    "@hono/jwt": "jsr:@hono/hono/jwt",
+    "@hono/http-status": "jsr:@hono/hono/utils/http-status",
+    "@hono/valibot-validator": "jsr:@hono/valibot-validator",
+    "@hono/cors": "jsr:@hono/hono/cors",
+    "@hono/secure-headers": "jsr:@hono/hono/secure-headers",
+    "@hono/cookie": "jsr:@hono/hono/cookie",
+    "@db/postgres": "jsr:@db/postgres",
+    "@db/redis": "jsr:@db/redis",
+    "valibot": "jsr:@valibot/valibot"
+  }
+}

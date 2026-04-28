@@ -1,0 +1,38 @@
+import { Client } from "@db/postgres";
+import { logger } from "./logger.ts";
+import { config } from "./config.ts";
+
+const db = new Client(config.databaseUrl);
+
+/**
+ * Connect to PostgreSQL
+ */
+export async function connectDb(): Promise<Client> {
+  try {
+    await db.connect();
+    logger.info("PostgreSQL Database connected.");
+    return db;
+  } catch (error) {
+    logger.error(`Database connection failed: ${(error as Error).message}`);
+    throw error;
+  }
+}
+
+/**
+ * Get the database client instance
+ */
+export function getDb(): Client {
+  return db;
+}
+
+/**
+ * Close the database connection gracefully.
+ */
+export async function closeDb(): Promise<void> {
+  try {
+    await db.end();
+    logger.info("PostgreSQL Database connection closed.");
+  } catch (e) {
+    // Ignore already closed errors
+  }
+}

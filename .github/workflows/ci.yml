@@ -1,0 +1,39 @@
+name: Denolith Enterprise CI/CD
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  validate-and-build:
+    name: Validate, Test & Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🛎️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🦕 Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+
+      - name: 🎨 Check Code Formatting
+        run: deno fmt --check
+
+      - name: 🧹 Run Linter
+        run: deno lint
+
+      - name: 🛡️ Type Checking
+        run: deno check main.ts
+
+      - name: 🧪 Run Unit Tests
+        run: deno test -A
+
+      - name: 📦 Compile Standalone Binary
+        run: deno task compile:linux
+
+      - name: 🐳 Verify Docker Build
+        run: docker build -t denolith-backend:latest .
