@@ -21,6 +21,7 @@ export const createAuthRoutes = (service: AuthService) => {
     windowMs: 15 * 60 * 1000, // 15 phút
     max: 5,
     message: "Bạn đã thao tác quá nhiều lần, vui lòng chờ 15 phút.",
+    keyPrefix: "auth", // Tách biệt rate limit của Auth khỏi Global Rate Limit
   });
 
   router.post(
@@ -93,12 +94,32 @@ export const createAuthRoutes = (service: AuthService) => {
   });
 
   router.post("/logout", async (c) => {
-    const token = getCookie(c, "refresh_token");
-    if (token) {
-      await service.logout(token);
+    const refreshToken = getCookie(c, "refresh_token");
+
+    // Lấy Access Token từ Authorization header để blacklist
+    const authHeader = c.req.header("Authorization") ?? "";
+    const accessToken = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : undefined;
+
+    // Lấy exp từ JWT payload nếu có (để tính TTL blacklist)
+    let exp: number | undefined;
+    if (accessToken) {
+      try {
+        const { verify } = await import("@hono/jwt");
+        const payload = await verify(accessToken, config.jwtSecret, "HS256");
+        exp = payload.exp as number | undefined;
+      } catch {
+        // Token không hợp lệ hoặc đã hết hạn — không cần blacklist
+      }
+    }
+
+    if (refreshToken) {
+      await service.logout(refreshToken, accessToken, exp);
       deleteCookie(c, "refresh_token", { path: "/api/auth" });
     }
-    return c.json({ success: true, message: "Logged out" });
+
+    return c.json({ success: true, message: "Logged out successfully" });
   });
 
   return router;

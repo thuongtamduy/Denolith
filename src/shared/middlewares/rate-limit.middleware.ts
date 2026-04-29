@@ -26,9 +26,12 @@ interface RateLimitOptions {
   windowMs: number; // Khoảng thời gian (millisecond)
   max: number; // Số request tối đa trong khoảng thời gian đó
   message?: string; // Tin nhắn báo lỗi
+  keyPrefix?: string; // Tiền tố để phân biệt các Rate Limiter khác nhau
 }
 
 export const rateLimiter = (options: RateLimitOptions) => {
+  const prefix = options.keyPrefix || "global"; // Mặc định là global
+
   return async (c: Context, next: Next) => {
     let ip = "unknown-ip";
 
@@ -58,7 +61,7 @@ export const rateLimiter = (options: RateLimitOptions) => {
     // 1. Ưu tiên Redis nếu kết nối thành công
     if (redisClient) {
       try {
-        const key = `ratelimit:${ip}`;
+        const key = `ratelimit:${prefix}:${ip}`; // Thêm prefix vào Redis key
         
         // Dùng Lua script để đảm bảo tính nguyên tử (Atomic) chống Race-Condition
         const luaScript = `
@@ -85,12 +88,13 @@ export const rateLimiter = (options: RateLimitOptions) => {
 
     // 2. Memory Fallback: Dùng nếu Redis tắt hoặc vừa gặp lỗi
     if (!redisClient || count === 0) {
-      let info = store.get(ip);
+      const memKey = `${prefix}:${ip}`; // Thêm prefix vào Memory key
+      let info = store.get(memKey);
       if (!info || now > info.resetTime) {
         info = { count: 0, resetTime: now + options.windowMs };
       }
       info.count++;
-      store.set(ip, info);
+      store.set(memKey, info);
 
       count = info.count;
       resetTime = info.resetTime;

@@ -24,4 +24,44 @@ export class UserService {
     if (existing) throw AppError.conflict("Email already exists");
     return this.repo.create(data);
   }
+
+  /**
+   * Soft Delete một user theo ID.
+   * Chỉ Admin mới được gọi service này (enforcement ở tầng Route/RBAC).
+   * Không thể tự xóa chính mình (logic được kiểm tra ở tầng Route).
+   */
+  async softDelete(id: string): Promise<User> {
+    const user = await this.repo.softDelete(id);
+    if (!user) {
+      // Trả về Not Found thống nhất — không tiết lộ user đã bị xóa hay chưa tồn tại
+      throw AppError.notFound(`User with id ${id} not found`);
+    }
+    return user;
+  }
+
+  /**
+   * Phục hồi một user đã bị soft delete.
+   */
+  async restore(id: string): Promise<User> {
+    const user = await this.repo.restore(id);
+    if (!user) {
+      throw AppError.notFound(
+        `User with id ${id} not found or is not deleted`,
+      );
+    }
+    return user;
+  }
+
+  /**
+   * Hard Delete — Xóa vĩnh viễn.
+   * Chỉ hoạt động nếu user đã bị soft delete trước đó (2-step safety để tránh xóa nhầm).
+   */
+  async hardDelete(id: string): Promise<void> {
+    const deleted = await this.repo.hardDelete(id);
+    if (!deleted) {
+      throw AppError.notFound(
+        `User with id ${id} not found or must be soft-deleted first`,
+      );
+    }
+  }
 }

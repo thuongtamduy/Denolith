@@ -94,18 +94,18 @@ export class AuthService {
   }
 
   async refreshToken(oldToken: string): Promise<AuthTokens> {
-    const session = await this.authRepo.findRefreshToken(oldToken);
-    if (!session) throw AppError.unauthorized("Invalid refresh token");
+    // [VÁ LỖI RACE CONDITION]
+    // Sử dụng consume thay vì find. Lệnh này sẽ XÓA và trả về data cùng lúc (Atomic).
+    // Kẻ gian có gửi 10.000 request cùng 1 mili-giây thì Database chỉ trả kết quả cho ĐÚNG 1 request.
+    const session = await this.authRepo.consumeRefreshToken(oldToken);
+    if (!session) throw AppError.unauthorized("Invalid or already consumed refresh token");
 
     if (new Date() > new Date(session.expires_at)) {
-      await this.authRepo.deleteRefreshToken(oldToken);
       throw AppError.unauthorized("Refresh token expired");
     }
 
     const user = await this.userRepo.findById(session.user_id);
     if (!user) throw AppError.unauthorized("User not found");
-
-    await this.authRepo.deleteRefreshToken(oldToken);
 
     const accessToken = await sign(
       {
@@ -122,7 +122,13 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async logout(refreshToken: string) {
+  async logout(refreshToken: string, accessToken?: string, exp?: number) {
+    // Xóa refresh token khỏi DB
     await this.authRepo.deleteRefreshToken(refreshToken);
+
+    // Blacklist access token vào Redis nếu còn hạn — ngăn dùng lại ngay lập tức
+    if (accessToken && exp) {
+      await this.authRepo.blacklistAccessToken(accessToken, exp);
+    }
   }
 }

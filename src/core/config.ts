@@ -22,6 +22,12 @@ const EnvSchema = v.object({
     ]),
     "development",
   ),
+  // SMTP — tất cả optional, hệ thống vẫn chạy nếu không có
+  SMTP_HOST: v.optional(v.string()),
+  SMTP_PORT: v.optional(v.string(), "587"),
+  SMTP_USER: v.optional(v.string()),
+  SMTP_PASS: v.optional(v.string()),
+  SMTP_FROM: v.optional(v.string(), "noreply@denolith.dev"),
 });
 
 function loadConfig() {
@@ -33,6 +39,11 @@ function loadConfig() {
     FRONTEND_URL: Deno.env.get("FRONTEND_URL"),
     TRUST_PROXY: Deno.env.get("TRUST_PROXY"),
     DENO_ENV: Deno.env.get("DENO_ENV"),
+    SMTP_HOST: Deno.env.get("SMTP_HOST"),
+    SMTP_PORT: Deno.env.get("SMTP_PORT"),
+    SMTP_USER: Deno.env.get("SMTP_USER"),
+    SMTP_PASS: Deno.env.get("SMTP_PASS"),
+    SMTP_FROM: Deno.env.get("SMTP_FROM"),
   };
 
   try {
@@ -45,6 +56,13 @@ function loadConfig() {
       frontendUrl: parsed.FRONTEND_URL,
       trustProxy: parsed.TRUST_PROXY === "true",
       env: parsed.DENO_ENV,
+      smtp: parsed.SMTP_HOST ? {
+        host: parsed.SMTP_HOST,
+        port: Number(parsed.SMTP_PORT),
+        user: parsed.SMTP_USER,
+        pass: parsed.SMTP_PASS,
+        from: parsed.SMTP_FROM!,
+      } : null,
     };
   } catch (error) {
     logger.error("❌ Environment variable validation failed:");

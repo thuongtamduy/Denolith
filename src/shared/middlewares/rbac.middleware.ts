@@ -1,7 +1,8 @@
 import type { Context, Next } from "@hono/core";
+import type { AppEnv } from "../../core/context.ts";
 
 export const requireRole = (allowedRole: string) => {
-  return async (c: Context, next: Next) => {
+  return async (c: Context<AppEnv>, next: Next) => {
     // authMiddleware (JWT) tự động gán thông tin giải mã vào 'jwtPayload'
     const payload = c.get("jwtPayload");
 

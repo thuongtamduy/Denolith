@@ -1,5 +1,6 @@
 import type { Context, Next } from "@hono/core";
 import { redisClient } from "../../core/redis.ts";
+import type { AppEnv } from "../../core/context.ts";
 
 interface CacheEntry {
   data: string;
@@ -20,7 +21,7 @@ setInterval(() => {
 }, 60000);
 
 export const cacheResponse = (ttlSeconds: number) => {
-  return async (c: Context, next: Next) => {
+  return async (c: Context<AppEnv>, next: Next) => {
     // Chỉ Cache các request có tính chất ĐỌC (GET)
     if (c.req.method !== "GET") {
       return await next();

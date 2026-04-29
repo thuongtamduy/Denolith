@@ -1,0 +1,34 @@
+import type { Context, Next } from "@hono/core";
+
+// Regex UUID v4 chuẩn RFC 4122
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Middleware kiểm tra tham số `:id` trong URL có đúng định dạng UUID v4 không.
+ * Nếu sai → trả về 400 Bad Request ngay lập tức, không cho request đến DB.
+ *
+ * Cách dùng:
+ *   router.get("/:id", validateUUID("id"), handler)
+ *   router.delete("/:id", validateUUID("id"), handler)
+ */
+export const validateUUID = (paramName = "id") => {
+  return async (c: Context, next: Next) => {
+    const value = c.req.param(paramName);
+
+    if (!value || !UUID_REGEX.test(value)) {
+      return c.json(
+        {
+          success: false,
+          error: {
+            code: "BAD_REQUEST",
+            message: `Invalid ${paramName}: "${value}" is not a valid UUID.`,
+          },
+        },
+        400,
+      );
+    }
+
+    await next();
+  };
+};
