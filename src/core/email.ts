@@ -121,16 +121,34 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
 }
 
 // ============================================================
-// Email Templates
+// Email Templates & Security Sanitization
 // ============================================================
+
+function sanitizeHeader(str: string): string {
+  // Loại bỏ toàn bộ ký tự điều khiển (CRLF) để chống Email Header Injection
+  return str.replace(/[\r\n]/g, "");
+}
+
+function escapeHtml(str: string): string {
+  // Loại bỏ các thẻ HTML để chống Mail Client XSS / HTML Injection
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
 export const EmailTemplates = {
   welcome(username: string): Omit<EmailPayload, "to"> {
+    const cleanUsername = sanitizeHeader(username);
+    const safeHtmlName = escapeHtml(username);
+
     return {
-      subject: `Chào mừng ${username} đến với Denolith! 🚀`,
+      subject: `Chào mừng ${cleanUsername} đến với Denolith! 🚀`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #4f46e5;">Chào mừng, ${username}! 🎉</h1>
+          <h1 style="color: #4f46e5;">Chào mừng, ${safeHtmlName}! 🎉</h1>
           <p>Tài khoản của bạn đã được tạo thành công trên <strong>Denolith</strong>.</p>
           <p>Bắt đầu khám phá ngay!</p>
           <hr style="border: 1px solid #e5e7eb;" />
@@ -139,7 +157,7 @@ export const EmailTemplates = {
           </p>
         </div>
       `,
-      text: `Chào mừng ${username}! Tài khoản của bạn đã được tạo thành công trên Denolith.`,
+      text: `Chào mừng ${cleanUsername}! Tài khoản của bạn đã được tạo thành công trên Denolith.`,
     };
   },
 };

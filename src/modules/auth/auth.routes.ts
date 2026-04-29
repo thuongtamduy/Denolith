@@ -11,7 +11,15 @@ export const createAuthRoutes = (service: AuthService) => {
   const router = new Hono();
 
   const registerSchema = v.object({
-    username: v.pipe(v.string(), v.minLength(3), v.maxLength(50)),
+    username: v.pipe(
+      v.string(),
+      v.minLength(3),
+      v.maxLength(50),
+      v.regex(
+        /^[a-zA-Z0-9_ áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ]+$/i,
+        "Username chỉ được chứa chữ cái, số và khoảng trắng",
+      ),
+    ),
     email: v.pipe(v.string(), v.email(), v.maxLength(255)),
     password: v.pipe(v.string(), v.minLength(6), v.maxLength(100)),
   });
