@@ -10,7 +10,7 @@ export const migration: Migration = {
       email VARCHAR NOT NULL UNIQUE,
       password VARCHAR NOT NULL,
       phone VARCHAR,
-      role VARCHAR NOT NULL DEFAULT 'ADMIN',
+      role VARCHAR NOT NULL DEFAULT 'user',
       active BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

@@ -5,14 +5,15 @@ import * as v from "valibot";
 import type { AuthService } from "./auth.service.ts";
 import { rateLimiter } from "../../shared/middlewares/rate-limit.middleware.ts";
 import { config } from "../../core/config.ts";
+import { sanitizeUser } from "../../shared/utils/sanitize.ts";
 
 export const createAuthRoutes = (service: AuthService) => {
   const router = new Hono();
 
   const registerSchema = v.object({
-    username: v.pipe(v.string(), v.minLength(3)),
-    email: v.pipe(v.string(), v.email()),
-    password: v.pipe(v.string(), v.minLength(6)),
+    username: v.pipe(v.string(), v.minLength(3), v.maxLength(50)),
+    email: v.pipe(v.string(), v.email(), v.maxLength(255)),
+    password: v.pipe(v.string(), v.minLength(6), v.maxLength(100)),
   });
 
   // Chống Brute force: tối đa 5 lần thử đăng ký / đăng nhập mỗi 15 phút
@@ -40,14 +41,14 @@ export const createAuthRoutes = (service: AuthService) => {
 
       return c.json({
         success: true,
-        data: { user: result.user, token: result.accessToken },
+        data: { user: sanitizeUser(result.user), token: result.accessToken },
       }, 201);
     },
   );
 
   const loginSchema = v.object({
-    email: v.pipe(v.string(), v.email()),
-    password: v.pipe(v.string(), v.minLength(1)),
+    email: v.pipe(v.string(), v.email(), v.maxLength(255)),
+    password: v.pipe(v.string(), v.minLength(1), v.maxLength(100)),
   });
 
   router.post(
@@ -68,7 +69,7 @@ export const createAuthRoutes = (service: AuthService) => {
 
       return c.json({
         success: true,
-        data: { user: result.user, token: result.accessToken },
+        data: { user: sanitizeUser(result.user), token: result.accessToken },
       });
     },
   );

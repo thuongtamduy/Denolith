@@ -17,9 +17,10 @@ export class UserRepository {
     );
     const total = Number(countRes.rows[0].count);
 
-    // Lấy dữ liệu phân trang
+    // Lấy dữ liệu phân trang — Không SELECT password để tránh Sensitive Data Exposure
     const res = await this.db.queryObject<User>(
-      "SELECT * FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+      `SELECT id, username, email, role, phone, active, created_at, updated_at
+       FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
       [params.limit, offset],
     );
 
@@ -34,13 +35,25 @@ export class UserRepository {
 
   async findById(id: string): Promise<User | undefined> {
     const result = await this.db.queryObject<User>(
-      "SELECT * FROM users WHERE id = $1",
+      `SELECT id, username, email, role, phone, active, created_at, updated_at
+       FROM users WHERE id = $1`,
       [id],
     );
     return result.rows[0];
   }
 
-  async findByEmail(email: string): Promise<User | undefined> {
+  // Dùng để kiểm tra tồn tại — KHÔNG chứa password (Least Privilege)
+  async findByEmail(email: string): Promise<Omit<User, "password"> | undefined> {
+    const result = await this.db.queryObject<Omit<User, "password">>(
+      `SELECT id, username, email, role, phone, active, created_at, updated_at
+       FROM users WHERE email = $1`,
+      [email],
+    );
+    return result.rows[0];
+  }
+
+  // Dùng riêng cho Auth login — cần password để verifyPassword()
+  async findByEmailWithPassword(email: string): Promise<User | undefined> {
     const result = await this.db.queryObject<User>(
       "SELECT * FROM users WHERE email = $1",
       [email],

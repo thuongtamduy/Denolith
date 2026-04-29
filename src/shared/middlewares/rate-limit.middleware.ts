@@ -1,15 +1,26 @@
 import type { Context, Next } from "@hono/core";
+import { getConnInfo } from "jsr:@hono/hono/deno";
 import { redisClient } from "../../core/redis.ts";
 import { logger } from "../../core/logger.ts";
+import { config } from "../../core/config.ts";
 
 interface RateLimitInfo {
   count: number;
   resetTime: number;
 }
 
-// In-memory store cho rate limiting (sẽ tự động dọn dẹp khi restart)
-// Trong tương lai nếu chạy multi-instance, có thể đổi sang Redis hoặc Deno KV
+// In-memory store cho rate limiting
 const store = new Map<string, RateLimitInfo>();
+
+// Dọn dẹp Memory Leak định kỳ mỗi 1 phút
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, info] of store.entries()) {
+    if (now > info.resetTime) {
+      store.delete(ip);
+    }
+  }
+}, 60000);
 
 interface RateLimitOptions {
   windowMs: number; // Khoảng thời gian (millisecond)
@@ -19,9 +30,26 @@ interface RateLimitOptions {
 
 export const rateLimiter = (options: RateLimitOptions) => {
   return async (c: Context, next: Next) => {
-    // Lấy IP của người dùng (ưu tiên proxy header)
-    const ip = c.req.header("x-forwarded-for") ||
-      c.req.header("cf-connecting-ip") || "unknown-ip";
+    let ip = "unknown-ip";
+
+    try {
+      const info = getConnInfo(c);
+      if (info?.remote?.address) {
+        ip = info.remote.address;
+      }
+    } catch {
+      // Fallback nếu không chạy qua Deno adapter
+    }
+
+    // Chỉ đọc IP từ header nếu Server đang đặt sau Reverse Proxy uy tín (Nginx/Cloudflare)
+    if (config.trustProxy) {
+      const forwarded = c.req.header("x-forwarded-for");
+      if (forwarded) {
+        ip = forwarded.split(",")[0].trim();
+      } else {
+        ip = c.req.header("cf-connecting-ip") || ip;
+      }
+    }
 
     const now = Date.now();
     let count = 0;
@@ -31,12 +59,18 @@ export const rateLimiter = (options: RateLimitOptions) => {
     if (redisClient) {
       try {
         const key = `ratelimit:${ip}`;
-        count = await redisClient.incr(key);
-
-        if (count === 1) {
-          // Set expire tính bằng mili-giây
-          await redisClient.pexpire(key, options.windowMs);
-        }
+        
+        // Dùng Lua script để đảm bảo tính nguyên tử (Atomic) chống Race-Condition
+        const luaScript = `
+          local current = redis.call("INCR", KEYS[1])
+          if current == 1 then
+            redis.call("PEXPIRE", KEYS[1], ARGV[1])
+          end
+          return current
+        `;
+        
+        const result = await redisClient.eval(luaScript, [key], [options.windowMs.toString()]);
+        count = Number(result);
 
         // Lấy TTL để set header cho chuẩn
         const ttl = await redisClient.pttl(key);
@@ -72,12 +106,14 @@ export const rateLimiter = (options: RateLimitOptions) => {
 
     // 4. Chặn nếu vượt quá giới hạn
     if (count > options.max) {
+      // Tuân thủ RFC 6585: Thông báo cho client biết phải đợi bao nhiêu giây
+      c.header("Retry-After", Math.ceil((resetTime - now) / 1000).toString());
       return c.json(
         {
           success: false,
           error: options.message || "Quá nhiều yêu cầu, vui lòng thử lại sau.",
         },
-        429, // HTTP Status: Too Many Requests
+        429,
       );
     }
 

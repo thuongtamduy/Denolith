@@ -7,7 +7,12 @@ const EnvSchema = v.object({
   REDIS_URL: v.optional(v.string()),
   JWT_SECRET: v.pipe(
     v.string(),
-    v.minLength(10, "JWT_SECRET must be at least 10 characters long"),
+    v.minLength(32, "JWT_SECRET phải có ít nhất 32 ký tự ngẫu nhiên để đảm bảo an toàn"),
+  ),
+  FRONTEND_URL: v.optional(v.string(), "http://localhost:5173"), // Cấu hình bắt buộc cho CORS
+  TRUST_PROXY: v.optional(
+    v.union([v.literal("true"), v.literal("false")]),
+    "false"
   ),
   DENO_ENV: v.optional(
     v.union([
@@ -25,6 +30,8 @@ function loadConfig() {
     DATABASE_URL: Deno.env.get("DATABASE_URL"),
     REDIS_URL: Deno.env.get("REDIS_URL"),
     JWT_SECRET: Deno.env.get("JWT_SECRET"),
+    FRONTEND_URL: Deno.env.get("FRONTEND_URL"),
+    TRUST_PROXY: Deno.env.get("TRUST_PROXY"),
     DENO_ENV: Deno.env.get("DENO_ENV"),
   };
 
@@ -35,6 +42,8 @@ function loadConfig() {
       databaseUrl: parsed.DATABASE_URL,
       redisUrl: parsed.REDIS_URL,
       jwtSecret: parsed.JWT_SECRET,
+      frontendUrl: parsed.FRONTEND_URL,
+      trustProxy: parsed.TRUST_PROXY === "true",
       env: parsed.DENO_ENV,
     };
   } catch (error) {

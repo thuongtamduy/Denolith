@@ -2,7 +2,7 @@
 .env
 
 # Deno
-deno.lock
+# deno.lock KHÔNG được gitignore — cần commit để bảo vệ Supply Chain Attack
 
 # Build output
 dist/

@@ -9,6 +9,16 @@ interface CacheEntry {
 // Memory Store dự phòng cho trường hợp hệ thống ko xài Redis
 const memoryCache = new Map<string, CacheEntry>();
 
+// Dọn dẹp Memory Leak định kỳ mỗi 1 phút
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, mem] of memoryCache.entries()) {
+    if (now > mem.expiresAt) {
+      memoryCache.delete(key);
+    }
+  }
+}, 60000);
+
 export const cacheResponse = (ttlSeconds: number) => {
   return async (c: Context, next: Next) => {
     // Chỉ Cache các request có tính chất ĐỌC (GET)
@@ -16,7 +26,9 @@ export const cacheResponse = (ttlSeconds: number) => {
       return await next();
     }
 
-    const key = `cache:${c.req.url}`;
+    const payload = c.get("jwtPayload");
+    const userId = payload?.id ?? "anonymous";
+    const key = `cache:${userId}:${c.req.url}`;
     const now = Date.now();
 
     let cachedData: string | null = null;

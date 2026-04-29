@@ -6,6 +6,9 @@ import { AppError } from "../../shared/errors/AppError.ts";
 import { config } from "../../core/config.ts";
 import { Queue } from "../../core/queue.ts";
 
+// Mã băm giả lập để chống Timing Attack (Có độ dài bằng chính xác Hash thật)
+const DUMMY_HASH = "00000000000000000000000000000000:0000000000000000000000000000000000000000000000000000000000000000";
+
 export interface RegisterData {
   username: string;
   email: string;
@@ -62,11 +65,17 @@ export class AuthService {
   }
 
   async login(data: LoginData) {
-    const user = await this.userRepo.findByEmail(data.email);
-    if (!user) throw AppError.unauthorized("Invalid email or password");
+    // Dùng findByEmailWithPassword vì đây là nơi DUY NHẤT cần password để xác thực
+    const user = await this.userRepo.findByEmailWithPassword(data.email);
 
-    const valid = await verifyPassword(data.password, user.password);
-    if (!valid) throw AppError.unauthorized("Invalid email or password");
+    // Luôn chạy hàm băm mật khẩu (100.000 vòng) để tiêu tốn thời gian như nhau, chống Timing Attack
+    const hashToVerify = user ? user.password : DUMMY_HASH;
+    const valid = await verifyPassword(data.password, hashToVerify);
+
+    // Báo lỗi chung chung nếu không có user hoặc password sai
+    if (!user || !valid) {
+      throw AppError.unauthorized("Invalid email or password");
+    }
 
     const accessToken = await sign(
       {
