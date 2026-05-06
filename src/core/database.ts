@@ -11,6 +11,14 @@ export async function connectDb(): Promise<Client> {
   try {
     await db.connect();
     logger.info("PostgreSQL Database connected.");
+    
+    // Tự động chuyển schema (search_path) nếu có chỉ định trong URL
+    const url = new URL(config.databaseUrl);
+    const schema = url.searchParams.get("schema") || url.searchParams.get("search_path");
+    if (schema) {
+      await db.queryObject(`SET search_path TO "${schema}"`);
+    }
+
     return db;
   } catch (error) {
     logger.error(`Database connection failed: ${(error as Error).message}`);
