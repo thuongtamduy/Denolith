@@ -19,3 +19,8 @@ Thumbs.db
 node_modules/
 package.json
 package-lock.json
+
+# Docker
+docker-compose.yml
+compose.yml
+compose.yaml
