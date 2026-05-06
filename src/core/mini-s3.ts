@@ -15,9 +15,14 @@ export class MiniS3Client {
    * SHA-256 hash an toàn — dùng slice() để tránh lỗi offset khi Uint8Array là subarray
    */
   private async sha256(data: string | Uint8Array): Promise<string> {
-    const raw = typeof data === "string" ? new TextEncoder().encode(data) : data;
+    const raw = typeof data === "string"
+      ? new TextEncoder().encode(data)
+      : data;
     // Cắt chính xác phần bộ nhớ của subarray, tránh lấy thừa buffer gốc
-    const safeBuffer = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength) as ArrayBuffer;
+    const safeBuffer = raw.buffer.slice(
+      raw.byteOffset,
+      raw.byteOffset + raw.byteLength,
+    ) as ArrayBuffer;
     const hashBuffer = await crypto.subtle.digest("SHA-256", safeBuffer);
     return Array.from(new Uint8Array(hashBuffer))
       .map((b) => b.toString(16).padStart(2, "0"))
@@ -27,10 +32,16 @@ export class MiniS3Client {
   /**
    * HMAC-SHA256 — dùng slice() cẩn thận giống sha256
    */
-  private async hmacSha256(key: string | Uint8Array, data: string): Promise<Uint8Array> {
+  private async hmacSha256(
+    key: string | Uint8Array,
+    data: string,
+  ): Promise<Uint8Array> {
     const enc = new TextEncoder();
     const rawKey = typeof key === "string" ? enc.encode(key) : key;
-    const safeKey = rawKey.buffer.slice(rawKey.byteOffset, rawKey.byteOffset + rawKey.byteLength) as ArrayBuffer;
+    const safeKey = rawKey.buffer.slice(
+      rawKey.byteOffset,
+      rawKey.byteOffset + rawKey.byteLength,
+    ) as ArrayBuffer;
     const cryptoKey = await crypto.subtle.importKey(
       "raw",
       safeKey,
@@ -38,12 +49,18 @@ export class MiniS3Client {
       false,
       ["sign"],
     );
-    const signature = await crypto.subtle.sign("HMAC", cryptoKey, enc.encode(data));
+    const signature = await crypto.subtle.sign(
+      "HMAC",
+      cryptoKey,
+      enc.encode(data),
+    );
     return new Uint8Array(signature);
   }
 
   private toHex(buffer: Uint8Array): string {
-    return Array.from(buffer).map((b) => b.toString(16).padStart(2, "0")).join("");
+    return Array.from(buffer).map((b) => b.toString(16).padStart(2, "0")).join(
+      "",
+    );
   }
 
   /**
@@ -70,10 +87,13 @@ export class MiniS3Client {
 
     const headerKeys = Object.keys(allHeaders).sort();
     const signedHeaders = headerKeys.join(";");
-    const canonicalHeaders = headerKeys.map((k) => `${k}:${allHeaders[k]}\n`).join("");
+    const canonicalHeaders = headerKeys.map((k) => `${k}:${allHeaders[k]}\n`)
+      .join("");
 
     // url.search trả về "?key=val", cần bỏ dấu "?" đầu cho canonical request
-    const canonicalQueryString = url.search.startsWith("?") ? url.search.slice(1) : url.search;
+    const canonicalQueryString = url.search.startsWith("?")
+      ? url.search.slice(1)
+      : url.search;
 
     const canonicalRequest = [
       method,
@@ -84,7 +104,8 @@ export class MiniS3Client {
       payloadHash,
     ].join("\n");
 
-    const credentialScope = `${dateStamp}/${this.config.region}/s3/aws4_request`;
+    const credentialScope =
+      `${dateStamp}/${this.config.region}/s3/aws4_request`;
     const stringToSign = [
       "AWS4-HMAC-SHA256",
       amzDate,
@@ -92,7 +113,10 @@ export class MiniS3Client {
       await this.sha256(canonicalRequest),
     ].join("\n");
 
-    const kDate = await this.hmacSha256(`AWS4${this.config.secretKey}`, dateStamp);
+    const kDate = await this.hmacSha256(
+      `AWS4${this.config.secretKey}`,
+      dateStamp,
+    );
     const kRegion = await this.hmacSha256(kDate, this.config.region);
     const kService = await this.hmacSha256(kRegion, "s3");
     const kSigning = await this.hmacSha256(kService, "aws4_request");
@@ -122,7 +146,13 @@ export class MiniS3Client {
       "content-length": body.length.toString(),
     };
 
-    const signedHeaders = await this.signV4("PUT", url, headers, payloadHash, timestamp);
+    const signedHeaders = await this.signV4(
+      "PUT",
+      url,
+      headers,
+      payloadHash,
+      timestamp,
+    );
 
     const res = await fetch(url.toString(), {
       method: "PUT",
@@ -132,7 +162,9 @@ export class MiniS3Client {
 
     if (!res.ok) {
       const errorText = await res.text();
-      logger.error(`S3 Upload Error: ${res.status} ${res.statusText} - ${errorText}`);
+      logger.error(
+        `S3 Upload Error: ${res.status} ${res.statusText} - ${errorText}`,
+      );
       throw new Error(`S3 PutObject failed: ${res.statusText}`);
     }
 
@@ -146,7 +178,13 @@ export class MiniS3Client {
     const url = new URL(`${this.config.endpoint}/${this.config.bucket}/${key}`);
     const timestamp = new Date();
 
-    const signedHeaders = await this.signV4("DELETE", url, {}, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", timestamp);
+    const signedHeaders = await this.signV4(
+      "DELETE",
+      url,
+      {},
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      timestamp,
+    );
 
     const res = await fetch(url.toString(), {
       method: "DELETE",
@@ -155,7 +193,9 @@ export class MiniS3Client {
 
     if (!res.ok && res.status !== 204) {
       const errorText = await res.text();
-      logger.error(`S3 Delete Error: ${res.status} ${res.statusText} - ${errorText}`);
+      logger.error(
+        `S3 Delete Error: ${res.status} ${res.statusText} - ${errorText}`,
+      );
       throw new Error(`S3 DeleteObject failed: ${res.statusText}`);
     }
 
@@ -168,15 +208,22 @@ export class MiniS3Client {
    * @param key Đường dẫn file trong bucket
    * @param expiresInSeconds Thời gian URL còn hiệu lực (mặc định 15 phút)
    */
-  public async getPresignedPutUrl(key: string, expiresInSeconds: number = 900): Promise<string> {
+  public async getPresignedPutUrl(
+    key: string,
+    expiresInSeconds: number = 900,
+  ): Promise<string> {
     const url = new URL(`${this.config.endpoint}/${this.config.bucket}/${key}`);
     const timestamp = new Date();
     const amzDate = timestamp.toISOString().replace(/[:-]|\.\d{3}/g, "");
     const dateStamp = amzDate.substring(0, 8);
-    const credentialScope = `${dateStamp}/${this.config.region}/s3/aws4_request`;
+    const credentialScope =
+      `${dateStamp}/${this.config.region}/s3/aws4_request`;
 
     url.searchParams.set("X-Amz-Algorithm", "AWS4-HMAC-SHA256");
-    url.searchParams.set("X-Amz-Credential", `${this.config.accessKey}/${credentialScope}`);
+    url.searchParams.set(
+      "X-Amz-Credential",
+      `${this.config.accessKey}/${credentialScope}`,
+    );
     url.searchParams.set("X-Amz-Date", amzDate);
     url.searchParams.set("X-Amz-Expires", expiresInSeconds.toString());
     url.searchParams.set("X-Amz-SignedHeaders", "host");
@@ -202,7 +249,10 @@ export class MiniS3Client {
       await this.sha256(canonicalRequest),
     ].join("\n");
 
-    const kDate = await this.hmacSha256(`AWS4${this.config.secretKey}`, dateStamp);
+    const kDate = await this.hmacSha256(
+      `AWS4${this.config.secretKey}`,
+      dateStamp,
+    );
     const kRegion = await this.hmacSha256(kDate, this.config.region);
     const kService = await this.hmacSha256(kRegion, "s3");
     const kSigning = await this.hmacSha256(kService, "aws4_request");

@@ -31,7 +31,7 @@ export async function initRedis() {
   }
 }
 
-export async function closeRedis() {
+export function closeRedis() {
   if (redisClient) {
     redisClient.close();
   }

@@ -1,4 +1,4 @@
-import { assertEquals, assertNotEquals } from "jsr:@std/assert";
+import { assertEquals, assertNotEquals } from "@std/assert";
 import { hashPassword, verifyPassword } from "./hash.ts";
 
 Deno.test("Security: Password Hashing", async (t) => {

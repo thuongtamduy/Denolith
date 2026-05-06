@@ -28,7 +28,9 @@ async function toUint8Array(
   fileData: BodyInit | Uint8Array | Blob | File,
 ): Promise<Uint8Array> {
   if (fileData instanceof Uint8Array) return fileData;
-  if (fileData instanceof Blob) return new Uint8Array(await fileData.arrayBuffer());
+  if (fileData instanceof Blob) {
+    return new Uint8Array(await fileData.arrayBuffer());
+  }
   if (typeof fileData === "string") return new TextEncoder().encode(fileData);
   if (fileData instanceof ArrayBuffer) return new Uint8Array(fileData);
   if (fileData instanceof ReadableStream) {
@@ -42,7 +44,10 @@ async function toUint8Array(
     const total = chunks.reduce((acc, c) => acc + c.length, 0);
     const merged = new Uint8Array(total);
     let offset = 0;
-    for (const chunk of chunks) { merged.set(chunk, offset); offset += chunk.length; }
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.length;
+    }
     return merged;
   }
   throw new Error(`Unsupported fileData type: ${typeof fileData}`);
@@ -73,7 +78,9 @@ export class LocalStorageProvider implements IStorageProvider {
 
   // Local storage không hỗ trợ presigned URL
   getPresignedPutUrl(_bucket: string, _filePath: string): Promise<string> {
-    return Promise.reject(new Error("Local Storage does not support presigned URLs."));
+    return Promise.reject(
+      new Error("Local Storage does not support presigned URLs."),
+    );
   }
 }
 
@@ -85,7 +92,8 @@ export class SupabaseStorageProvider implements IStorageProvider {
   private readonly serviceKey: string;
 
   constructor() {
-    this.baseUrl = config.supabaseUrl?.replace(/\/$/, "") || "http://localhost:8000";
+    this.baseUrl = config.supabaseUrl?.replace(/\/$/, "") ||
+      "http://localhost:8000";
     this.serviceKey = config.supabaseServiceRoleKey || "";
     if (!this.serviceKey) {
       logger.warn("⚠ Supabase Storage is missing SERVICE_ROLE_KEY.");
@@ -114,7 +122,9 @@ export class SupabaseStorageProvider implements IStorageProvider {
     if (!response.ok) {
       const errorData = await response.text();
       logger.error(`Supabase Storage Upload Error: ${errorData}`);
-      throw new Error(`Failed to upload to Supabase Storage: ${response.statusText}`);
+      throw new Error(
+        `Failed to upload to Supabase Storage: ${response.statusText}`,
+      );
     }
 
     logger.info(`✅ Uploaded file to Supabase Storage: ${bucket}/${filePath}`);
@@ -128,14 +138,21 @@ export class SupabaseStorageProvider implements IStorageProvider {
       headers: { Authorization: `Bearer ${this.serviceKey}` },
     });
     if (!response.ok && response.status !== 404) {
-      throw new Error(`Failed to delete from Supabase Storage: ${response.statusText}`);
+      throw new Error(
+        `Failed to delete from Supabase Storage: ${response.statusText}`,
+      );
     }
     logger.info(`🗑 Deleted from Supabase Storage: ${bucket}/${filePath}`);
   }
 
   // Supabase có API riêng tạo signed URL nếu bucket là private
-  async getPresignedPutUrl(bucket: string, filePath: string, expiresInSeconds = 900): Promise<string> {
-    const url = `${this.baseUrl}/storage/v1/object/sign/upload/${bucket}/${filePath}`;
+  async getPresignedPutUrl(
+    bucket: string,
+    filePath: string,
+    expiresInSeconds = 900,
+  ): Promise<string> {
+    const url =
+      `${this.baseUrl}/storage/v1/object/sign/upload/${bucket}/${filePath}`;
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -145,7 +162,9 @@ export class SupabaseStorageProvider implements IStorageProvider {
       body: JSON.stringify({ expiresIn: expiresInSeconds }),
     });
     if (!response.ok) {
-      throw new Error(`Failed to create Supabase presigned URL: ${response.statusText}`);
+      throw new Error(
+        `Failed to create Supabase presigned URL: ${response.statusText}`,
+      );
     }
     const data = await response.json() as { signedURL: string };
     return `${this.baseUrl}${data.signedURL}`;
@@ -162,7 +181,8 @@ export class S3StorageProvider implements IStorageProvider {
       logger.warn("⚠ S3 Storage is missing ENDPOINT or ACCESS_KEY.");
     }
     return new MiniS3Client({
-      endpoint: config.s3.endpoint?.replace(/\/$/, "") || "http://localhost:9000",
+      endpoint: config.s3.endpoint?.replace(/\/$/, "") ||
+        "http://localhost:9000",
       region: config.s3.region || "us-east-1",
       accessKey: config.s3.accessKey || "",
       secretKey: config.s3.secretKey || "",
@@ -206,7 +226,9 @@ export class StorageService {
   private provider: IStorageProvider;
 
   constructor() {
-    logger.info(`📦 Initializing Storage Module with type: [${config.storageType}]`);
+    logger.info(
+      `📦 Initializing Storage Module with type: [${config.storageType}]`,
+    );
     switch (config.storageType) {
       case "s3":
         this.provider = new S3StorageProvider();

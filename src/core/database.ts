@@ -11,10 +11,11 @@ export async function connectDb(): Promise<Client> {
   try {
     await db.connect();
     logger.info("PostgreSQL Database connected.");
-    
+
     // Tự động chuyển schema (search_path) nếu có chỉ định trong URL
     const url = new URL(config.databaseUrl);
-    const schema = url.searchParams.get("schema") || url.searchParams.get("search_path");
+    const schema = url.searchParams.get("schema") ||
+      url.searchParams.get("search_path");
     if (schema) {
       await db.queryObject(`SET search_path TO "${schema}"`);
     }
@@ -40,7 +41,7 @@ export async function closeDb(): Promise<void> {
   try {
     await db.end();
     logger.info("PostgreSQL Database connection closed.");
-  } catch (e) {
+  } catch (_e) {
     // Ignore already closed errors
   }
 }

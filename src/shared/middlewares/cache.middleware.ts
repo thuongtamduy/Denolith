@@ -82,7 +82,7 @@ export const cacheResponse = (ttlSeconds: number) => {
         try {
           await redisClient.setex(key, ttlSeconds, bodyStr);
           savedToRedis = true;
-        } catch {}
+        } catch { /* Ignore Redis error */ }
       }
 
       if (!savedToRedis) {

@@ -1,5 +1,5 @@
 import type { Context, Next } from "@hono/core";
-import { getConnInfo } from "jsr:@hono/hono/deno";
+import { getConnInfo } from "@hono/hono/deno";
 import { redisClient } from "../../core/redis.ts";
 import { logger } from "../../core/logger.ts";
 import { config } from "../../core/config.ts";

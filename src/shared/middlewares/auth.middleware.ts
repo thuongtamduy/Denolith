@@ -94,7 +94,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
 
     // Ghi đè role từ Database vào payload để đảm bảo luôn sử dụng quyền mới nhất
     payload.role = res.rows[0].role;
-  } catch (err) {
+  } catch (_err) {
     return c.json(
       {
         success: false,

@@ -78,7 +78,10 @@ export const createAuthRoutes = (service: AuthService) => {
 
       return c.json({
         success: true,
-        data: { user: sanitizeUser(result.user), access_token: result.accessToken },
+        data: {
+          user: sanitizeUser(result.user),
+          access_token: result.accessToken,
+        },
       });
     },
   );

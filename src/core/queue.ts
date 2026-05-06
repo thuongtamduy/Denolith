@@ -3,10 +3,10 @@ import { logger } from "./logger.ts";
 
 export interface JobData {
   type: string;
-  payload: any;
+  payload: unknown;
 }
 
-type JobHandler = (payload: any) => Promise<void>;
+type JobHandler = (payload: unknown) => Promise<void>;
 const handlers = new Map<string, JobHandler>();
 
 // Hàng đợi dự phòng khi Redis bị tắt
@@ -15,7 +15,7 @@ let isMemoryProcessing = false;
 
 export const Queue = {
   isShuttingDown: false,
-  activeJobs: new Set<Promise<any>>(),
+  activeJobs: new Set<Promise<unknown>>(),
 
   async shutdown() {
     logger.info("🛑 Shutting down Worker Queue...");
@@ -54,7 +54,7 @@ export const Queue = {
   },
 
   // Đẩy tác vụ vào Queue (Chỉ mất 0.001s)
-  async enqueue(type: string, payload: any) {
+  async enqueue(type: string, payload: unknown) {
     const job: JobData = { type, payload };
     const queueName = "denolith:queue";
 

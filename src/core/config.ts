@@ -35,7 +35,7 @@ const EnvSchema = v.object({
   SUPABASE_SERVICE_ROLE_KEY: v.optional(v.string()),
   STORAGE_TYPE: v.optional(
     v.union([v.literal("local"), v.literal("s3"), v.literal("supabase")]),
-    "supabase"
+    "supabase",
   ),
   S3_ENDPOINT: v.optional(v.string()),
   S3_REGION: v.optional(v.string(), "us-east-1"),
