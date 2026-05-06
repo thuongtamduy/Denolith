@@ -63,15 +63,7 @@ tối tân nhất cho các dự án quy mô lớn:
 - Cài đặt **Deno 2.x**
 - Cài đặt **Docker & Docker Compose** (để chạy Database và Redis)
 
-### Bước 1: Khởi động Database & Redis
-
-Khởi chạy vùng chứa cơ sở dữ liệu ở background:
-
-```bash
-docker compose up -d
-```
-
-### Bước 2: Cấu hình Môi trường
+### Bước 1: Cấu hình Môi trường
 
 Sao chép file cấu hình mẫu và đổi tên thành `.env`:
 
@@ -79,16 +71,32 @@ Sao chép file cấu hình mẫu và đổi tên thành `.env`:
 cp .env.example .env
 ```
 
-_(Các thông số mặc định trong file `.env.example` đã khớp hoàn toàn với cấu hình
-Docker mặc định của dự án)._
-
-### Bước 3: Khởi chạy dự án
+Tạo mã bí mật siêu mạnh (CSPRNG) cho biến `JWT_SECRET` bằng script có sẵn:
 
 ```bash
-# Lệnh này sẽ tự động chạy Migration tạo Table và khởi động Server
+deno run scripts/generate-secret.ts 64
+```
+Sau đó copy đoạn mã vừa tạo dán vào file `.env` (hoặc `compose.yml`).
+
+### Bước 2: Khởi chạy dự án
+
+**Cách 1: Chạy bằng Docker (Khuyên dùng cho Production & Môi trường đồng nhất)**
+Lệnh này sẽ tự build image, khởi chạy Database, Redis và cả API Server:
+```bash
+docker compose up -d
+```
+Server sẽ sẵn sàng tại: `http://localhost:9999`
+
+**Cách 2: Chạy môi trường phát triển (Hot-reload)**
+Nếu bạn muốn code và tự động nhận thay đổi, chỉ cần khởi động các service nền:
+```bash
+docker compose up -d db redis
+```
+Sau đó chạy server qua Deno:
+```bash
+# Lệnh này sẽ tự động chạy Migration tạo Table và khởi động Server với tính năng Hot-reload
 deno task dev
 ```
-
 Server sẽ sẵn sàng phục vụ tại: `http://localhost:3000`
 
 ---
