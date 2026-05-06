@@ -43,7 +43,7 @@ export const createAuthRoutes = (service: AuthService) => {
       setCookie(c, "refresh_token", result.refreshToken, {
         httpOnly: true,
         secure: config.env === "production", // Yêu cầu HTTPS (khi Production)
-        sameSite: "Strict",
+        sameSite: config.env === "production" ? "None" : "Lax",
         maxAge: 7 * 24 * 60 * 60,
         path: "/api/auth",
       });
@@ -71,7 +71,7 @@ export const createAuthRoutes = (service: AuthService) => {
       setCookie(c, "refresh_token", result.refreshToken, {
         httpOnly: true,
         secure: config.env === "production",
-        sameSite: "Strict",
+        sameSite: config.env === "production" ? "None" : "Lax",
         maxAge: 7 * 24 * 60 * 60,
         path: "/api/auth",
       });
@@ -93,7 +93,7 @@ export const createAuthRoutes = (service: AuthService) => {
     setCookie(c, "refresh_token", result.refreshToken, {
       httpOnly: true,
       secure: config.env === "production",
-      sameSite: "Strict",
+      sameSite: config.env === "production" ? "None" : "Lax",
       maxAge: 7 * 24 * 60 * 60,
       path: "/api/auth",
     });
@@ -124,7 +124,11 @@ export const createAuthRoutes = (service: AuthService) => {
 
     if (refreshToken) {
       await service.logout(refreshToken, accessToken, exp);
-      deleteCookie(c, "refresh_token", { path: "/api/auth" });
+      deleteCookie(c, "refresh_token", {
+        path: "/api/auth",
+        secure: config.env === "production",
+        sameSite: config.env === "production" ? "None" : "Lax",
+      });
     }
 
     return c.json({ success: true, message: "Logged out successfully" });
