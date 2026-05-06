@@ -25,6 +25,11 @@ docker-compose.yml
 compose.yml
 compose.yaml
 
+# Scratch
+scratch/
+
+# Uploads
+uploads/
 
 # Supabase
 supabase-docker/
