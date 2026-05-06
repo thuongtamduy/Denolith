@@ -14,7 +14,7 @@
     "compile": "deno compile -A --env --output ./dist/denolith main.ts",
     "compile:linux": "deno compile -A --env --target x86_64-unknown-linux-gnu --output ./dist/denolith-linux main.ts",
     "test": "deno test -A --env src/ scratch/",
-    "test:watch": "deno test -A --env --watch src/",
+    "test:watch": "deno test -A --env --watch src/ scratch/",
     "format": "deno fmt && deno lint --fix"
   },
   "imports": {
