@@ -1,4 +1,4 @@
-import { redisClient } from "./redis.ts";
+import { redisClient, redisQueueClient } from "./redis.ts";
 import { logger } from "./logger.ts";
 
 export interface JobData {
@@ -95,7 +95,7 @@ export const Queue = {
     const queueName = "denolith:queue";
 
     while (!Queue.isShuttingDown) {
-      if (!redisClient) {
+      if (!redisQueueClient) {
         // Nếu không có Redis, ngủ 5s để tiết kiệm CPU
         await new Promise((res) => setTimeout(res, 5000));
         continue;
@@ -103,7 +103,8 @@ export const Queue = {
 
       try {
         // BRPOP (Blocking Pop) - tự động chặn luồng 5s chờ job, phản hồi 0ms, không tốn CPU
-        const result = await redisClient.brpop(5, queueName);
+        // DÙNG CONNECTION RIÊNG ĐỂ KHÔNG BLOCK CÁC LỆNH KHÁC
+        const result = await redisQueueClient.brpop(5, queueName);
         if (result && result.length === 2) {
           const job: JobData = JSON.parse(result[1]);
           const handler = handlers.get(job.type);

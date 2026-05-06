@@ -1,12 +1,11 @@
 {
   "version": "5",
   "specifiers": {
-    "jsr:@db/postgres@*": "0.19.5",
-    "jsr:@db/redis@*": "0.41.0",
-    "jsr:@hono/hono@*": "4.12.15",
-    "jsr:@hono/hono@^4.8.3": "4.12.15",
-    "jsr:@hono/valibot-validator@*": "0.6.1",
-    "jsr:@std/assert@*": "1.0.19",
+    "jsr:@db/postgres@0.19.5": "0.19.5",
+    "jsr:@db/redis@0.41.1": "0.41.1",
+    "jsr:@hono/hono@4.12.17": "4.12.17",
+    "jsr:@hono/hono@^4.8.3": "4.12.17",
+    "jsr:@hono/valibot-validator@0.6.1": "0.6.1",
     "jsr:@std/async@1": "1.3.0",
     "jsr:@std/bytes@1": "1.0.6",
     "jsr:@std/bytes@^1.0.2-rc.3": "1.0.6",
@@ -19,8 +18,8 @@
     "jsr:@std/io@0.224.5": "0.224.5",
     "jsr:@std/path@^1.0.8": "1.1.4",
     "jsr:@std/random@0.1.0": "0.1.0",
-    "jsr:@valibot/valibot@*": "1.3.1",
-    "jsr:@valibot/valibot@^1.1.0": "1.3.1",
+    "jsr:@valibot/valibot@1.4.0": "1.4.0",
+    "jsr:@valibot/valibot@^1.1.0": "1.4.0",
     "npm:cluster-key-slot@1.1.0": "1.1.0",
     "npm:postgres@*": "3.4.9"
   },
@@ -35,8 +34,8 @@
         "jsr:@std/path"
       ]
     },
-    "@db/redis@0.41.0": {
-      "integrity": "75e167dc7b660b29d8df19580f41fefedb5df283f929b2b4347945c2c12bf663",
+    "@db/redis@0.41.1": {
+      "integrity": "88c2c89cf952ec79d67644d7f246fae2ef80757c6e1be2a36f836c47ac31b70e",
       "dependencies": [
         "jsr:@std/async",
         "jsr:@std/bytes@1",
@@ -46,20 +45,14 @@
         "npm:cluster-key-slot"
       ]
     },
-    "@hono/hono@4.12.15": {
-      "integrity": "06a0aef73d9072e73b8db570b81a5b56a94095d697578202a87fccdf04ce352d"
+    "@hono/hono@4.12.17": {
+      "integrity": "8baf365920729ecaae5dfea95748d8203619e1f3134ca42d10a4266c57c0009f"
     },
     "@hono/valibot-validator@0.6.1": {
       "integrity": "c019b28746adb06ba372c039da5eef0c941abe78a224b42c9eb9ebeabe054669",
       "dependencies": [
         "jsr:@hono/hono@^4.8.3",
         "jsr:@valibot/valibot@^1.1.0"
-      ]
-    },
-    "@std/assert@1.0.19": {
-      "integrity": "eaada96ee120cb980bc47e040f82814d786fe8162ecc53c91d8df60b8755991e",
-      "dependencies": [
-        "jsr:@std/internal"
       ]
     },
     "@std/async@1.3.0": {
@@ -98,8 +91,8 @@
     "@std/random@0.1.0": {
       "integrity": "70a006be0ffb77d036bab54aa8ae6bd0119ba77ace0f2f56f63273d4262a5667"
     },
-    "@valibot/valibot@1.3.1": {
-      "integrity": "635faaec9d32a25efca7b4614e7a07306cc03937bfd0679e05530d31081bc501"
+    "@valibot/valibot@1.4.0": {
+      "integrity": "3ff610571ed279b5e0cd03476664c37701f83657b9de0dfc3c8d3061af342707"
     }
   },
   "npm": {
@@ -112,11 +105,11 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@db/postgres@*",
-      "jsr:@db/redis@*",
-      "jsr:@hono/hono@*",
-      "jsr:@hono/valibot-validator@*",
-      "jsr:@valibot/valibot@*"
+      "jsr:@db/postgres@0.19.5",
+      "jsr:@db/redis@0.41.1",
+      "jsr:@hono/hono@4.12.17",
+      "jsr:@hono/valibot-validator@0.6.1",
+      "jsr:@valibot/valibot@1.4.0"
     ]
   }
 }

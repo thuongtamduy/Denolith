@@ -17,15 +17,15 @@
     "test:watch": "deno test -A --env --watch src/"
   },
   "imports": {
-    "@hono/core": "jsr:@hono/hono",
-    "@hono/jwt": "jsr:@hono/hono/jwt",
-    "@hono/http-status": "jsr:@hono/hono/utils/http-status",
-    "@hono/valibot-validator": "jsr:@hono/valibot-validator",
-    "@hono/cors": "jsr:@hono/hono/cors",
-    "@hono/secure-headers": "jsr:@hono/hono/secure-headers",
-    "@hono/cookie": "jsr:@hono/hono/cookie",
-    "@db/postgres": "jsr:@db/postgres",
-    "@db/redis": "jsr:@db/redis",
-    "valibot": "jsr:@valibot/valibot"
+    "@hono/core": "jsr:@hono/hono@4.12.17",
+    "@hono/jwt": "jsr:@hono/hono@4.12.17/jwt",
+    "@hono/http-status": "jsr:@hono/hono@4.12.17/utils/http-status",
+    "@hono/valibot-validator": "jsr:@hono/valibot-validator@0.6.1",
+    "@hono/cors": "jsr:@hono/hono@4.12.17/cors",
+    "@hono/secure-headers": "jsr:@hono/hono@4.12.17/secure-headers",
+    "@hono/cookie": "jsr:@hono/hono@4.12.17/cookie",
+    "@db/postgres": "jsr:@db/postgres@0.19.5",
+    "@db/redis": "jsr:@db/redis@0.41.1",
+    "valibot": "jsr:@valibot/valibot@1.4.0"
   }
 }

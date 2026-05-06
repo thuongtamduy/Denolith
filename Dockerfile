@@ -4,9 +4,7 @@ FROM denoland/deno:alpine
 # Thiết lập thư mục làm việc trong Container
 WORKDIR /app
 
-# Tạo user non-root TRƯỚC KHI copy bất kỳ file nào (CIS Benchmark)
-RUN addgroup -S deno && adduser -S deno -G deno
-
+# User deno đã được tạo sẵn trong image denoland/deno:alpine
 # Cache dependencies — chạy với quyền root (bắt buộc để deno install)
 COPY deno.json deno.lock ./
 RUN deno install
@@ -25,4 +23,4 @@ EXPOSE 3000
 USER deno
 
 # Khởi động ứng dụng (chế độ chạy thật)
-CMD ["run", "-A", "--env", "main.ts"]
+CMD ["run", "-A", "main.ts"]
