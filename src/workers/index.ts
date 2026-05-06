@@ -9,17 +9,19 @@ export const initWorkers = () => {
   // Worker: Gửi Email chào mừng
   Queue.registerWorker(
     "send_welcome_email",
-    async (payload: { email: string; username: string }) => {
-      const emailContent = EmailTemplates.welcome(payload.username);
+    async (payload: unknown) => {
+      const data = payload as { email: string; username: string };
+      const emailContent = EmailTemplates.welcome(data.username);
       await sendEmail({
-        to: payload.email,
+        to: data.email,
         ...emailContent,
       });
     },
   );
 
   // Worker: Ghi Audit Log vào Database
-  Queue.registerWorker("audit_log", async (entry: AuditEntry) => {
+  Queue.registerWorker("audit_log", async (payload: unknown) => {
+    const entry = payload as AuditEntry;
     try {
       await container.db.queryObject(
         `INSERT INTO audit_logs (actor_id, action, target_type, target_id, metadata)
