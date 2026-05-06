@@ -76,27 +76,34 @@ Tạo mã bí mật siêu mạnh (CSPRNG) cho biến `JWT_SECRET` bằng script 
 ```bash
 deno run scripts/generate-secret.ts 64
 ```
+
 Sau đó copy đoạn mã vừa tạo dán vào file `.env` (hoặc `compose.yml`).
 
 ### Bước 2: Khởi chạy dự án
 
 **Cách 1: Chạy bằng Docker (Khuyên dùng cho Production & Môi trường đồng nhất)**
 Lệnh này sẽ tự build image, khởi chạy Database, Redis và cả API Server:
+
 ```bash
 docker compose up -d
 ```
+
 Server sẽ sẵn sàng tại: `http://localhost:9999`
 
-**Cách 2: Chạy môi trường phát triển (Hot-reload)**
-Nếu bạn muốn code và tự động nhận thay đổi, chỉ cần khởi động các service nền:
+**Cách 2: Chạy môi trường phát triển (Hot-reload)** Nếu bạn muốn code và tự động
+nhận thay đổi, chỉ cần khởi động các service nền:
+
 ```bash
 docker compose up -d db redis
 ```
+
 Sau đó chạy server qua Deno:
+
 ```bash
 # Lệnh này sẽ tự động chạy Migration tạo Table và khởi động Server với tính năng Hot-reload
 deno task dev
 ```
+
 Server sẽ sẵn sàng phục vụ tại: `http://localhost:3000`
 
 ---
@@ -113,6 +120,7 @@ Server sẽ sẵn sàng phục vụ tại: `http://localhost:3000`
 | `deno task seed`          | Chạy dữ liệu mẫu (Seeding) vào Database                        |
 | `deno test -A`            | Chạy bộ Unit Tests bảo mật tự động                             |
 | `deno task compile`       | Đóng gói toàn bộ Backend thành 1 file nhị phân duy nhất (.exe) |
+| `deno task compile:linux` | Đóng gói toàn bộ Backend thành 1 file nhị phân cho Linux       |
 
 ---
 
