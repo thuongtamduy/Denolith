@@ -121,6 +121,7 @@ Server sẽ sẵn sàng phục vụ tại: `http://localhost:3000`
 | `deno test -A`            | Chạy bộ Unit Tests bảo mật tự động                             |
 | `deno task compile`       | Đóng gói toàn bộ Backend thành 1 file nhị phân duy nhất (.exe) |
 | `deno task compile:linux` | Đóng gói toàn bộ Backend thành 1 file nhị phân cho Linux       |
+| `deno task format`        | Tự động format lại code theo chuẩn Denolith                    |
 
 ---
 

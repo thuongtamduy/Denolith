@@ -15,7 +15,7 @@
     "compile:linux": "deno compile -A --env --target x86_64-unknown-linux-gnu --output ./dist/denolith-linux main.ts",
     "test": "deno test -A --env src/",
     "test:watch": "deno test -A --env --watch src/",
-    "afl:fix": "deno fmt && deno lint --fix"
+    "format": "deno fmt && deno lint --fix"
   },
   "imports": {
     "@hono/core": "jsr:@hono/hono@4.12.17",
