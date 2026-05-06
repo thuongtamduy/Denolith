@@ -17,6 +17,7 @@ import { closeDb } from "./src/core/database.ts";
 import { closeRedis, redisClient } from "./src/core/redis.ts";
 import { initWorkers } from "./src/workers/index.ts";
 import { Queue } from "./src/core/queue.ts";
+import { initCrons } from "./src/core/cron.ts";
 
 // Routes
 import { createUserRoutes } from "./src/modules/user/user.routes.ts";
@@ -40,22 +41,8 @@ if (migrationResult.applied.length > 0) {
 initWorkers();
 setTimeout(() => Queue.startWorkerLoop(), 0);
 
-// 2.6 Cronjob dọn rác Database (Refresh Token) mỗi 6 tiếng
-setInterval(async () => {
-  try {
-    const res = await container.db.queryObject<{ count: bigint }>(
-      "WITH deleted AS (DELETE FROM refresh_tokens WHERE expires_at < NOW() RETURNING *) SELECT COUNT(*) FROM deleted",
-    );
-    const deletedCount = Number(res.rows[0].count);
-    if (deletedCount > 0) {
-      logger.info(
-        `🧹 [Cronjob] Đã dọn dẹp ${deletedCount} refresh token hết hạn.`,
-      );
-    }
-  } catch (err) {
-    logger.error("❌ [Cronjob] Lỗi dọn dẹp DB", err);
-  }
-}, 6 * 60 * 60 * 1000);
+// 2.6 Khởi động Cronjobs
+const { stopCrons } = initCrons();
 
 // 3. Cấu hình Hono App
 const app = new Hono();
@@ -95,8 +82,10 @@ app.get("/health", async (c) => {
   }
 });
 
+app.get("/", (c) => c.text("Backend is running."));
+
 // Bảo vệ toàn bộ route profiles bằng JWT — PHẢI đăng ký TRƯỚC khi mount routes
-app.use("/api/profiles/*", authMiddleware);
+app.use("/api/users/*", authMiddleware);
 
 // Đăng ký các Route (Sử dụng Service từ Container)
 app.route("/api/auth", createAuthRoutes(container.authService));
@@ -107,12 +96,17 @@ logger.info(
   `🚀 Denolith is running on http://localhost:${config.port} (${config.env} mode)`,
 );
 
+const abortController = new AbortController();
+
 const shutdown = async () => {
   logger.info("Shutting down gracefully...");
+  stopCrons(); // Dừng toàn bộ cronjob
+  abortController.abort(); // Dừng HTTP server
   await Queue.shutdown();
   await closeRedis();
   await closeDb();
-  Deno.exit(0);
+  // KHÔNG gọi Deno.exit(0) ở đây, để event loop tự kết thúc
+  // Giúp Deno watcher có thể hot-reload thành công.
 };
 
 Deno.addSignalListener("SIGINT", shutdown);
@@ -122,4 +116,4 @@ if (Deno.build.os !== "windows") {
   Deno.addSignalListener("SIGTERM", shutdown);
 }
 
-Deno.serve({ port: config.port }, app.fetch);
+Deno.serve({ port: config.port, signal: abortController.signal }, app.fetch);
