@@ -1,0 +1,59 @@
+services:
+  denolith_api:
+    build: .
+    restart: always
+    ports:
+      - "${PORT:-9999}:3000"
+    environment:
+      # ── Cấu hình chung ──────────────────────────────────────────────────────
+      - PORT=3000
+      - DENO_ENV=production
+      # Supavisor Pooler: postgres://<user>.<tenant-id>:<password>@<host>:<port>/<db>?schema=<schema>
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      # Tạo: openssl rand -hex 32
+      - JWT_SECRET=${JWT_SECRET}
+
+      # ── CORS & Security ──────────────────────────────────────────────────────
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+      - TRUST_PROXY=${TRUST_PROXY:-false}
+
+      # ── SMTP (Optional) ──────────────────────────────────────────────────────
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@denolith.dev}
+
+      # ── Supabase ─────────────────────────────────────────────────────────────
+      - SUPABASE_URL=${SUPABASE_URL:-http://localhost:8000}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+
+      # ── Storage ──────────────────────────────────────────────────────────────
+      - STORAGE_TYPE=${STORAGE_TYPE:-supabase}
+      - S3_ENDPOINT=${S3_ENDPOINT:-}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:-}
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
+    # Cần kết nối được tới Supabase đang chạy ở host machine
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  redis:
+    image: redis:7.4-alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_data:

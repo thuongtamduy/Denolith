@@ -31,6 +31,16 @@ const EnvSchema = v.object({
   SMTP_USER: v.optional(v.string()),
   SMTP_PASS: v.optional(v.string()),
   SMTP_FROM: v.optional(v.string(), "noreply@denolith.dev"),
+  SUPABASE_URL: v.optional(v.string()),
+  SUPABASE_SERVICE_ROLE_KEY: v.optional(v.string()),
+  STORAGE_TYPE: v.optional(
+    v.union([v.literal("local"), v.literal("s3"), v.literal("supabase")]),
+    "supabase"
+  ),
+  S3_ENDPOINT: v.optional(v.string()),
+  S3_REGION: v.optional(v.string(), "us-east-1"),
+  S3_ACCESS_KEY: v.optional(v.string()),
+  S3_SECRET_KEY: v.optional(v.string()),
 });
 
 function loadConfig() {
@@ -47,6 +57,13 @@ function loadConfig() {
     SMTP_USER: Deno.env.get("SMTP_USER"),
     SMTP_PASS: Deno.env.get("SMTP_PASS"),
     SMTP_FROM: Deno.env.get("SMTP_FROM"),
+    SUPABASE_URL: Deno.env.get("SUPABASE_URL"),
+    SUPABASE_SERVICE_ROLE_KEY: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+    STORAGE_TYPE: Deno.env.get("STORAGE_TYPE"),
+    S3_ENDPOINT: Deno.env.get("S3_ENDPOINT"),
+    S3_REGION: Deno.env.get("S3_REGION"),
+    S3_ACCESS_KEY: Deno.env.get("S3_ACCESS_KEY"),
+    S3_SECRET_KEY: Deno.env.get("S3_SECRET_KEY"),
   };
 
   try {
@@ -59,6 +76,15 @@ function loadConfig() {
       frontendUrl: parsed.FRONTEND_URL,
       trustProxy: parsed.TRUST_PROXY === "true",
       env: parsed.DENO_ENV,
+      supabaseUrl: parsed.SUPABASE_URL,
+      supabaseServiceRoleKey: parsed.SUPABASE_SERVICE_ROLE_KEY,
+      storageType: parsed.STORAGE_TYPE,
+      s3: {
+        endpoint: parsed.S3_ENDPOINT || "",
+        region: parsed.S3_REGION,
+        accessKey: parsed.S3_ACCESS_KEY || "",
+        secretKey: parsed.S3_SECRET_KEY || "",
+      },
       smtp: parsed.SMTP_HOST
         ? {
           host: parsed.SMTP_HOST,
