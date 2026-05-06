@@ -10,19 +10,11 @@ export const initWorkers = () => {
   Queue.registerWorker(
     "send_welcome_email",
     async (payload: { email: string; username: string }) => {
-      logger.info(
-        `⏳ [Worker] Bắt đầu xử lý Job: Gửi Email Welcome tới ${payload.email}...`,
-      );
-
       const emailContent = EmailTemplates.welcome(payload.username);
       await sendEmail({
         to: payload.email,
         ...emailContent,
       });
-
-      logger.info(
-        `✅ [Worker] Đã hoàn tất xử lý Job Email cho ${payload.username}!`,
-      );
     },
   );
 
