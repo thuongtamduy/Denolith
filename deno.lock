@@ -3,6 +3,7 @@
   "specifiers": {
     "jsr:@db/postgres@0.19.5": "0.19.5",
     "jsr:@db/redis@0.41.1": "0.41.1",
+    "jsr:@hono/hono@*": "4.12.17",
     "jsr:@hono/hono@4.12.17": "4.12.17",
     "jsr:@hono/hono@^4.8.3": "4.12.17",
     "jsr:@hono/valibot-validator@0.6.1": "0.6.1",

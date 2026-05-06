@@ -24,3 +24,7 @@ package-lock.json
 docker-compose.yml
 compose.yml
 compose.yaml
+
+
+# Supabase
+supabase-docker/
