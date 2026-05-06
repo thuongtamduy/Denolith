@@ -3,12 +3,10 @@ import { diffSchemas, generateMigrationSQL } from "../src/core/schema-diff.ts";
 import { logger } from "../src/core/logger.ts";
 
 import { userSchema } from "../src/modules/user/user.schema.ts";
-import { profileSchema } from "../src/modules/profile/profile.schema.ts";
 import type { TableSchema } from "../src/core/schema.ts";
 
 const allSchemas: TableSchema[] = [
   userSchema,
-  profileSchema,
 ];
 
 const migrationName = Deno.args[0];
