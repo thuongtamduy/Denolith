@@ -2,6 +2,7 @@ import type { Context } from "@hono/core";
 import type { ContentfulStatusCode } from "@hono/http-status";
 import { AppError } from "./AppError.ts";
 import { logger } from "../../core/logger.ts";
+import type { ApiErrorResponse } from "../types/index.ts";
 
 /**
  * Global Hono error handler.
@@ -9,7 +10,7 @@ import { logger } from "../../core/logger.ts";
 export const globalErrorHandler = (err: Error, c: Context) => {
   if (err instanceof AppError) {
     logger.warn(`[${err.code}] ${err.message}`);
-    return c.json(
+    return c.json<ApiErrorResponse>(
       {
         success: false as const,
         error: { code: err.code, message: err.message },
@@ -19,7 +20,7 @@ export const globalErrorHandler = (err: Error, c: Context) => {
   }
 
   logger.error(`[UNHANDLED] ${err.message}`, err.stack);
-  return c.json(
+  return c.json<ApiErrorResponse>(
     {
       success: false as const,
       error: {

@@ -1,5 +1,5 @@
 import type { Client, Transaction } from "@db/postgres";
-import type { CreateUserData, User } from "./user.entity.ts";
+import type { CreateUserData, UpdateUserData, User } from "./user.entity.ts";
 import type {
   PaginatedResult,
   PaginationParams,
@@ -81,7 +81,7 @@ export class UserRepository extends BaseRepository {
 
   async update(
     id: string,
-    data: Partial<User>,
+    data: UpdateUserData,
     tx?: Transaction,
   ): Promise<User | undefined> {
     // Chỉ lấy các trường có giá trị (loại bỏ undefined)

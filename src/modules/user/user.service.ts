@@ -1,6 +1,7 @@
 import type { UserRepository } from "./user.repository.ts";
-import type { CreateUserData, User } from "./user.entity.ts";
+import type { CreateUserData, UpdateUserData, User } from "./user.entity.ts";
 import { AppError } from "../../shared/errors/AppError.ts";
+import { hashPassword } from "../../shared/utils/hash.ts";
 import type {
   PaginatedResult,
   PaginationParams,
@@ -26,11 +27,13 @@ export class UserService {
       const existing = await this.repo.findByEmail(data.email, tx);
       if (existing) throw AppError.conflict("Email already exists");
 
-      return await this.repo.create(data, tx);
+      // Hash password tại tầng Service — không để raw password xuống DB
+      const hashedPassword = await hashPassword(data.password);
+      return await this.repo.create({ ...data, password: hashedPassword }, tx);
     });
   }
 
-  async update(id: string, data: Partial<User>): Promise<User> {
+  async update(id: string, data: UpdateUserData): Promise<User> {
     const user = await this.repo.update(id, data);
     if (!user) throw AppError.notFound(`User with id ${id} not found`);
     return user;

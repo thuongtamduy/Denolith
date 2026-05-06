@@ -5,6 +5,7 @@ import { hashPassword, verifyPassword } from "../../shared/utils/hash.ts";
 import { AppError } from "../../shared/errors/AppError.ts";
 import { config } from "../../core/config.ts";
 import { Queue } from "../../core/queue.ts";
+import { AuditService } from "../../core/audit.ts";
 
 // Mã băm giả lập để chống Timing Attack (Có độ dài bằng chính xác Hash thật)
 const DUMMY_HASH =
@@ -62,6 +63,14 @@ export class AuthService {
       username: user.username,
     });
 
+    // Ghi audit log bất đồng bộ — không block response
+    await AuditService.log({
+      actorId: user.id,
+      action: "auth.register",
+      targetType: "user",
+      targetId: user.id,
+    });
+
     return { user, accessToken, refreshToken };
   }
 
@@ -75,6 +84,11 @@ export class AuthService {
 
     // Báo lỗi chung chung nếu không có user hoặc password sai
     if (!user || !valid) {
+      // Ghi audit TRƯỚC khi throw — đảm bảo không bị skip
+      await AuditService.log({
+        action: "auth.login_failed",
+        metadata: { email: data.email },
+      });
       throw AppError.unauthorized("Invalid email or password");
     }
 
@@ -97,6 +111,14 @@ export class AuthService {
     const refreshToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await this.authRepo.saveRefreshToken(user.id, refreshToken, expiresAt);
+
+    // Ghi audit log bất đồng bộ — không block response
+    await AuditService.log({
+      actorId: user.id,
+      action: "auth.login",
+      targetType: "user",
+      targetId: user.id,
+    });
 
     return { user, accessToken, refreshToken };
   }

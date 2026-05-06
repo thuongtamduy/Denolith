@@ -1,6 +1,5 @@
 import { Hono } from "@hono/core";
 import { validateJson } from "../../shared/utils/validator.ts";
-import * as v from "valibot";
 import type { UserService } from "./user.service.ts";
 import { extractPagination } from "../../shared/utils/pagination.ts";
 import { authMiddleware } from "../../shared/middlewares/auth.middleware.ts";
@@ -11,6 +10,12 @@ import type { AppEnv } from "../../core/context.ts";
 import { validateUUID } from "../../shared/middlewares/validate-uuid.middleware.ts";
 import { AuditService } from "../../core/audit.ts";
 import { AppError } from "../../shared/errors/AppError.ts";
+import {
+  type CreateUserInput,
+  createUserSchema,
+  type UpdateUserInput,
+  updateUserSchema,
+} from "./user.validation.ts";
 
 export const createUserRoutes = (service: UserService) => {
   const router = new Hono<AppEnv>();
@@ -36,27 +41,9 @@ export const createUserRoutes = (service: UserService) => {
     return c.json({ success: true, data: sanitizeUser(user) });
   });
 
-  const phoneSchema = v.pipe(
-    v.string(),
-    v.regex(
-      /^(0|\+)\d{9,10}$/,
-      "Số điện thoại phải dài 10-11 ký tự và bắt đầu bằng 0 hoặc +",
-    ),
-  );
-
   // POST /api/users — Tạo user mới (Admin)
-  const createUserSchema = v.object({
-    username: v.pipe(v.string(), v.minLength(3)),
-    email: v.pipe(v.string(), v.email()),
-    password: v.pipe(v.string(), v.minLength(6)),
-    phone: v.optional(phoneSchema),
-  });
-
   router.post("/", validateJson(createUserSchema), async (c) => {
-    const body = c.req.valid("json") as Parameters<UserService["create"]>[0];
-    // TODO: Nên hash password trước khi truyền vào repo ở tầng service
-    // Hiện tại auth.service.ts đang tự gọi userRepo.create.
-    // Tạm thời Admin tạo sẽ chạy qua userService.create
+    const body = c.req.valid("json") as CreateUserInput;
     const user = await service.create(body);
 
     c.header("Location", `/api/users/${user.id}`);
@@ -64,19 +51,13 @@ export const createUserRoutes = (service: UserService) => {
   });
 
   // PATCH /api/users/:id — Cập nhật user (Partial Update)
-  const updateUserSchema = v.partial(v.object({
-    username: v.pipe(v.string(), v.minLength(3)),
-    phone: phoneSchema,
-    active: v.boolean(),
-  }));
-
   router.patch(
     "/:id",
     validateUUID(),
     validateJson(updateUserSchema),
     async (c) => {
       const id = c.req.param("id")!;
-      const body = c.req.valid("json") as Parameters<UserService["update"]>[1];
+      const body = c.req.valid("json") as UpdateUserInput;
 
       const user = await service.update(id, body);
       return c.json({ success: true, data: sanitizeUser(user) });
@@ -108,13 +89,10 @@ export const createUserRoutes = (service: UserService) => {
         targetId: id,
       });
 
-      return c.json({
-        success: true,
-        message:
-          "User has been permanently deleted. This action cannot be undone.",
-      });
+      // 204 No Content — xóa cứng không còn resource để trả về
+      return new Response(null, { status: 204 });
     } else {
-      const user = await service.softDelete(id);
+      await service.softDelete(id);
 
       await AuditService.log({
         actorId: requesterId,
@@ -125,18 +103,17 @@ export const createUserRoutes = (service: UserService) => {
 
       return c.json({
         success: true,
-        message: `User '${user.username}' has been soft-deleted.`,
-        data: sanitizeUser(user),
+        message: "User has been soft-deleted and can be restored.",
       });
     }
   });
 
-  // PATCH /api/users/:id/restore — Phục hồi user đã bị soft delete
-  router.patch("/:id/restore", validateUUID(), async (c) => {
+  // POST /api/users/:id/restore — Phục hồi user đã bị soft delete
+  // Dùng POST thay vì PATCH vì đây là "hành động" (action), không phải partial update resource
+  router.post("/:id/restore", validateUUID(), async (c) => {
     const id = c.req.param("id")!;
     const user = await service.restore(id);
 
-    // Ghi Audit Log bất đồng bộ
     await AuditService.log({
       actorId: c.get("jwtPayload")?.id,
       action: "user.restore",

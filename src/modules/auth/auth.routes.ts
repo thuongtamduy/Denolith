@@ -1,29 +1,20 @@
 import { Hono } from "@hono/core";
 import { deleteCookie, getCookie, setCookie } from "@hono/cookie";
 import { AppError } from "../../shared/errors/AppError.ts";
-import * as v from "valibot";
 import { validateJson } from "../../shared/utils/validator.ts";
 import type { AuthService } from "./auth.service.ts";
 import { rateLimiter } from "../../shared/middlewares/rate-limit.middleware.ts";
 import { config } from "../../core/config.ts";
 import { sanitizeUser } from "../../shared/utils/sanitize.ts";
+import {
+  loginSchema,
+  registerSchema,
+  type LoginInput,
+  type RegisterInput,
+} from "./auth.validation.ts";
 
 export const createAuthRoutes = (service: AuthService) => {
   const router = new Hono();
-
-  const registerSchema = v.object({
-    username: v.pipe(
-      v.string(),
-      v.minLength(3),
-      v.maxLength(50),
-      v.regex(
-        /^[a-zA-Z0-9_ áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ]+$/i,
-        "Username chỉ được chứa chữ cái, số và khoảng trắng",
-      ),
-    ),
-    email: v.pipe(v.string(), v.email(), v.maxLength(255)),
-    password: v.pipe(v.string(), v.minLength(6), v.maxLength(100)),
-  });
 
   // Chống Brute force: tối đa 5 lần thử đăng ký / đăng nhập mỗi 15 phút
   const strictRateLimit = rateLimiter({
@@ -38,9 +29,7 @@ export const createAuthRoutes = (service: AuthService) => {
     strictRateLimit,
     validateJson(registerSchema),
     async (c) => {
-      const body = c.req.valid("json") as Parameters<
-        AuthService["register"]
-      >[0];
+      const body = c.req.valid("json") as RegisterInput;
       const result = await service.register(body);
 
       setCookie(c, "refresh_token", result.refreshToken, {
@@ -62,25 +51,12 @@ export const createAuthRoutes = (service: AuthService) => {
     },
   );
 
-  const loginSchema = v.object({
-    email: v.pipe(
-      v.string("Email is required"),
-      v.email("Invalid email format"),
-      v.maxLength(255),
-    ),
-    password: v.pipe(
-      v.string("Password is required"),
-      v.minLength(1, "Password cannot be empty"),
-      v.maxLength(100),
-    ),
-  });
-
   router.post(
     "/login",
     strictRateLimit,
     validateJson(loginSchema),
     async (c) => {
-      const body = c.req.valid("json") as Parameters<AuthService["login"]>[0];
+      const body = c.req.valid("json") as LoginInput;
       const result = await service.login(body);
 
       setCookie(c, "refresh_token", result.refreshToken, {

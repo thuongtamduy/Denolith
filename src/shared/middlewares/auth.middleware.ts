@@ -66,7 +66,10 @@ export const authMiddleware = async (c: Context, next: Next) => {
 
     // Ghi đè role từ Database vào payload để đảm bảo luôn sử dụng quyền mới nhất
     payload.role = res.rows[0].role;
-  } catch (_err) {
+  } catch (err) {
+    // Re-throw AppError để giữ nguyên status code (vd: 401 Unauthorized)
+    // Chỉ wrap lỗi thực sự unknown (DB crash, network error...) thành 500
+    if (err instanceof AppError) throw err;
     throw AppError.internal("Error verifying user identity.");
   }
 
