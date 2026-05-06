@@ -26,23 +26,32 @@ Deno.test("Security: Password Hashing", async (t) => {
     assertEquals(isValid, false);
   });
 
-  await t.step("Hash length phải đúng chuẩn PBKDF2-SHA256 (64 hex chars)", async () => {
-    const hash = await hashPassword("test");
-    const [, hashPart] = hash.split(":");
-    assertEquals(hashPart.length, 64); // SHA-256 = 256 bits = 64 hex chars
-  });
+  await t.step(
+    "Hash length phải đúng chuẩn PBKDF2-SHA256 (64 hex chars)",
+    async () => {
+      const hash = await hashPassword("test");
+      const [, hashPart] = hash.split(":");
+      assertEquals(hashPart.length, 64); // SHA-256 = 256 bits = 64 hex chars
+    },
+  );
 
-  await t.step("Hai lần hash cùng password phải tạo hash KHÁC nhau (random salt)", async () => {
-    const hash1 = await hashPassword("SamePassword");
-    const hash2 = await hashPassword("SamePassword");
-    assertNotEquals(hash1, hash2); // Salt ngẫu nhiên => hash khác nhau
-  });
+  await t.step(
+    "Hai lần hash cùng password phải tạo hash KHÁC nhau (random salt)",
+    async () => {
+      const hash1 = await hashPassword("SamePassword");
+      const hash2 = await hashPassword("SamePassword");
+      assertNotEquals(hash1, hash2); // Salt ngẫu nhiên => hash khác nhau
+    },
+  );
 
-  await t.step("Hash bị tamper phải trả về false (Tamper Detection)", async () => {
-    const hash = await hashPassword("original");
-    const tampered = hash.slice(0, -1) + "X"; // Sửa 1 ký tự cuối
-    assertEquals(await verifyPassword("original", tampered), false);
-  });
+  await t.step(
+    "Hash bị tamper phải trả về false (Tamper Detection)",
+    async () => {
+      const hash = await hashPassword("original");
+      const tampered = hash.slice(0, -1) + "X"; // Sửa 1 ký tự cuối
+      assertEquals(await verifyPassword("original", tampered), false);
+    },
+  );
 
   await t.step("Hash rỗng hoặc không có salt phải trả về false", async () => {
     assertEquals(await verifyPassword("anything", ""), false);
@@ -70,8 +79,8 @@ Deno.test("Security: Validate UUID Middleware", async (t) => {
       "abc",
       "123",
       "not-a-uuid",
-      "../../../etc/passwd",   // Path traversal attempt
-      "' OR 1=1--",           // SQL Injection attempt
+      "../../../etc/passwd", // Path traversal attempt
+      "' OR 1=1--", // SQL Injection attempt
       "<script>alert(1)</script>", // XSS attempt
       "",
     ];

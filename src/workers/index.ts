@@ -3,7 +3,7 @@ import { logger } from "../core/logger.ts";
 import { container } from "../core/container.ts";
 import type { AuditEntry } from "../core/audit.ts";
 
-import { sendEmail, EmailTemplates } from "../core/email.ts";
+import { EmailTemplates, sendEmail } from "../core/email.ts";
 
 export const initWorkers = () => {
   // Worker: Gửi Email chào mừng
@@ -13,14 +13,16 @@ export const initWorkers = () => {
       logger.info(
         `⏳ [Worker] Bắt đầu xử lý Job: Gửi Email Welcome tới ${payload.email}...`,
       );
-      
+
       const emailContent = EmailTemplates.welcome(payload.username);
       await sendEmail({
         to: payload.email,
         ...emailContent,
       });
-      
-      logger.info(`✅ [Worker] Đã hoàn tất xử lý Job Email cho ${payload.username}!`);
+
+      logger.info(
+        `✅ [Worker] Đã hoàn tất xử lý Job Email cho ${payload.username}!`,
+      );
     },
   );
 
@@ -42,5 +44,4 @@ export const initWorkers = () => {
       logger.error("❌ [Worker] Lỗi ghi Audit Log", err);
     }
   });
-
 };

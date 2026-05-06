@@ -17,7 +17,13 @@ export const authMiddleware = async (c: Context, next: Next) => {
   const authHeader = c.req.header("Authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) {
     return c.json(
-      { success: false, error: { code: "UNAUTHORIZED", message: "Missing or invalid Authorization header." } },
+      {
+        success: false,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Missing or invalid Authorization header.",
+        },
+      },
       401,
     );
   }
@@ -26,10 +32,16 @@ export const authMiddleware = async (c: Context, next: Next) => {
   // Bước 2: Verify chữ ký & thời hạn JWT
   let payload: Record<string, unknown>;
   try {
-    payload = await verify(token, config.jwtSecret, "HS256") as Record<string, unknown>;
+    payload = await verify(token, config.jwtSecret, "HS256") as Record<
+      string,
+      unknown
+    >;
   } catch {
     return c.json(
-      { success: false, error: { code: "UNAUTHORIZED", message: "Invalid or expired token." } },
+      {
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "Invalid or expired token." },
+      },
       401,
     );
   }
@@ -40,7 +52,13 @@ export const authMiddleware = async (c: Context, next: Next) => {
       const isBlacklisted = await redisClient.get(`blacklist:${token}`);
       if (isBlacklisted) {
         return c.json(
-          { success: false, error: { code: "UNAUTHORIZED", message: "Token has been revoked. Please log in again." } },
+          {
+            success: false,
+            error: {
+              code: "UNAUTHORIZED",
+              message: "Token has been revoked. Please log in again.",
+            },
+          },
           401,
         );
       }
@@ -54,16 +72,22 @@ export const authMiddleware = async (c: Context, next: Next) => {
   try {
     const { container } = await import("../../core/container.ts");
     const userId = payload.id as string;
-    
+
     // Dùng query trực tiếp để tối ưu tốc độ và tránh circular dependency
     const res = await container.db.queryObject<{ role: string }>(
       "SELECT role FROM users WHERE id = $1 AND deleted = false",
-      [userId]
+      [userId],
     );
-    
+
     if (res.rows.length === 0) {
       return c.json(
-        { success: false, error: { code: "UNAUTHORIZED", message: "User account no longer exists or has been disabled." } },
+        {
+          success: false,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "User account no longer exists or has been disabled.",
+          },
+        },
         401,
       );
     }
@@ -72,7 +96,13 @@ export const authMiddleware = async (c: Context, next: Next) => {
     payload.role = res.rows[0].role;
   } catch (err) {
     return c.json(
-      { success: false, error: { code: "INTERNAL_SERVER_ERROR", message: "Error verifying user identity." } },
+      {
+        success: false,
+        error: {
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Error verifying user identity.",
+        },
+      },
       500,
     );
   }

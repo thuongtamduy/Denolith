@@ -6,8 +6,7 @@ import type {
 } from "../../shared/utils/pagination.ts";
 
 // Các cột an toàn (không bao gồm password) dùng cho hầu hết các query
-const SAFE_COLUMNS =
-  `id, username, email, role, phone, active,
+const SAFE_COLUMNS = `id, username, email, role, phone, active,
    created_at, updated_at, deleted, deleted_at`;
 
 export class UserRepository {

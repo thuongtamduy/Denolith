@@ -7,12 +7,15 @@ const EnvSchema = v.object({
   REDIS_URL: v.optional(v.string()),
   JWT_SECRET: v.pipe(
     v.string(),
-    v.minLength(32, "JWT_SECRET phải có ít nhất 32 ký tự ngẫu nhiên để đảm bảo an toàn"),
+    v.minLength(
+      32,
+      "JWT_SECRET phải có ít nhất 32 ký tự ngẫu nhiên để đảm bảo an toàn",
+    ),
   ),
   FRONTEND_URL: v.optional(v.string(), "http://localhost:5173"), // Cấu hình bắt buộc cho CORS
   TRUST_PROXY: v.optional(
     v.union([v.literal("true"), v.literal("false")]),
-    "false"
+    "false",
   ),
   DENO_ENV: v.optional(
     v.union([
@@ -56,13 +59,15 @@ function loadConfig() {
       frontendUrl: parsed.FRONTEND_URL,
       trustProxy: parsed.TRUST_PROXY === "true",
       env: parsed.DENO_ENV,
-      smtp: parsed.SMTP_HOST ? {
-        host: parsed.SMTP_HOST,
-        port: Number(parsed.SMTP_PORT),
-        user: parsed.SMTP_USER,
-        pass: parsed.SMTP_PASS,
-        from: parsed.SMTP_FROM!,
-      } : null,
+      smtp: parsed.SMTP_HOST
+        ? {
+          host: parsed.SMTP_HOST,
+          port: Number(parsed.SMTP_PORT),
+          user: parsed.SMTP_USER,
+          pass: parsed.SMTP_PASS,
+          from: parsed.SMTP_FROM!,
+        }
+        : null,
     };
   } catch (error) {
     logger.error("❌ Environment variable validation failed:");

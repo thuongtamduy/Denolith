@@ -10,10 +10,10 @@ export type AuditAction =
   | "user.hard_delete";
 
 export interface AuditEntry {
-  actorId?: string;        // ID của user thực hiện (undefined = system/anonymous)
-  action: AuditAction;     // Loại hành động
-  targetType?: string;     // Loại đối tượng: "user", "post"...
-  targetId?: string;       // ID của đối tượng bị tác động
+  actorId?: string; // ID của user thực hiện (undefined = system/anonymous)
+  action: AuditAction; // Loại hành động
+  targetType?: string; // Loại đối tượng: "user", "post"...
+  targetId?: string; // ID của đối tượng bị tác động
   metadata?: Record<string, unknown>; // IP, user-agent, thông tin bổ sung
 }
 

@@ -113,7 +113,9 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
       tlsConn.close();
     }
 
-    logger.info(`✅ [Email] Đã gửi thành công tới ${payload.to}: "${payload.subject}"`);
+    logger.info(
+      `✅ [Email] Đã gửi thành công tới ${payload.to}: "${payload.subject}"`,
+    );
   } catch (err) {
     logger.error(`❌ [Email] Lỗi gửi email tới ${payload.to}`, err);
     // Không re-throw — email failure không nên crash request
@@ -157,7 +159,8 @@ export const EmailTemplates = {
           </p>
         </div>
       `,
-      text: `Chào mừng ${cleanUsername}! Tài khoản của bạn đã được tạo thành công trên Denolith.`,
+      text:
+        `Chào mừng ${cleanUsername}! Tài khoản của bạn đã được tạo thành công trên Denolith.`,
     };
   },
 };

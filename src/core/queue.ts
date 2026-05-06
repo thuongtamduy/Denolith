@@ -20,23 +20,31 @@ export const Queue = {
   async shutdown() {
     logger.info("🛑 Shutting down Worker Queue...");
     Queue.isShuttingDown = true;
-    
+
     if (Queue.activeJobs.size > 0) {
-      logger.info(`⏳ Waiting for ${Queue.activeJobs.size} active background job(s) to finish (max 5s)...`);
-      
-      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 5000));
+      logger.info(
+        `⏳ Waiting for ${Queue.activeJobs.size} active background job(s) to finish (max 5s)...`,
+      );
+
+      const timeoutPromise = new Promise((resolve) =>
+        setTimeout(resolve, 5000)
+      );
       const jobsPromise = Promise.allSettled(Array.from(Queue.activeJobs));
-      
+
       const winner = await Promise.race([jobsPromise, timeoutPromise]);
       if (!winner) {
-        logger.warn("⚠️ Shutdown timeout reached! Forcing exit with dangling jobs.");
+        logger.warn(
+          "⚠️ Shutdown timeout reached! Forcing exit with dangling jobs.",
+        );
       } else {
         logger.info("✅ All active jobs finished cleanly.");
       }
     }
 
     if (memoryQueue.length > 0) {
-      logger.info(`📦 Processing ${memoryQueue.length} remaining job(s) in memory queue before exit...`);
+      logger.info(
+        `📦 Processing ${memoryQueue.length} remaining job(s) in memory queue before exit...`,
+      );
     }
     await Queue.processMemoryQueue();
   },

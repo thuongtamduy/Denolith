@@ -43,12 +43,14 @@ setTimeout(() => Queue.startWorkerLoop(), 0);
 // 2.6 Cronjob dọn rác Database (Refresh Token) mỗi 6 tiếng
 setInterval(async () => {
   try {
-    const res = await container.db.queryObject<{count: bigint}>(
-      "WITH deleted AS (DELETE FROM refresh_tokens WHERE expires_at < NOW() RETURNING *) SELECT COUNT(*) FROM deleted"
+    const res = await container.db.queryObject<{ count: bigint }>(
+      "WITH deleted AS (DELETE FROM refresh_tokens WHERE expires_at < NOW() RETURNING *) SELECT COUNT(*) FROM deleted",
     );
     const deletedCount = Number(res.rows[0].count);
     if (deletedCount > 0) {
-      logger.info(`🧹 [Cronjob] Đã dọn dẹp ${deletedCount} refresh token hết hạn.`);
+      logger.info(
+        `🧹 [Cronjob] Đã dọn dẹp ${deletedCount} refresh token hết hạn.`,
+      );
     }
   } catch (err) {
     logger.error("❌ [Cronjob] Lỗi dọn dẹp DB", err);
@@ -61,10 +63,13 @@ app.onError(globalErrorHandler);
 
 // Áp dụng Security & CORS Global
 app.use("*", secureHeaders());
-app.use("*", cors({ 
-  origin: config.frontendUrl,
-  credentials: true 
-}));
+app.use(
+  "*",
+  cors({
+    origin: config.frontendUrl,
+    credentials: true,
+  }),
+);
 
 // Áp dụng Rate Limit Global: Tối đa 100 requests / 1 phút
 app.use("*", rateLimiter({ windowMs: 60 * 1000, max: 100 }));

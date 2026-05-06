@@ -62,7 +62,7 @@ export const rateLimiter = (options: RateLimitOptions) => {
     if (redisClient) {
       try {
         const key = `ratelimit:${prefix}:${ip}`; // Thêm prefix vào Redis key
-        
+
         // Dùng Lua script để đảm bảo tính nguyên tử (Atomic) chống Race-Condition
         const luaScript = `
           local current = redis.call("INCR", KEYS[1])
@@ -71,8 +71,10 @@ export const rateLimiter = (options: RateLimitOptions) => {
           end
           return current
         `;
-        
-        const result = await redisClient.eval(luaScript, [key], [options.windowMs.toString()]);
+
+        const result = await redisClient.eval(luaScript, [key], [
+          options.windowMs.toString(),
+        ]);
         count = Number(result);
 
         // Lấy TTL để set header cho chuẩn

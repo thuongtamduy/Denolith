@@ -92,7 +92,10 @@ export const createUserRoutes = (service: UserService) => {
     // Ngăn Admin tự xóa vĩnh viễn chính mình
     if (id === requesterId) {
       return c.json(
-        { success: false, error: "You cannot permanently delete your own account." },
+        {
+          success: false,
+          error: "You cannot permanently delete your own account.",
+        },
         400,
       );
     }
@@ -109,7 +112,8 @@ export const createUserRoutes = (service: UserService) => {
 
     return c.json({
       success: true,
-      message: "User has been permanently deleted. This action cannot be undone.",
+      message:
+        "User has been permanently deleted. This action cannot be undone.",
     });
   });
 

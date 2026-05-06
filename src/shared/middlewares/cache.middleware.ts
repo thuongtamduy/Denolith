@@ -87,7 +87,7 @@ export const cacheResponse = (ttlSeconds: number) => {
 
       if (!savedToRedis) {
         const MAX_MEMORY_KEYS = 1000;
-        
+
         // Cơ chế LRU sơ khai: Nếu vượt quá giới hạn, xóa phần tử cũ nhất (đầu tiên)
         if (memoryCache.size >= MAX_MEMORY_KEYS) {
           const oldestKey = memoryCache.keys().next().value;

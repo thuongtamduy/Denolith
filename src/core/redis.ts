@@ -20,7 +20,7 @@ export async function initRedis() {
     if (ips.length > 0) {
       url.hostname = ips[0];
     }
-    
+
     redisClient = await connect(parseURL(url.toString()));
     redisQueueClient = await connect(parseURL(url.toString()));
     logger.info("✅ Redis connected.");

@@ -9,9 +9,9 @@
 
 // Khớp chính xác với payload được sign trong auth.service.ts
 export interface JwtPayload {
-  id: string;   // User UUID
+  id: string; // User UUID
   role: string; // "user" | "admin"
-  exp: number;  // Unix timestamp hết hạn (15 phút)
+  exp: number; // Unix timestamp hết hạn (15 phút)
   iat?: number; // Unix timestamp phát hành (tự inject bởi @hono/jwt)
 }
 

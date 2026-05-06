@@ -7,7 +7,8 @@ import { config } from "../../core/config.ts";
 import { Queue } from "../../core/queue.ts";
 
 // Mã băm giả lập để chống Timing Attack (Có độ dài bằng chính xác Hash thật)
-const DUMMY_HASH = "00000000000000000000000000000000:0000000000000000000000000000000000000000000000000000000000000000";
+const DUMMY_HASH =
+  "00000000000000000000000000000000:0000000000000000000000000000000000000000000000000000000000000000";
 
 export interface RegisterData {
   username: string;
@@ -98,7 +99,9 @@ export class AuthService {
     // Sử dụng consume thay vì find. Lệnh này sẽ XÓA và trả về data cùng lúc (Atomic).
     // Kẻ gian có gửi 10.000 request cùng 1 mili-giây thì Database chỉ trả kết quả cho ĐÚNG 1 request.
     const session = await this.authRepo.consumeRefreshToken(oldToken);
-    if (!session) throw AppError.unauthorized("Invalid or already consumed refresh token");
+    if (!session) {
+      throw AppError.unauthorized("Invalid or already consumed refresh token");
+    }
 
     if (new Date() > new Date(session.expires_at)) {
       throw AppError.unauthorized("Refresh token expired");
