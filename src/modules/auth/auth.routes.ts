@@ -1,7 +1,8 @@
 import { Hono } from "@hono/core";
 import { deleteCookie, getCookie, setCookie } from "@hono/cookie";
-import { vValidator } from "@hono/valibot-validator";
+import { AppError } from "../../shared/errors/AppError.ts";
 import * as v from "valibot";
+import { validateJson } from "../../shared/utils/validator.ts";
 import type { AuthService } from "./auth.service.ts";
 import { rateLimiter } from "../../shared/middlewares/rate-limit.middleware.ts";
 import { config } from "../../core/config.ts";
@@ -35,9 +36,11 @@ export const createAuthRoutes = (service: AuthService) => {
   router.post(
     "/register",
     strictRateLimit,
-    vValidator("json", registerSchema),
+    validateJson(registerSchema),
     async (c) => {
-      const body = c.req.valid("json");
+      const body = c.req.valid("json") as Parameters<
+        AuthService["register"]
+      >[0];
       const result = await service.register(body);
 
       setCookie(c, "refresh_token", result.refreshToken, {
@@ -48,24 +51,36 @@ export const createAuthRoutes = (service: AuthService) => {
         path: "/api/auth",
       });
 
+      c.header("Location", `/api/users/${result.user.id}`);
       return c.json({
         success: true,
-        data: { user: sanitizeUser(result.user), token: result.accessToken },
+        data: {
+          user: sanitizeUser(result.user),
+          accessToken: result.accessToken,
+        },
       }, 201);
     },
   );
 
   const loginSchema = v.object({
-    email: v.pipe(v.string(), v.email(), v.maxLength(255)),
-    password: v.pipe(v.string(), v.minLength(1), v.maxLength(100)),
+    email: v.pipe(
+      v.string("Email is required"),
+      v.email("Invalid email format"),
+      v.maxLength(255),
+    ),
+    password: v.pipe(
+      v.string("Password is required"),
+      v.minLength(1, "Password cannot be empty"),
+      v.maxLength(100),
+    ),
   });
 
   router.post(
     "/login",
     strictRateLimit,
-    vValidator("json", loginSchema),
+    validateJson(loginSchema),
     async (c) => {
-      const body = c.req.valid("json");
+      const body = c.req.valid("json") as Parameters<AuthService["login"]>[0];
       const result = await service.login(body);
 
       setCookie(c, "refresh_token", result.refreshToken, {
@@ -80,7 +95,7 @@ export const createAuthRoutes = (service: AuthService) => {
         success: true,
         data: {
           user: sanitizeUser(result.user),
-          access_token: result.accessToken,
+          accessToken: result.accessToken,
         },
       });
     },
@@ -89,7 +104,7 @@ export const createAuthRoutes = (service: AuthService) => {
   router.post("/refresh", async (c) => {
     const token = getCookie(c, "refresh_token");
     if (!token) {
-      return c.json({ success: false, error: "No refresh token found" }, 401);
+      throw AppError.unauthorized("No refresh token found");
     }
     const result = await service.refreshToken(token);
 
@@ -101,7 +116,7 @@ export const createAuthRoutes = (service: AuthService) => {
       path: "/api/auth",
     });
 
-    return c.json({ success: true, data: { token: result.accessToken } });
+    return c.json({ success: true, data: { accessToken: result.accessToken } });
   });
 
   router.post("/logout", async (c) => {

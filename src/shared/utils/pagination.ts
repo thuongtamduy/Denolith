@@ -11,6 +11,11 @@ export interface PaginatedResult<T> {
   totalPages: number;
 }
 
+export interface CollectionResult<T> {
+  data: T[];
+  total: number;
+}
+
 export function extractPagination(
   query: Record<string, string>,
 ): PaginationParams {

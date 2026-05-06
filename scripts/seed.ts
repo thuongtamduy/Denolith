@@ -14,89 +14,9 @@ try {
 
   const users = [
     { username: "admin", email: "admin@denolith.dev", password: "[PASSWORD]" },
-    {
-      username: "john_doe",
-      email: "john@denolith.dev",
-      password: "[PASSWORD]",
-    },
-    {
-      username: "jane_doe",
-      email: "jane@denolith.dev",
-      password: "[PASSWORD]",
-    },
-    {
-      username: "superman",
-      email: "superman@denolith.dev",
-      password: "[PASSWORD]",
-    },
-    {
-      username: "batman",
-      email: "batman@denolith.dev",
-      password: "[PASSWORD]",
-    },
-    {
-      username: "spiderman",
-      email: "spiderman@denolith.dev",
-      password: "[PASSWORD]",
-    },
     { username: "hulk", email: "hulk@denolith.dev", password: "[PASSWORD]" },
-    {
-      username: "ironman",
-      email: "ironman@denolith.dev",
-      password: "[PASSWORD]",
-    },
     { username: "thor", email: "thor@denolith.dev", password: "[PASSWORD]" },
-    {
-      username: "blackwidow",
-      email: "blackwidow@denolith.dev",
-      password: "[PASSWORD]",
-    },
-    {
-      username: "captainamerica",
-      email: "captainamerica@denolith.dev",
-      password: "[PASSWORD]",
-    },
-    {
-      username: "blackpanther",
-      email: "blackpanther@denolith.dev",
-      password: "[PASSWORD]",
-    },
-    {
-      username: "doctorstrange",
-      email: "doctorstrange@denolith.dev",
-      password: "[PASSWORD]",
-    },
-    {
-      username: "deadpool",
-      email: "deadpool@denolith.dev",
-      password: "[PASSWORD]",
-    },
-    {
-      username: "wolverine",
-      email: "wolverine@denolith.dev",
-      password: "[PASSWORD]",
-    },
     { username: "xmen", email: "xmen@denolith.dev", password: "[PASSWORD]" },
-    {
-      username: "avengers",
-      email: "avengers@denolith.dev",
-      password: "[PASSWORD]",
-    },
-    {
-      username: "guardiansofthegalaxy",
-      email: "guardiansofthegalaxy@denolith.dev",
-      password: "[PASSWORD]",
-    },
-    {
-      username: "fantasticfour",
-      email: "fantasticfour@denolith.dev",
-      password: "[PASSWORD]",
-    },
-    {
-      username: "xforce",
-      email: "xforce@denolith.dev",
-      password: "[PASSWORD]",
-    },
     { username: "xmen", email: "xmen@denolith.dev", password: "[PASSWORD]" },
   ];
 

@@ -1,90 +1,108 @@
-import type { Client } from "@db/postgres";
+import type { Client, Transaction } from "@db/postgres";
 import type { CreateUserData, User } from "./user.entity.ts";
 import type {
   PaginatedResult,
   PaginationParams,
 } from "../../shared/utils/pagination.ts";
+import { BaseRepository } from "../../core/base.repository.ts";
 
 // Các cột an toàn (không bao gồm password) dùng cho hầu hết các query
 const SAFE_COLUMNS = `id, username, email, role, phone, active,
    created_at, updated_at, deleted, deleted_at`;
 
-export class UserRepository {
-  constructor(private db: Client) {}
-
-  async findMany(params: PaginationParams): Promise<PaginatedResult<User>> {
-    const offset = (params.page - 1) * params.limit;
-
-    // Đếm tổng số user chưa bị xóa mềm
-    const countRes = await this.db.queryObject<{ count: bigint }>(
-      "SELECT COUNT(*) FROM users WHERE deleted = false",
-    );
-    const total = Number(countRes.rows[0].count);
-
-    // Lấy dữ liệu phân trang — chỉ user chưa bị soft delete
-    const res = await this.db.queryObject<User>(
-      `SELECT ${SAFE_COLUMNS}
-       FROM users
-       WHERE deleted = false
-       ORDER BY created_at DESC
-       LIMIT $1 OFFSET $2`,
-      [params.limit, offset],
-    );
-
-    return {
-      data: res.rows,
-      total,
-      page: params.page,
-      limit: params.limit,
-      totalPages: Math.ceil(total / params.limit),
-    };
+export class UserRepository extends BaseRepository {
+  constructor(db: Client) {
+    super(db);
   }
 
-  async findById(id: string): Promise<User | undefined> {
-    const result = await this.db.queryObject<User>(
+  async findMany(
+    params: PaginationParams,
+    tx?: Transaction,
+  ): Promise<PaginatedResult<User>> {
+    return await this.paginate<User>(
+      `SELECT ${SAFE_COLUMNS} FROM users WHERE deleted = false ORDER BY created_at DESC`,
+      [],
+      params,
+      tx,
+    );
+  }
+
+  async findById(id: string, tx?: Transaction): Promise<User | undefined> {
+    return await this.queryOne<User>(
       `SELECT ${SAFE_COLUMNS}
        FROM users
        WHERE id = $1 AND deleted = false`,
       [id],
+      tx,
     );
-    return result.rows[0];
   }
 
   // Dùng để kiểm tra tồn tại — KHÔNG chứa password (Least Privilege)
   async findByEmail(
     email: string,
+    tx?: Transaction,
   ): Promise<Omit<User, "password"> | undefined> {
-    const result = await this.db.queryObject<Omit<User, "password">>(
+    return await this.queryOne<Omit<User, "password">>(
       `SELECT ${SAFE_COLUMNS}
        FROM users
        WHERE email = $1 AND deleted = false`,
       [email],
+      tx,
     );
-    return result.rows[0];
   }
 
   // Dùng riêng cho Auth login — cần password để verifyPassword()
-  async findByEmailWithPassword(email: string): Promise<User | undefined> {
-    const result = await this.db.queryObject<User>(
+  async findByEmailWithPassword(
+    email: string,
+    tx?: Transaction,
+  ): Promise<User | undefined> {
+    return await this.queryOne<User>(
       `SELECT id, username, email, password, role, phone, active,
               created_at, updated_at, deleted, deleted_at
        FROM users
        WHERE email = $1 AND deleted = false`,
       [email],
+      tx,
     );
-    return result.rows[0];
   }
 
-  async create(data: CreateUserData): Promise<User> {
-    const res = await this.db.queryObject<User>(
+  async create(data: CreateUserData, tx?: Transaction): Promise<User> {
+    const user = await this.queryOne<User>(
       // RETURNING * để trả về đầy đủ User kể cả password
       // (authService dùng ngay để ký JWT sau khi register — password không bị leak ra ngoài vì sanitizeUser ở tầng Route)
       `INSERT INTO users (username, email, password, phone)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
       [data.username, data.email, data.password, data.phone || null],
+      tx,
     );
-    return res.rows[0];
+    return user!;
+  }
+
+  async update(
+    id: string,
+    data: Partial<User>,
+    tx?: Transaction,
+  ): Promise<User | undefined> {
+    // Chỉ lấy các trường có giá trị (loại bỏ undefined)
+    const updates = Object.entries(data).filter(([_, val]) =>
+      val !== undefined
+    );
+    if (updates.length === 0) return await this.findById(id, tx);
+
+    const setClauses = updates.map(([key, _], index) =>
+      `${key} = $${index + 2}`
+    ).join(", ");
+    const values = updates.map(([_, val]) => val);
+
+    const sql = `
+      UPDATE users 
+      SET ${setClauses} 
+      WHERE id = $1 AND deleted = false 
+      RETURNING ${SAFE_COLUMNS}
+    `;
+
+    return await this.queryOne<User>(sql, [id, ...values], tx);
   }
 
   /**
@@ -92,15 +110,15 @@ export class UserRepository {
    * Trigger PostgreSQL sẽ tự động cập nhật updated_at.
    * Trả về undefined nếu user không tồn tại hoặc đã bị xóa trước đó.
    */
-  async softDelete(id: string): Promise<User | undefined> {
-    const res = await this.db.queryObject<User>(
+  async softDelete(id: string, tx?: Transaction): Promise<User | undefined> {
+    return await this.queryOne<User>(
       `UPDATE users
        SET deleted = true, deleted_at = NOW()
        WHERE id = $1 AND deleted = false
        RETURNING ${SAFE_COLUMNS}`,
       [id],
+      tx,
     );
-    return res.rows[0];
   }
 
   /**
@@ -108,15 +126,15 @@ export class UserRepository {
    * Trigger PostgreSQL sẽ tự động cập nhật updated_at.
    * Trả về undefined nếu user không tồn tại hoặc chưa bị xóa.
    */
-  async restore(id: string): Promise<User | undefined> {
-    const res = await this.db.queryObject<User>(
+  async restore(id: string, tx?: Transaction): Promise<User | undefined> {
+    return await this.queryOne<User>(
       `UPDATE users
        SET deleted = false, deleted_at = NULL
        WHERE id = $1 AND deleted = true
        RETURNING ${SAFE_COLUMNS}`,
       [id],
+      tx,
     );
-    return res.rows[0];
   }
 
   /**
@@ -124,13 +142,13 @@ export class UserRepository {
    * Bắt buộc user phải ở trạng thái deleted=true trước (2-step safety).
    * Trả về false nếu user không tìm thấy hoặc chưa bị soft delete.
    */
-  async hardDelete(id: string): Promise<boolean> {
-    const res = await this.db.queryObject(
+  async hardDelete(id: string, tx?: Transaction): Promise<boolean> {
+    const rowCount = await this.execute(
       `DELETE FROM users
-       WHERE id = $1 AND deleted = true
-       RETURNING id`,
+       WHERE id = $1 AND deleted = true`,
       [id],
+      tx,
     );
-    return res.rows.length > 0;
+    return rowCount > 0;
   }
 }

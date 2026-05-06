@@ -2,6 +2,7 @@ import { verify } from "@hono/jwt";
 import type { Context, Next } from "@hono/core";
 import { config } from "../../core/config.ts";
 import { redisClient } from "../../core/redis.ts";
+import { AppError } from "../errors/AppError.ts";
 
 /**
  * Auth Middleware với Blacklist Check.
@@ -16,16 +17,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
   // Bước 1: Đọc token
   const authHeader = c.req.header("Authorization") ?? "";
   if (!authHeader.startsWith("Bearer ")) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: "UNAUTHORIZED",
-          message: "Missing or invalid Authorization header.",
-        },
-      },
-      401,
-    );
+    throw AppError.unauthorized("Missing or invalid Authorization header.");
   }
   const token = authHeader.slice(7);
 
@@ -37,13 +29,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
       unknown
     >;
   } catch {
-    return c.json(
-      {
-        success: false,
-        error: { code: "UNAUTHORIZED", message: "Invalid or expired token." },
-      },
-      401,
-    );
+    throw AppError.unauthorized("Invalid or expired token.");
   }
 
   // Bước 3: Kiểm tra Redis Blacklist (token đã logout chưa?)
@@ -51,15 +37,8 @@ export const authMiddleware = async (c: Context, next: Next) => {
     try {
       const isBlacklisted = await redisClient.get(`blacklist:${token}`);
       if (isBlacklisted) {
-        return c.json(
-          {
-            success: false,
-            error: {
-              code: "UNAUTHORIZED",
-              message: "Token has been revoked. Please log in again.",
-            },
-          },
-          401,
+        throw AppError.unauthorized(
+          "Token has been revoked. Please log in again.",
         );
       }
     } catch {
@@ -80,31 +59,15 @@ export const authMiddleware = async (c: Context, next: Next) => {
     );
 
     if (res.rows.length === 0) {
-      return c.json(
-        {
-          success: false,
-          error: {
-            code: "UNAUTHORIZED",
-            message: "User account no longer exists or has been disabled.",
-          },
-        },
-        401,
+      throw AppError.unauthorized(
+        "User account no longer exists or has been disabled.",
       );
     }
 
     // Ghi đè role từ Database vào payload để đảm bảo luôn sử dụng quyền mới nhất
     payload.role = res.rows[0].role;
   } catch (_err) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Error verifying user identity.",
-        },
-      },
-      500,
-    );
+    throw AppError.internal("Error verifying user identity.");
   }
 
   // Bước 4: Gán payload vào context để RBAC middleware và handler dùng

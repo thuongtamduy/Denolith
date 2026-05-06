@@ -3,6 +3,7 @@ import { getConnInfo } from "@hono/hono/deno";
 import { redisClient } from "../../core/redis.ts";
 import { logger } from "../../core/logger.ts";
 import { config } from "../../core/config.ts";
+import { AppError } from "../errors/AppError.ts";
 
 interface RateLimitInfo {
   count: number;
@@ -114,12 +115,8 @@ export const rateLimiter = (options: RateLimitOptions) => {
     if (count > options.max) {
       // Tuân thủ RFC 6585: Thông báo cho client biết phải đợi bao nhiêu giây
       c.header("Retry-After", Math.ceil((resetTime - now) / 1000).toString());
-      return c.json(
-        {
-          success: false,
-          error: options.message || "Quá nhiều yêu cầu, vui lòng thử lại sau.",
-        },
-        429,
+      throw AppError.tooManyRequests(
+        options.message || "Quá nhiều yêu cầu, vui lòng thử lại sau.",
       );
     }
 

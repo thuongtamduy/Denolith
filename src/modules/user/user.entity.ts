@@ -19,3 +19,9 @@ export interface CreateUserData {
   password: string;
   phone?: string;
 }
+
+export interface UpdateUserData {
+  username?: string;
+  phone?: string | null;
+  active?: boolean;
+}

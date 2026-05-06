@@ -20,9 +20,20 @@ export class UserService {
   }
 
   async create(data: CreateUserData): Promise<User> {
-    const existing = await this.repo.findByEmail(data.email);
-    if (existing) throw AppError.conflict("Email already exists");
-    return this.repo.create(data);
+    // Sử dụng transaction để đảm bảo toàn vẹn dữ liệu:
+    // Nếu trong lúc tìm email hoặc tạo user có lỗi xảy ra, transaction sẽ tự động rollback.
+    return await this.repo.transaction(async (tx) => {
+      const existing = await this.repo.findByEmail(data.email, tx);
+      if (existing) throw AppError.conflict("Email already exists");
+
+      return await this.repo.create(data, tx);
+    });
+  }
+
+  async update(id: string, data: Partial<User>): Promise<User> {
+    const user = await this.repo.update(id, data);
+    if (!user) throw AppError.notFound(`User with id ${id} not found`);
+    return user;
   }
 
   /**

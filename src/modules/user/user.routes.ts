@@ -1,4 +1,6 @@
 import { Hono } from "@hono/core";
+import { validateJson } from "../../shared/utils/validator.ts";
+import * as v from "valibot";
 import type { UserService } from "./user.service.ts";
 import { extractPagination } from "../../shared/utils/pagination.ts";
 import { authMiddleware } from "../../shared/middlewares/auth.middleware.ts";
@@ -8,6 +10,7 @@ import { sanitizeUser } from "../../shared/utils/sanitize.ts";
 import type { AppEnv } from "../../core/context.ts";
 import { validateUUID } from "../../shared/middlewares/validate-uuid.middleware.ts";
 import { AuditService } from "../../core/audit.ts";
+import { AppError } from "../../shared/errors/AppError.ts";
 
 export const createUserRoutes = (service: UserService) => {
   const router = new Hono<AppEnv>();
@@ -33,34 +36,99 @@ export const createUserRoutes = (service: UserService) => {
     return c.json({ success: true, data: sanitizeUser(user) });
   });
 
-  // DELETE /api/users/:id — Soft Delete user
+  const phoneSchema = v.pipe(
+    v.string(),
+    v.regex(
+      /^(0|\+)\d{9,10}$/,
+      "Số điện thoại phải dài 10-11 ký tự và bắt đầu bằng 0 hoặc +",
+    ),
+  );
+
+  // POST /api/users — Tạo user mới (Admin)
+  const createUserSchema = v.object({
+    username: v.pipe(v.string(), v.minLength(3)),
+    email: v.pipe(v.string(), v.email()),
+    password: v.pipe(v.string(), v.minLength(6)),
+    phone: v.optional(phoneSchema),
+  });
+
+  router.post("/", validateJson(createUserSchema), async (c) => {
+    const body = c.req.valid("json") as Parameters<UserService["create"]>[0];
+    // TODO: Nên hash password trước khi truyền vào repo ở tầng service
+    // Hiện tại auth.service.ts đang tự gọi userRepo.create.
+    // Tạm thời Admin tạo sẽ chạy qua userService.create
+    const user = await service.create(body);
+
+    c.header("Location", `/api/users/${user.id}`);
+    return c.json({ success: true, data: sanitizeUser(user) }, 201);
+  });
+
+  // PATCH /api/users/:id — Cập nhật user (Partial Update)
+  const updateUserSchema = v.partial(v.object({
+    username: v.pipe(v.string(), v.minLength(3)),
+    phone: phoneSchema,
+    active: v.boolean(),
+  }));
+
+  router.patch(
+    "/:id",
+    validateUUID(),
+    validateJson(updateUserSchema),
+    async (c) => {
+      const id = c.req.param("id")!;
+      const body = c.req.valid("json") as Parameters<UserService["update"]>[1];
+
+      const user = await service.update(id, body);
+      return c.json({ success: true, data: sanitizeUser(user) });
+    },
+  );
+
+  // DELETE /api/users/:id — Xóa user (Hỗ trợ query ?force=true để xóa cứng)
   router.delete("/:id", validateUUID(), async (c) => {
     const id = c.req.param("id")!;
     const requesterId = c.get("jwtPayload")?.id;
+    const isForce = c.req.query("force") === "true";
 
     // Ngăn Admin tự xóa chính mình
     if (id === requesterId) {
-      return c.json(
-        { success: false, error: "You cannot delete your own account." },
-        400,
+      throw AppError.badRequest(
+        isForce
+          ? "You cannot permanently delete your own account."
+          : "You cannot delete your own account.",
       );
     }
 
-    const user = await service.softDelete(id);
+    if (isForce) {
+      await service.hardDelete(id);
 
-    // Ghi Audit Log bất đồng bộ (không block response)
-    await AuditService.log({
-      actorId: requesterId,
-      action: "user.soft_delete",
-      targetType: "user",
-      targetId: id,
-    });
+      await AuditService.log({
+        actorId: requesterId,
+        action: "user.hard_delete",
+        targetType: "user",
+        targetId: id,
+      });
 
-    return c.json({
-      success: true,
-      message: `User '${user.username}' has been soft-deleted.`,
-      data: sanitizeUser(user),
-    });
+      return c.json({
+        success: true,
+        message:
+          "User has been permanently deleted. This action cannot be undone.",
+      });
+    } else {
+      const user = await service.softDelete(id);
+
+      await AuditService.log({
+        actorId: requesterId,
+        action: "user.soft_delete",
+        targetType: "user",
+        targetId: id,
+      });
+
+      return c.json({
+        success: true,
+        message: `User '${user.username}' has been soft-deleted.`,
+        data: sanitizeUser(user),
+      });
+    }
   });
 
   // PATCH /api/users/:id/restore — Phục hồi user đã bị soft delete
@@ -80,40 +148,6 @@ export const createUserRoutes = (service: UserService) => {
       success: true,
       message: `User '${user.username}' has been restored successfully.`,
       data: sanitizeUser(user),
-    });
-  });
-
-  // POST /api/users/:id/hard-delete — Hard Delete (Xóa vĩnh viễn — phải soft delete trước)
-  // Dùng POST thay vì DELETE để tránh conflict route với DELETE /:id
-  router.post("/:id/hard-delete", validateUUID(), async (c) => {
-    const id = c.req.param("id")!;
-    const requesterId = c.get("jwtPayload")?.id;
-
-    // Ngăn Admin tự xóa vĩnh viễn chính mình
-    if (id === requesterId) {
-      return c.json(
-        {
-          success: false,
-          error: "You cannot permanently delete your own account.",
-        },
-        400,
-      );
-    }
-
-    await service.hardDelete(id);
-
-    // Ghi Audit Log bất đồng bộ
-    await AuditService.log({
-      actorId: requesterId,
-      action: "user.hard_delete",
-      targetType: "user",
-      targetId: id,
-    });
-
-    return c.json({
-      success: true,
-      message:
-        "User has been permanently deleted. This action cannot be undone.",
     });
   });
 

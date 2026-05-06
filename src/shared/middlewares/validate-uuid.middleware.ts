@@ -1,4 +1,5 @@
 import type { Context, Next } from "@hono/core";
+import { AppError } from "../errors/AppError.ts";
 
 // Regex UUID v4 chuẩn RFC 4122
 const UUID_REGEX =
@@ -17,15 +18,8 @@ export const validateUUID = (paramName = "id") => {
     const value = c.req.param(paramName);
 
     if (!value || !UUID_REGEX.test(value)) {
-      return c.json(
-        {
-          success: false,
-          error: {
-            code: "BAD_REQUEST",
-            message: `Invalid ${paramName}: "${value}" is not a valid UUID.`,
-          },
-        },
-        400,
+      throw AppError.badRequest(
+        `Invalid ${paramName}: "${value}" is not a valid UUID.`,
       );
     }
 

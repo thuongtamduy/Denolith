@@ -78,6 +78,13 @@ export class AuthService {
       throw AppError.unauthorized("Invalid email or password");
     }
 
+    // Check xem tài khoản có bị khóa (active = false) không
+    if (!user.active) {
+      throw AppError.forbidden(
+        "Your account has been disabled. Please contact admin.",
+      );
+    }
+
     const accessToken = await sign(
       {
         id: user.id,
