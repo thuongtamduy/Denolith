@@ -15,7 +15,10 @@ import {
   createUserSchema,
   type UpdateUserInput,
   updateUserSchema,
+  type UpdateUserRoleInput,
+  updateUserRoleSchema,
 } from "./user.validation.ts";
+import { requirePermission } from "../../shared/middlewares/permission.middleware.ts";
 
 export const createUserRoutes = (service: UserService) => {
   const router = new Hono<AppEnv>();
@@ -60,6 +63,23 @@ export const createUserRoutes = (service: UserService) => {
       const body = c.req.valid("json") as UpdateUserInput;
 
       const user = await service.update(id, body);
+      return c.json({ success: true, data: sanitizeUser(user) });
+    },
+  );
+
+  // PATCH /api/users/:id/role — Cập nhật role của user (Thăng cấp / Hạ cấp)
+  // Yêu cầu quyền permissions.manage (hoặc OWNER bypass)
+  router.patch(
+    "/:id/role",
+    requirePermission("permissions.manage"),
+    validateUUID(),
+    validateJson(updateUserRoleSchema),
+    async (c) => {
+      const id = c.req.param("id")!;
+      const body = c.req.valid("json") as UpdateUserRoleInput;
+      const actorId = c.get("jwtPayload")?.id;
+
+      const user = await service.updateRole(id, body.role, actorId);
       return c.json({ success: true, data: sanitizeUser(user) });
     },
   );

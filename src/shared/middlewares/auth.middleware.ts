@@ -47,14 +47,16 @@ export const authMiddleware = async (c: Context, next: Next) => {
   }
 
   // Bước 3.5: Truy vấn Database để đảm bảo User vẫn tồn tại và chưa bị khóa/xóa
-  // Đây là lớp bảo vệ (Defense-in-depth) tối quan trọng cho hệ thống Enterprise.
+  // JOIN roles để lấy tier — tier quyết định hành vi permission (owner bypass, v.v.)
   try {
     const { container } = await import("../../core/container.ts");
     const userId = payload.id as string;
 
-    // Dùng query trực tiếp để tối ưu tốc độ và tránh circular dependency
-    const res = await container.db.queryObject<{ role: string }>(
-      "SELECT role FROM users WHERE id = $1 AND deleted = false",
+    const res = await container.db.queryObject<{ role: string; tier: string }>(
+      `SELECT u.role, r.tier
+       FROM users u
+       JOIN roles r ON u.role = r.code
+       WHERE u.id = $1 AND u.deleted = false AND u.active = true`,
       [userId],
     );
 
@@ -64,11 +66,10 @@ export const authMiddleware = async (c: Context, next: Next) => {
       );
     }
 
-    // Ghi đè role từ Database vào payload để đảm bảo luôn sử dụng quyền mới nhất
+    // Ghi đè role + tier từ Database — luôn dùng giá trị mới nhất
     payload.role = res.rows[0].role;
+    payload.tier = res.rows[0].tier;
   } catch (err) {
-    // Re-throw AppError để giữ nguyên status code (vd: 401 Unauthorized)
-    // Chỉ wrap lỗi thực sự unknown (DB crash, network error...) thành 500
     if (err instanceof AppError) throw err;
     throw AppError.internal("Error verifying user identity.");
   }

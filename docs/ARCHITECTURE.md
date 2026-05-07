@@ -48,28 +48,35 @@ Denolith/
 │   │
 │   ├── modules/               # Feature modules — MỖI module là 1 thư mục
 │   │   ├── auth/
-│   │   │   ├── auth.entity.ts       # (nếu có) Domain types
-│   │   │   ├── auth.repository.ts   # DB queries cho auth
-│   │   │   ├── auth.routes.ts       # Hono router — thin controller
-│   │   │   ├── auth.service.ts      # Business logic
-│   │   │   └── auth.validation.ts   # Valibot schemas + inferred types
+│   │   │   ├── auth.entity.ts           # (nếu có) Domain types
+│   │   │   ├── auth.repository.ts       # DB queries cho auth
+│   │   │   ├── auth.routes.ts           # Hono router — thin controller
+│   │   │   ├── auth.service.ts          # Business logic
+│   │   │   └── auth.validation.ts       # Valibot schemas + inferred types
+│   │   ├── permission/
+│   │   │   ├── permission.entity.ts     # Permission, PermissionProfile, ResolvedPermissions
+│   │   │   ├── permission.repository.ts # SQL: resolve, CRUD profiles, assign/revoke
+│   │   │   ├── permission.routes.ts     # 14 endpoints quản lý phân quyền
+│   │   │   ├── permission.service.ts    # Resolve + Redis cache + audit log
+│   │   │   └── permission.validation.ts # Valibot schemas cho permission endpoints
 │   │   └── user/
-│   │       ├── user.entity.ts       # Interface User, CreateUserData, UpdateUserData
-│   │       ├── user.repository.ts   # DB queries cho user
-│   │       ├── user.routes.ts       # Hono router — thin controller
-│   │       ├── user.schema.ts       # DB table schema (cho auto-migration)
-│   │       ├── user.service.ts      # Business logic
-│   │       └── user.validation.ts   # Valibot schemas + inferred types
+│   │       ├── user.entity.ts           # Interface User, UserRole, CreateUserData
+│   │       ├── user.repository.ts       # DB queries cho user
+│   │       ├── user.routes.ts           # Hono router — thin controller
+│   │       ├── user.schema.ts           # DB table schema (cho auto-migration)
+│   │       ├── user.service.ts          # Business logic
+│   │       └── user.validation.ts       # Valibot schemas + inferred types
 │   │
 │   ├── shared/                # Utilities dùng chung — không phụ thuộc module cụ thể
 │   │   ├── errors/
 │   │   │   ├── AppError.ts          # Custom error class với statusCode + code
 │   │   │   └── error.handler.ts     # Global Hono error handler
 │   │   ├── middlewares/
-│   │   │   ├── auth.middleware.ts   # JWT verify + Redis blacklist + DB alive check
-│   │   │   ├── cache.middleware.ts  # Response cache (Redis + Memory fallback)
+│   │   │   ├── auth.middleware.ts        # JWT verify + Redis blacklist + DB alive check
+│   │   │   ├── cache.middleware.ts       # Response cache (Redis + Memory fallback)
+│   │   │   ├── permission.middleware.ts  # requirePermission() + requireAnyPermission()
 │   │   │   ├── rate-limit.middleware.ts  # Rate limiting (Redis Lua + Memory fallback)
-│   │   │   ├── rbac.middleware.ts   # Role-based access control
+│   │   │   ├── rbac.middleware.ts        # requireRole() — legacy tier check
 │   │   │   └── validate-uuid.middleware.ts  # UUID v4 param validation
 │   │   ├── types/
 │   │   │   └── index.ts             # ApiResponse<T>, ApiErrorResponse
@@ -96,7 +103,7 @@ HTTP Request
     │
     ▼
 [Route Middleware] (per-router)
-  authMiddleware → requireRole()
+  authMiddleware → requireRole() | requirePermission()
     │
     ▼
 [Validation Middleware]
@@ -249,8 +256,116 @@ Các `catch {}` sau đây là **intentional** — không được thêm code và
 
 ### 6.1 Authentication & Authorization
 - **authMiddleware** chạy 3 lớp: JWT verify → Redis blacklist → DB alive check
-- **requireRole(...roles)** nhận nhiều roles: `requireRole("admin", "superadmin")`
-- Role được lấy từ **DB** tại mỗi request (không tin JWT claim) — ghi đè vào payload
+- **requireRole(...roles)** — legacy check theo tier: `requireRole("admin")`
+- **requirePermission(...codes)** — ABAC check theo permission code: `requirePermission("users.read")`
+- Role được lấy từ **JWT payload** (đã verify DB khi login). OWNER bypass mọi check.
+
+### 6.6 RBAC + ABAC Permission Model
+
+Hệ thống phân quyền 3 tầng:
+
+```
+Tầng 1: TIER (cố định, trong users.role)
+  ├── owner  → Bypass HOÀN TOÀN mọi permission check, toàn quyền
+  ├── admin  → Phải được cấp PermissionProfile, KHÔNG tự do hành động
+  └── user   → Bị giới hạn theo PermissionProfile được assign
+
+Tầng 2: PERMISSION PROFILE (Admin quản lý tại runtime)
+  PermissionProfile = tập hợp permission codes được đặt tên
+  Ví dụ: "Sales Manager" = { users.read ✅, reports.view ✅, users.delete ❌ }
+
+Tầng 3: INDIVIDUAL OVERRIDE (OWNER/Admin cấp cho từng user)
+  Ghi đè profile — ưu tiên cao nhất
+  Ví dụ: user A được cấp thêm reports.export dù profile không có
+```
+
+**Priority chain khi check quyền:**
+```
+1. OWNER?          → ✅ PASS ngay, 0 overhead
+2. denied set?     → ❌ DENY  (user_permissions.granted = false)
+3. granted set?    → ✅ PASS  (profile hoặc individual override)
+4. Không có gì     → ❌ DENY  (deny-by-default)
+```
+
+**Cách dùng trong routes:**
+```typescript
+// AND logic — phải có TẤT CẢ codes
+router.get("/users", requirePermission("users.read"), handler);
+router.delete("/users/:id", requirePermission("users.delete"), handler);
+
+// OR logic — có ÍT NHẤT 1 code
+router.get("/reports", requireAnyPermission("reports.view", "reports.export"), handler);
+```
+
+**Database tables hỗ trợ:**
+
+```
+permissions           — Quyền nguyên tử (developer định nghĩa, thêm qua migration)
+                        code: "users.read", "reports.export", "permissions.manage"...
+
+permission_profiles   — Bộ quyền được đặt tên (Admin tạo/sửa tại runtime)
+                        "Sales Manager", "Report Viewer", "Super Admin"...
+
+profile_permissions   — Profile chứa những quyền gì
+                        profile_id × permission_code × granted (true/false)
+
+user_profiles         — User được assign profile nào (nhiều-nhiều)
+                        user_id × profile_id
+
+user_permissions      — Override cá nhân (ưu tiên cao hơn profile)
+                        user_id × permission_code × granted (true/false)
+```
+
+**Nguyên tắc "Cổng Bất Biến" — tách biệt CODE và CONFIGURATION:**
+
+```
+Dev viết 1 lần (code):              Admin cấu hình runtime (DB):
+                                       Profile "Report Viewer"
+  router.get("/reports",     ←───       └── reports.view ✅
+    requirePermission(
+      "reports.view"                   Assign cho user bất kỳ:
+    ), handler)                          → ADMIN_A có profile → vào được ✅
+                                         → USER_B có profile → vào được ✅
+  "Cổng" này KHÔNG BAO GIỜ đổi          → ADMIN_C không có profile → 403 ❌
+  dù cấp/thu hồi bao nhiêu lần
+```
+
+> Muốn cấp quyền cho ADMIN_C? → Assign profile, không cần sửa code, không cần deploy lại.
+
+
+**Permission codes hiện có** (developer-defined, thêm qua migration + seed):
+
+| Code | Mô tả |
+|---|---|
+| `users.read` | Xem danh sách và thông tin user |
+| `users.write` | Tạo mới và cập nhật user |
+| `users.delete` | Xóa user (soft delete) |
+| `users.restore` | Phục hồi user đã bị xóa |
+| `users.hard_delete` | Xóa vĩnh viễn user |
+| `reports.view` | Xem báo cáo |
+| `reports.export` | Xuất báo cáo ra file |
+| `permissions.manage` | Quản lý permission profiles và phân quyền user |
+
+**API quản lý permissions** (`/api/permissions/*`, yêu cầu `permissions.manage`):
+
+```
+GET    /api/permissions/codes                              — Xem tất cả permission codes
+GET    /api/permissions/profiles                           — Danh sách profiles
+POST   /api/permissions/profiles                           — Tạo profile mới
+GET    /api/permissions/profiles/:id                       — Chi tiết profile
+PATCH  /api/permissions/profiles/:id                       — Cập nhật profile
+DELETE /api/permissions/profiles/:id                       — Xóa profile (cascade)
+PUT    /api/permissions/profiles/:id/codes/:code           — Thêm/cập nhật permission vào profile
+DELETE /api/permissions/profiles/:id/codes/:code           — Xóa permission khỏi profile
+GET    /api/permissions/users/:userId/profiles             — Profiles của user
+POST   /api/permissions/users/:userId/profiles             — Assign profile → user
+DELETE /api/permissions/users/:userId/profiles/:profileId  — Thu hồi profile
+GET    /api/permissions/users/:userId/overrides            — Overrides cá nhân
+PUT    /api/permissions/users/:userId/overrides/:code      — Set override
+DELETE /api/permissions/users/:userId/overrides/:code      — Xóa override
+```
+
+**Caching:** `ResolvedPermissions` được cache vào Redis với key `perm:v1:{userId}`, TTL 5 phút. Tự động invalidate khi assign/revoke profile hoặc set override.
 
 ### 6.2 Password Security
 - Hash bằng **PBKDF2 native** (`crypto.subtle`) — 100,000 iterations, SHA-256
@@ -374,11 +489,15 @@ class AppContainer {
   db: Client
   userService: UserService
   authService: AuthService
+  permissionService: PermissionService
 
   async init() {
-    const userRepo = new UserRepository(this.db);
-    this.userService = new UserService(userRepo);
-    // ...
+    const userRepo       = new UserRepository(this.db);
+    const authRepo       = new AuthRepository(this.db);
+    const permissionRepo = new PermissionRepository(this.db);
+    this.userService       = new UserService(userRepo);
+    this.authService       = new AuthService(userRepo, authRepo);
+    this.permissionService = new PermissionService(permissionRepo);
   }
 }
 
@@ -388,7 +507,8 @@ export const container = new AppContainer();
 **Quy tắc:**
 - Không `new Service()` hay `new Repository()` trong route files
 - Mọi dependency được inject qua constructor (testable)
-- Container được import 1 lần duy nhất tại `main.ts` và `auth.middleware.ts`
+- Container được import 1 lần duy nhất tại `main.ts`
+- Permission middleware dùng **dynamic import** (`await import("../../core/container.ts")`) để tránh circular dependency
 
 ---
 

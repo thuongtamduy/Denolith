@@ -1,6 +1,7 @@
 import type { UserRepository } from "./user.repository.ts";
 import type { CreateUserData, UpdateUserData, User } from "./user.entity.ts";
 import { AppError } from "../../shared/errors/AppError.ts";
+import { AuditService } from "../../core/audit.ts";
 import { hashPassword } from "../../shared/utils/hash.ts";
 import type {
   PaginatedResult,
@@ -37,6 +38,28 @@ export class UserService {
     const user = await this.repo.update(id, data);
     if (!user) throw AppError.notFound(`User with id ${id} not found`);
     return user;
+  }
+
+  async updateRole(id: string, roleCode: string, actorId?: string): Promise<User> {
+    try {
+      const user = await this.repo.updateRole(id, roleCode);
+      if (!user) throw AppError.notFound(`User with id ${id} not found`);
+      
+      await AuditService.log({
+        actorId,
+        action: "user.update_role",
+        targetType: "user",
+        targetId: id,
+        metadata: { roleCode },
+      });
+      
+      return user;
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message && err.message.includes("violates foreign key constraint")) {
+        throw AppError.badRequest(`Role '${roleCode}' does not exist.`);
+      }
+      throw err;
+    }
   }
 
   /**

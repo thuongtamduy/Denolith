@@ -29,9 +29,12 @@ export class UserRepository extends BaseRepository {
 
   async findById(id: string, tx?: Transaction): Promise<User | undefined> {
     return await this.queryOne<User>(
-      `SELECT ${SAFE_COLUMNS}
-       FROM users
-       WHERE id = $1 AND deleted = false`,
+      `SELECT u.id, u.username, u.email, u.role, u.phone, u.active,
+              u.created_at, u.updated_at, u.deleted, u.deleted_at,
+              r.tier
+       FROM users u
+       JOIN roles r ON u.role = r.code
+       WHERE u.id = $1 AND u.deleted = false`,
       [id],
       tx,
     );
@@ -51,16 +54,18 @@ export class UserRepository extends BaseRepository {
     );
   }
 
-  // Dùng riêng cho Auth login — cần password để verifyPassword()
+  // Dùng riêng cho Auth login — cần password để verifyPassword() và tier cho JWT
   async findByEmailWithPassword(
     email: string,
     tx?: Transaction,
   ): Promise<User | undefined> {
     return await this.queryOne<User>(
-      `SELECT id, username, email, password, role, phone, active,
-              created_at, updated_at, deleted, deleted_at
-       FROM users
-       WHERE email = $1 AND deleted = false`,
+      `SELECT u.id, u.username, u.email, u.password, u.role, u.phone, u.active,
+              u.created_at, u.updated_at, u.deleted, u.deleted_at,
+              r.tier
+       FROM users u
+       JOIN roles r ON u.role = r.code
+       WHERE u.email = $1 AND u.deleted = false`,
       [email],
       tx,
     );
@@ -68,11 +73,16 @@ export class UserRepository extends BaseRepository {
 
   async create(data: CreateUserData, tx?: Transaction): Promise<User> {
     const user = await this.queryOne<User>(
-      // RETURNING * để trả về đầy đủ User kể cả password
-      // (authService dùng ngay để ký JWT sau khi register — password không bị leak ra ngoài vì sanitizeUser ở tầng Route)
-      `INSERT INTO users (username, email, password, phone)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
+      // INSERT rồi JOIN roles để lấy tier cho JWT
+      // (authService dùng ngay để ký JWT sau khi register)
+      `WITH inserted AS (
+         INSERT INTO users (username, email, password, phone)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *
+       )
+       SELECT i.*, r.tier
+       FROM inserted i
+       JOIN roles r ON i.role = r.code`,
       [data.username, data.email, data.password, data.phone || null],
       tx,
     );
@@ -103,6 +113,28 @@ export class UserRepository extends BaseRepository {
     `;
 
     return await this.queryOne<User>(sql, [id, ...values], tx);
+  }
+
+  async updateRole(
+    id: string,
+    roleCode: string,
+    tx?: Transaction,
+  ): Promise<User | undefined> {
+    return await this.queryOne<User>(
+      `WITH updated AS (
+         UPDATE users
+         SET role = $2
+         WHERE id = $1 AND deleted = false
+         RETURNING *
+       )
+       SELECT u.id, u.username, u.email, u.role, u.phone, u.active,
+              u.created_at, u.updated_at, u.deleted, u.deleted_at,
+              r.tier
+       FROM updated u
+       JOIN roles r ON u.role = r.code`,
+      [id, roleCode],
+      tx,
+    );
   }
 
   /**

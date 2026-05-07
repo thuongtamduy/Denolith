@@ -32,8 +32,11 @@ tối tân nhất cho các dự án quy mô lớn:
 5. **Advanced Authentication:** Cơ chế Refresh Token Rotation. Quản lý Access
    Token (15 phút) và Refresh Token thông qua `HttpOnly`, `Secure` Cookie để
    chống hoàn toàn XSS.
-6. **Role-Based Access Control (RBAC):** Middleware gác cổng chặt chẽ, chỉ cho
-   phép các Role chỉ định (VD: `ADMIN`) đi qua các API nhạy cảm.
+6. **Dynamic RBAC + ABAC:** Hệ thống phân quyền 3 tầng linh hoạt:
+   - **OWNER** — Bypass toàn bộ, không cần check bất kỳ quyền nào.
+   - **ADMIN** — Được cấp `PermissionProfile` động, không hard-code role.
+   - **USER** — Bị giới hạn theo profile được assign và individual overrides.
+   - Router chỉ khai báo **permission code cần thiết** — ai được quyền là do Admin cấu hình runtime, không cần deploy lại.
 7. **API Caching Siêu Tốc:** Bộ đệm Redis Caching cho các API đọc dữ liệu
    (`GET`), tăng tốc độ phản hồi xuống dưới 1ms.
 8. **Background Job Queue:** Kiến trúc Message Queue tích hợp ngay trên Redis,
@@ -104,7 +107,24 @@ Sau đó chạy server qua Deno:
 deno task dev
 ```
 
-Server sẽ sẵn sàng phục vụ tại: `http://localhost:3000`
+### Bước 3: Khởi tạo dữ liệu mẫu
+
+```bash
+deno task seed
+```
+
+Seed sẽ tạo 4 users mặc định:
+
+| Email | Password | Role |
+|---|---|---|
+| `owner@denolith.dev` | `Owner@123456` | `owner` |
+| `admin@denolith.dev` | `Admin@123456` | `admin` |
+| `user1@denolith.dev` | `User1@123456` | `user` |
+| `user2@denolith.dev` | `User2@123456` | `user` |
+
+Và 8 permission codes cơ bản: `users.*`, `reports.*`, `permissions.manage`.
+
+Server sẽ sẵn sàng phục vụ tại: `http://localhost:9999`
 
 ---
 
@@ -129,11 +149,33 @@ Server sẽ sẵn sàng phục vụ tại: `http://localhost:3000`
 
 Dưới đây là các biến môi trường quan trọng cần cấu hình để ứng dụng vận hành:
 
-- `PORT`: Cổng ứng dụng (Mặc định: 3000)
+- `PORT`: Cổng ứng dụng (Mặc định: 9999)
 - `DATABASE_URL`: Chuỗi kết nối tới máy chủ PostgreSQL
 - `REDIS_URL`: Chuỗi kết nối Redis (Nếu hệ thống không có Redis, Denolith sẽ tự
   động chuyển sang dùng RAM cục bộ)
 - `JWT_SECRET`: Chuỗi khóa bí mật siêu dài dùng để ký Token xác thực
+
+---
+
+## 🔑 Hệ Thống Phân Quyền (RBAC + ABAC)
+
+Denolith sử dụng mô hình phân quyền **3 tầng** kết hợp RBAC và ABAC:
+
+```
+OWNER  →  Bypass tất cả, không check gì
+ADMIN  →  Phải được cấp PermissionProfile
+USER   →  Bị giới hạn theo PermissionProfile được assign
+```
+
+**Luồng cấu hình quyền (không cần deploy lại):**
+
+1. Developer định nghĩa permission code trong migration: `"users.read"`, `"reports.export"`...
+2. OWNER tạo PermissionProfile: `"Sales Manager"` = `{ users.read ✅, reports.view ✅ }`
+3. OWNER assign profile cho ADMIN/USER → có quyền ngay lập tức (Redis cache 5 phút)
+4. OWNER set individual override cho user cụ thể nếu cần
+5. Router chỉ khai báo: `requirePermission("users.read")` — không cần sửa khi muốn cấp/thu hồi quyền
+
+**Xem chi tiết:** [ARCHITECTURE.md — Section 6.6](./ARCHITECTURE.md)
 
 ---
 

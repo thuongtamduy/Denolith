@@ -37,3 +37,11 @@ export const updateUserSchema = v.partial(
 // Infer types để dùng trực tiếp trong route handlers (type-safe, không cần cast)
 export type CreateUserInput = v.InferOutput<typeof createUserSchema>;
 export type UpdateUserInput = v.InferOutput<typeof updateUserSchema>;
+
+/**
+ * Schema cho PATCH /api/users/:id/role
+ */
+export const updateUserRoleSchema = v.object({
+  role: v.pipe(v.string(), v.minLength(3), v.maxLength(50)),
+});
+export type UpdateUserRoleInput = v.InferOutput<typeof updateUserRoleSchema>;

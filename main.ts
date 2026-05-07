@@ -22,6 +22,8 @@ import { initCrons } from "./src/core/cron.ts";
 // Routes
 import { createUserRoutes } from "./src/modules/user/user.routes.ts";
 import { createAuthRoutes } from "./src/modules/auth/auth.routes.ts";
+import { createPermissionRoutes } from "./src/modules/permission/permission.routes.ts";
+import { createRoleRoutes } from "./src/modules/role/role.routes.ts";
 
 // 1. Boot Container
 await container.init();
@@ -84,12 +86,16 @@ app.get("/health", async (c) => {
 
 app.get("/", (c) => c.text("Backend is running."));
 
-// Bảo vệ toàn bộ route profiles bằng JWT — PHẢI đăng ký TRƯỚC khi mount routes
+// Bảo vệ routes bằng JWT — PHẢI đăng ký TRƯỚC khi mount routes
 app.use("/api/users/*", authMiddleware);
+app.use("/api/permissions/*", authMiddleware);
+app.use("/api/roles/*", authMiddleware);
 
 // Đăng ký các Route (Sử dụng Service từ Container)
 app.route("/api/auth", createAuthRoutes(container.authService));
 app.route("/api/users", createUserRoutes(container.userService));
+app.route("/api/permissions", createPermissionRoutes(container.permissionService));
+app.route("/api/roles", createRoleRoutes(container.roleService));
 
 // 4. Khởi động Server
 logger.info(

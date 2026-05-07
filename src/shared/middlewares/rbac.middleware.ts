@@ -3,30 +3,39 @@ import type { AppEnv } from "../../core/context.ts";
 import { AppError } from "../errors/AppError.ts";
 
 /**
- * Middleware kiểm tra role của user từ JWT payload.
- * Hỗ trợ nhiều roles — truyền vào dạng rest params.
+ * Middleware kiểm tra tier của user từ JWT payload.
+ * Hỗ trợ nhiều tiers — truyền vào dạng rest params.
  *
  * Ví dụ:
- *   requireRole("admin")                  — chỉ admin
- *   requireRole("admin", "superadmin")    — admin hoặc superadmin
+ *   requireRole("admin")           — tất cả roles có tier="admin"
+ *   requireRole("admin", "owner")  — tier admin hoặc owner
+ *
+ * Lưu ý: check TIER, không phải role code cụ thể.
+ * Nếu cần check role code cụ thể, dùng requirePermission().
  */
-export const requireRole = (...allowedRoles: string[]) => {
+export const requireRole = (...allowedTiers: string[]) => {
   return async (c: Context<AppEnv>, next: Next) => {
-    // authMiddleware (JWT) tự động gán thông tin giải mã vào 'jwtPayload'
     const payload = c.get("jwtPayload");
 
-    if (!payload?.role) {
-      throw AppError.forbidden("Access denied. No role provided.");
+    if (!payload?.tier) {
+      throw AppError.forbidden("Access denied. No tier provided.");
     }
 
-    if (!allowedRoles.includes(payload.role)) {
+    // OWNER bypass mọi RBAC
+    if (payload.tier === "owner") {
+      await next();
+      return;
+    }
+
+    if (!allowedTiers.includes(payload.tier)) {
       throw AppError.forbidden(
         `Access denied. Requires one of [${
-          allowedRoles.join(", ")
-        }], but found '${payload.role}'.`,
+          allowedTiers.join(", ")
+        }] tier, but found '${payload.tier}'.`,
       );
     }
 
     await next();
   };
 };
+
