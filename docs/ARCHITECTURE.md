@@ -726,3 +726,40 @@ TTL.
 ❌ Gọi Deno.exit() trong bất kỳ flow nào (kể cả shutdown)
 ❌ Hardcode secrets hoặc credentials trong code (dùng .env)
 ```
+
+---
+
+### 14.8 Formatting Bắt Buộc Sau Mỗi Thay Đổi
+
+**Sau khi hoàn thành bất kỳ thay đổi code nào, BẮT BUỘC phải chạy:**
+
+```bash
+deno task format
+```
+
+Lệnh này thực thi 2 bước liên tiếp:
+
+1. **`deno fmt`** — Tự động format toàn bộ code theo style chuẩn Deno (indent,
+   line width, trailing comma, quote style, v.v.)
+2. **`deno lint --fix`** — Phát hiện và tự động sửa các lỗi lint phổ biến
+
+**Tại sao bắt buộc?**
+
+- Đảm bảo code style nhất quán trên toàn repo, bất kể ai viết
+- Tránh diff noise trong PR chỉ vì format khác nhau giữa dev/AI
+- `deno lint` bắt được nhiều lỗi tiềm ẩn mà TypeScript compiler bỏ qua
+
+**Workflow chuẩn:**
+
+```bash
+# Sau khi code xong
+deno task format   # ← BẮT BUỘC
+
+# Sau đó mới commit
+git add .
+git commit -m "feat: ..."
+```
+
+> **Lưu ý cho AI Agent:** Luôn chạy `deno task format` như bước cuối cùng trước
+> khi báo cáo hoàn thành task. Không skip bước này ngay cả khi chỉ thay đổi 1
+> dòng.
