@@ -16,13 +16,33 @@ try {
   `;
 
   const roles = [
-    { code: "owner", tier: "owner", name: "Chủ Hệ Thống", description: "Toàn quyền truy cập, bypass mọi permissions" },
-    { code: "admin", tier: "admin", name: "Quản Trị Viên", description: "Có quyền quản lý hệ thống dựa theo profile" },
-    { code: "user", tier: "user", name: "Người Dùng", description: "Người dùng cơ bản" },
+    {
+      code: "owner",
+      tier: "owner",
+      name: "System Owner",
+      description: "Full access, bypasses all permission checks",
+    },
+    {
+      code: "admin",
+      tier: "admin",
+      name: "Administrator",
+      description: "Manages the system based on assigned permission profiles",
+    },
+    {
+      code: "user",
+      tier: "user",
+      name: "Standard User",
+      description: "Basic end-user with limited access",
+    },
   ];
 
   for (const role of roles) {
-    await db.queryObject(roleSql, [role.code, role.tier, role.name, role.description]);
+    await db.queryObject(roleSql, [
+      role.code,
+      role.tier,
+      role.name,
+      role.description,
+    ]);
   }
   logger.info(`✅ Seeded ${roles.length} system roles.`);
 
@@ -36,15 +56,40 @@ try {
   `;
 
   const users = [
-    { username: "owner", email: "owner@denolith.dev",  password: "Owner@123456", role: "owner" },
-    { username: "admin", email: "admin@denolith.dev",  password: "Admin@123456", role: "admin" },
-    { username: "user1", email: "user1@denolith.dev",  password: "User1@123456", role: "user"  },
-    { username: "user2", email: "user2@denolith.dev",  password: "User2@123456", role: "user"  },
+    {
+      username: "owner",
+      email: "owner@denolith.dev",
+      password: "Owner@123456",
+      role: "owner",
+    },
+    {
+      username: "admin",
+      email: "admin@denolith.dev",
+      password: "Admin@123456",
+      role: "admin",
+    },
+    {
+      username: "user1",
+      email: "user1@denolith.dev",
+      password: "User1@123456",
+      role: "user",
+    },
+    {
+      username: "user2",
+      email: "user2@denolith.dev",
+      password: "User2@123456",
+      role: "user",
+    },
   ];
 
   for (const user of users) {
     const hashedPw = await hashPassword(user.password);
-    await db.queryObject(userSql, [user.username, user.email, hashedPw, user.role]);
+    await db.queryObject(userSql, [
+      user.username,
+      user.email,
+      hashedPw,
+      user.role,
+    ]);
   }
   logger.info(`✅ Seeded ${users.length} users.`);
 
@@ -59,16 +104,19 @@ try {
 
   const permissions = [
     // User management
-    ["users.read",        "Xem danh sách và thông tin user"],
-    ["users.write",       "Tạo mới và cập nhật user"],
-    ["users.delete",      "Xóa user (soft delete)"],
-    ["users.restore",     "Phục hồi user đã bị xóa"],
-    ["users.hard_delete", "Xóa vĩnh viễn user khỏi hệ thống"],
+    ["users.read", "View user list and user details"],
+    ["users.write", "Create and update users"],
+    ["users.delete", "Soft-delete a user"],
+    ["users.restore", "Restore a soft-deleted user"],
+    ["users.hard_delete", "Permanently delete a user from the system"],
     // Reports
-    ["reports.view",      "Xem báo cáo"],
-    ["reports.export",    "Xuất báo cáo ra file"],
-    // Permission management — chỉ OWNER cấp cho admin
-    ["permissions.manage", "Quản lý permission profiles và phân quyền user"],
+    ["reports.view", "View reports"],
+    ["reports.export", "Export reports to file"],
+    // Permission management — OWNER only grants this to admins
+    [
+      "permissions.manage",
+      "Manage permission profiles and user access control",
+    ],
   ];
 
   for (const [code, description] of permissions) {
@@ -95,39 +143,63 @@ try {
   const managerProfileId = "c82f2709-5f9e-501f-9e9b-8f2384043dc6";
 
   const profiles = [
-    { id: saleProfileId, name: "Nhân viên Sale", tier: "user", description: "Quyền cơ bản cho sale" },
-    { id: managerProfileId, name: "Quản lý Vùng", tier: "admin", description: "Quyền nâng cao cho admin" },
+    {
+      id: saleProfileId,
+      name: "Sales Representative",
+      tier: "user",
+      description: "Basic permissions for sales staff",
+    },
+    {
+      id: managerProfileId,
+      name: "Regional Manager",
+      tier: "admin",
+      description: "Advanced permissions for admin-tier managers",
+    },
   ];
 
   for (const p of profiles) {
     await db.queryObject(profileSql, [p.id, p.name, p.tier, p.description]);
   }
 
-  // Cấp quyền cho Profile "Nhân viên Sale"
+  // Grant permissions to "Sales Representative" profile
   await db.queryObject(profilePermSql, [saleProfileId, "users.read", true]);
   await db.queryObject(profilePermSql, [saleProfileId, "reports.view", true]);
-  
-  // Cấp quyền cho Profile "Quản lý Vùng"
+
+  // Grant permissions to "Regional Manager" profile
   await db.queryObject(profilePermSql, [managerProfileId, "users.read", true]);
   await db.queryObject(profilePermSql, [managerProfileId, "users.write", true]);
-  await db.queryObject(profilePermSql, [managerProfileId, "reports.view", true]);
-  await db.queryObject(profilePermSql, [managerProfileId, "reports.export", true]);
+  await db.queryObject(profilePermSql, [
+    managerProfileId,
+    "reports.view",
+    true,
+  ]);
+  await db.queryObject(profilePermSql, [
+    managerProfileId,
+    "reports.export",
+    true,
+  ]);
 
-  logger.info(`✅ Seeded ${profiles.length} permission profiles and their permissions.`);
+  logger.info(
+    `✅ Seeded ${profiles.length} permission profiles and their permissions.`,
+  );
 
   // ─────────────────────────────────────────────
   // SEED: user_profiles & user_permissions
   // ─────────────────────────────────────────────
-  
+
   // Tìm ID của user1 và admin để gán profile
-  const user1 = await db.queryObject<{ id: string }>(`SELECT id FROM users WHERE email = 'user1@denolith.dev'`);
-  const adminUser = await db.queryObject<{ id: string }>(`SELECT id FROM users WHERE email = 'admin@denolith.dev'`);
+  const user1 = await db.queryObject<{ id: string }>(
+    `SELECT id FROM users WHERE email = 'user1@denolith.dev'`,
+  );
+  const adminUser = await db.queryObject<{ id: string }>(
+    `SELECT id FROM users WHERE email = 'admin@denolith.dev'`,
+  );
 
   if (user1.rows.length > 0 && adminUser.rows.length > 0) {
     const user1Id = user1.rows[0].id;
     const adminId = adminUser.rows[0].id;
 
-    // 1. Gán Profile cho User
+    // 1. Assign profiles to users
     const assignSql = `
       INSERT INTO user_profiles (user_id, profile_id)
       VALUES ($1, $2)
@@ -137,20 +209,18 @@ try {
     await db.queryObject(assignSql, [adminId, managerProfileId]);
     logger.info(`✅ Assigned profiles to user1 and admin.`);
 
-    // 2. Gán Override cá nhân cho User1 (Cấm xuất báo cáo)
+    // 2. Set personal override for user1 (deny reports.export)
     const overrideSql = `
       INSERT INTO user_permissions (user_id, permission_code, granted)
       VALUES ($1, $2, $3)
       ON CONFLICT DO NOTHING
     `;
-    await db.queryObject(overrideSql, [user1Id, "reports.export", false]); // Bị cấm explicit
+    await db.queryObject(overrideSql, [user1Id, "reports.export", false]); // Explicitly denied
     logger.info(`✅ Seeded personal overrides for user1.`);
   }
-
 } catch (error) {
   logger.error(`Seeding failed: ${(error as Error).message}`);
   Deno.exit(1);
 } finally {
   await closeDb();
 }
-

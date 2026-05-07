@@ -44,4 +44,3 @@ export class AppContainer {
 
 // Xuất ra một instance duy nhất (Singleton)
 export const container = new AppContainer();
-

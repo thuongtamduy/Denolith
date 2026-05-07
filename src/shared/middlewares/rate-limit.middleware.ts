@@ -116,7 +116,7 @@ export const rateLimiter = (options: RateLimitOptions) => {
       // Tuân thủ RFC 6585: Thông báo cho client biết phải đợi bao nhiêu giây
       c.header("Retry-After", Math.ceil((resetTime - now) / 1000).toString());
       throw AppError.tooManyRequests(
-        options.message || "Quá nhiều yêu cầu, vui lòng thử lại sau.",
+        options.message || "Too many requests. Please try again later.",
       );
     }
 

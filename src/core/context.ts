@@ -12,11 +12,11 @@ import type { ResolvedPermissions } from "../modules/permission/permission.entit
 
 // Khớp chính xác với payload được sign trong auth.service.ts
 export interface JwtPayload {
-  id: string;      // User UUID
-  role: string;    // Role code: "admin", "supervisor", "sales_manager", ...
-  tier: UserTier;  // Tier hành vi: "owner" | "admin" | "user" (lấy từ roles.tier)
-  exp: number;     // Unix timestamp hết hạn (15 phút)
-  iat?: number;    // Unix timestamp phát hành (tự inject bởi @hono/jwt)
+  id: string; // User UUID
+  role: string; // Role code: "admin", "supervisor", "sales_manager", ...
+  tier: UserTier; // Tier hành vi: "owner" | "admin" | "user" (lấy từ roles.tier)
+  exp: number; // Unix timestamp hết hạn (15 phút)
+  iat?: number; // Unix timestamp phát hành (tự inject bởi @hono/jwt)
 }
 
 export type AppEnv = {

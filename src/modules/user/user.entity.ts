@@ -20,8 +20,8 @@ export interface User {
   username: string;
   email: string;
   password: string;
-  role: UserRole;      // FK → roles.code
-  tier?: UserTier;     // Populated via JOIN roles — không lưu trong DB, chỉ có khi auth query
+  role: UserRole; // FK → roles.code
+  tier?: UserTier; // Populated via JOIN roles — không lưu trong DB, chỉ có khi auth query
   phone: string | null;
   active: boolean;
   // --- Audit Fields (bắt buộc có ở mọi bảng) ---
@@ -45,4 +45,3 @@ export interface UpdateUserData {
   active?: boolean;
   // Không cho phép update role, email, password qua đây — chống Mass Assignment
 }
-

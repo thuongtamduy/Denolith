@@ -34,7 +34,7 @@ export const requirePermission = (...codes: string[]) => {
     if (!resolved) {
       resolved = await container.permissionService.resolvePermissions(
         payload.id,
-        payload.tier,  // dùng tier, không dùng role code
+        payload.tier, // dùng tier, không dùng role code
       );
       c.set("resolvedPermissions", resolved);
     }
@@ -43,7 +43,7 @@ export const requirePermission = (...codes: string[]) => {
     for (const code of codes) {
       if (!container.permissionService.hasPermission(resolved, code)) {
         throw AppError.forbidden(
-          `Bạn không có quyền thực hiện hành động này. Cần: "${code}"`,
+          `You do not have permission to perform this action. Required: "${code}"`,
         );
       }
     }
@@ -77,7 +77,7 @@ export const requireAnyPermission = (...codes: string[]) => {
     if (!resolved) {
       resolved = await container.permissionService.resolvePermissions(
         payload.id,
-        payload.tier,  // dùng tier, không dùng role code
+        payload.tier, // dùng tier, không dùng role code
       );
       c.set("resolvedPermissions", resolved);
     }
@@ -88,7 +88,7 @@ export const requireAnyPermission = (...codes: string[]) => {
 
     if (!hasAny) {
       throw AppError.forbidden(
-        `Bạn không có quyền thực hiện hành động này. Cần một trong: [${
+        `You do not have permission to perform this action. Required one of: [${
           codes.join(", ")
         }]`,
       );
@@ -97,4 +97,3 @@ export const requireAnyPermission = (...codes: string[]) => {
     await next();
   };
 };
-

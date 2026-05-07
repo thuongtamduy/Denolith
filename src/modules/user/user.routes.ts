@@ -14,9 +14,9 @@ import {
   type CreateUserInput,
   createUserSchema,
   type UpdateUserInput,
-  updateUserSchema,
   type UpdateUserRoleInput,
   updateUserRoleSchema,
+  updateUserSchema,
 } from "./user.validation.ts";
 import { requirePermission } from "../../shared/middlewares/permission.middleware.ts";
 

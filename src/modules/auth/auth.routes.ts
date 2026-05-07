@@ -7,10 +7,10 @@ import { rateLimiter } from "../../shared/middlewares/rate-limit.middleware.ts";
 import { config } from "../../core/config.ts";
 import { sanitizeUser } from "../../shared/utils/sanitize.ts";
 import {
-  loginSchema,
-  registerSchema,
   type LoginInput,
+  loginSchema,
   type RegisterInput,
+  registerSchema,
 } from "./auth.validation.ts";
 
 export const createAuthRoutes = (service: AuthService) => {
@@ -20,7 +20,7 @@ export const createAuthRoutes = (service: AuthService) => {
   const strictRateLimit = rateLimiter({
     windowMs: 15 * 60 * 1000, // 15 phút
     max: 5,
-    message: "Bạn đã thao tác quá nhiều lần, vui lòng chờ 15 phút.",
+    message: "Too many attempts. Please try again in 15 minutes.",
     keyPrefix: "auth", // Tách biệt rate limit của Auth khỏi Global Rate Limit
   });
 

@@ -5,10 +5,10 @@ import type { AppEnv } from "../../core/context.ts";
 import { extractPagination } from "../../shared/utils/pagination.ts";
 import type { RoleService } from "./role.service.ts";
 import {
-  createRoleSchema,
   type CreateRoleInput,
-  updateRoleSchema,
+  createRoleSchema,
   type UpdateRoleInput,
+  updateRoleSchema,
 } from "./role.validation.ts";
 
 /**
@@ -52,7 +52,7 @@ export const createRoleRoutes = (service: RoleService) => {
     const body = c.req.valid("json") as CreateRoleInput;
     const actorId = c.get("jwtPayload").id;
     const role = await service.create(body, actorId);
-    
+
     c.header("Location", `/api/roles/${role.code}`);
     return c.json({ success: true, data: role }, 201);
   });
@@ -68,7 +68,7 @@ export const createRoleRoutes = (service: RoleService) => {
       const code = c.req.param("code")!;
       const body = c.req.valid("json") as UpdateRoleInput;
       const actorId = c.get("jwtPayload").id;
-      
+
       const role = await service.update(code, body, actorId);
       return c.json({ success: true, data: role });
     },
@@ -81,9 +81,12 @@ export const createRoleRoutes = (service: RoleService) => {
   router.delete("/:code", async (c) => {
     const code = c.req.param("code")!;
     const actorId = c.get("jwtPayload").id;
-    
+
     await service.delete(code, actorId);
-    return c.json({ success: true, message: `Role '${code}' has been deleted.` });
+    return c.json({
+      success: true,
+      message: `Role '${code}' has been deleted.`,
+    });
   });
 
   return router;

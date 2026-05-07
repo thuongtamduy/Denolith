@@ -49,7 +49,7 @@ export function scheduleDailyTask(
  * Trả về hàm stopCrons() để gọi khi graceful shutdown.
  */
 export function initCrons() {
-  logger.info("⏰ Khởi tạo Background Cronjobs...");
+  logger.info("⏰ Initializing background cronjobs...");
 
   // 1. Dọn rác Refresh Token (Mỗi 6 tiếng)
   const cleanupTokensInterval = setInterval(async () => {
@@ -60,17 +60,17 @@ export function initCrons() {
       const deletedCount = Number(res.rows[0].count);
       if (deletedCount > 0) {
         logger.info(
-          `🧹 [Cronjob] Đã dọn dẹp ${deletedCount} refresh token hết hạn.`,
+          `🧹 [Cronjob] Cleaned up ${deletedCount} expired refresh token(s).`,
         );
       }
     } catch (err) {
-      logger.error("❌ [Cronjob] Lỗi dọn dẹp DB", err);
+      logger.error("❌ [Cronjob] Failed to clean up expired tokens", err);
     }
   }, 6 * 60 * 60 * 1000);
 
   // 2. Dùng scheduleDailyTask để cài đặt Cronjob
   const dailyScanTask = scheduleDailyTask(3, 0, () => {
-    logger.info(`🧹 [Cronjob] Daily Scan lúc 3:00 AM đang chạy...`);
+    logger.info(`🧹 [Cronjob] Daily scan running at 3:00 AM...`);
     // Ở đây có thể Query bảng emails, push vào Queue, v.v...
   });
 

@@ -6,16 +6,16 @@ import type { PermissionService } from "./permission.service.ts";
 import type { AppEnv } from "../../core/context.ts";
 import { extractPagination } from "../../shared/utils/pagination.ts";
 import {
-  assignProfileSchema,
-  createProfileSchema,
-  setOverrideSchema,
-  setProfilePermissionSchema,
-  updateProfileSchema,
   type AssignProfileInput,
+  assignProfileSchema,
   type CreateProfileInput,
+  createProfileSchema,
   type SetOverrideInput,
+  setOverrideSchema,
   type SetProfilePermissionInput,
+  setProfilePermissionSchema,
   type UpdateProfileInput,
+  updateProfileSchema,
 } from "./permission.validation.ts";
 
 /**
@@ -108,7 +108,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
     const id = c.req.param("id")!;
     const actorId = c.get("jwtPayload").id;
     await service.deleteProfile(id, actorId);
-    return c.json({ success: true, message: "Profile đã được xóa." });
+    return c.json({ success: true, message: "Profile deleted successfully." });
   });
 
   // ───────────────────────────────────────────
@@ -131,9 +131,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       await service.setProfilePermission(profileId, permissionCode, granted);
       return c.json({
         success: true,
-        message: `Permission "${permissionCode}" đã được ${
-          granted ? "cấp cho" : "cấm trong"
-        } profile.`,
+        message: `Permission "${permissionCode}" has been ${
+          granted ? "granted to" : "denied in"
+        } the profile.`,
       });
     },
   );
@@ -148,7 +148,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
     await service.removeProfilePermission(profileId, permissionCode);
     return c.json({
       success: true,
-      message: `Permission "${permissionCode}" đã xóa khỏi profile.`,
+      message: `Permission "${permissionCode}" removed from profile.`,
     });
   });
 
@@ -186,7 +186,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
       await service.assignProfile(userId, profileId, actorId);
       return c.json({
         success: true,
-        message: "Profile đã được gán cho user.",
+        message: "Profile assigned to user successfully.",
       });
     },
   );
@@ -206,7 +206,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
       await service.revokeProfile(userId, profileId, actorId);
       return c.json({
         success: true,
-        message: "Profile đã được thu hồi khỏi user.",
+        message: "Profile revoked from user successfully.",
       });
     },
   );
@@ -246,8 +246,8 @@ export const createPermissionRoutes = (service: PermissionService) => {
       await service.setOverride(userId, permissionCode, granted, actorId);
       return c.json({
         success: true,
-        message: `Override "${permissionCode}" đã được ${
-          granted ? "cấp" : "thu hồi"
+        message: `Override "${permissionCode}" has been ${
+          granted ? "granted" : "revoked"
         }.`,
       });
     },
@@ -267,7 +267,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
       await service.removeOverride(userId, permissionCode, actorId);
       return c.json({
         success: true,
-        message: `Override "${permissionCode}" đã được xóa.`,
+        message: `Override "${permissionCode}" removed successfully.`,
       });
     },
   );

@@ -40,11 +40,15 @@ export class UserService {
     return user;
   }
 
-  async updateRole(id: string, roleCode: string, actorId?: string): Promise<User> {
+  async updateRole(
+    id: string,
+    roleCode: string,
+    actorId?: string,
+  ): Promise<User> {
     try {
       const user = await this.repo.updateRole(id, roleCode);
       if (!user) throw AppError.notFound(`User with id ${id} not found`);
-      
+
       await AuditService.log({
         actorId,
         action: "user.update_role",
@@ -52,10 +56,13 @@ export class UserService {
         targetId: id,
         metadata: { roleCode },
       });
-      
+
       return user;
     } catch (err: unknown) {
-      if (err instanceof Error && err.message && err.message.includes("violates foreign key constraint")) {
+      if (
+        err instanceof Error && err.message &&
+        err.message.includes("violates foreign key constraint")
+      ) {
         throw AppError.badRequest(`Role '${roleCode}' does not exist.`);
       }
       throw err;

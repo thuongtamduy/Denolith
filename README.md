@@ -36,7 +36,8 @@ tối tân nhất cho các dự án quy mô lớn:
    - **OWNER** — Bypass toàn bộ, không cần check bất kỳ quyền nào.
    - **ADMIN** — Được cấp `PermissionProfile` động, không hard-code role.
    - **USER** — Bị giới hạn theo profile được assign và individual overrides.
-   - Router chỉ khai báo **permission code cần thiết** — ai được quyền là do Admin cấu hình runtime, không cần deploy lại.
+   - Router chỉ khai báo **permission code cần thiết** — ai được quyền là do
+     Admin cấu hình runtime, không cần deploy lại.
 7. **API Caching Siêu Tốc:** Bộ đệm Redis Caching cho các API đọc dữ liệu
    (`GET`), tăng tốc độ phản hồi xuống dưới 1ms.
 8. **Background Job Queue:** Kiến trúc Message Queue tích hợp ngay trên Redis,
@@ -115,12 +116,12 @@ deno task seed
 
 Seed sẽ tạo 4 users mặc định:
 
-| Email | Password | Role |
-|---|---|---|
+| Email                | Password       | Role    |
+| -------------------- | -------------- | ------- |
 | `owner@denolith.dev` | `Owner@123456` | `owner` |
 | `admin@denolith.dev` | `Admin@123456` | `admin` |
-| `user1@denolith.dev` | `User1@123456` | `user` |
-| `user2@denolith.dev` | `User2@123456` | `user` |
+| `user1@denolith.dev` | `User1@123456` | `user`  |
+| `user2@denolith.dev` | `User2@123456` | `user`  |
 
 Và 8 permission codes cơ bản: `users.*`, `reports.*`, `permissions.manage`.
 
@@ -169,11 +170,15 @@ USER   →  Bị giới hạn theo PermissionProfile được assign
 
 **Luồng cấu hình quyền (không cần deploy lại):**
 
-1. Developer định nghĩa permission code trong migration: `"users.read"`, `"reports.export"`...
-2. OWNER tạo PermissionProfile: `"Sales Manager"` = `{ users.read ✅, reports.view ✅ }`
-3. OWNER assign profile cho ADMIN/USER → có quyền ngay lập tức (Redis cache 5 phút)
+1. Developer định nghĩa permission code trong migration: `"users.read"`,
+   `"reports.export"`...
+2. OWNER tạo PermissionProfile: `"Sales Manager"` =
+   `{ users.read ✅, reports.view ✅ }`
+3. OWNER assign profile cho ADMIN/USER → có quyền ngay lập tức (Redis cache 5
+   phút)
 4. OWNER set individual override cho user cụ thể nếu cần
-5. Router chỉ khai báo: `requirePermission("users.read")` — không cần sửa khi muốn cấp/thu hồi quyền
+5. Router chỉ khai báo: `requirePermission("users.read")` — không cần sửa khi
+   muốn cấp/thu hồi quyền
 
 **Xem chi tiết:** [ARCHITECTURE.md — Section 6.6](./ARCHITECTURE.md)
 

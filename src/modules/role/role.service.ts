@@ -1,11 +1,7 @@
 import { AppError } from "../../shared/errors/AppError.ts";
 import { AuditService } from "../../core/audit.ts";
 import type { RoleRepository } from "./role.repository.ts";
-import type {
-  CreateRoleData,
-  Role,
-  UpdateRoleData,
-} from "./role.entity.ts";
+import type { CreateRoleData, Role, UpdateRoleData } from "./role.entity.ts";
 import type {
   PaginatedResult,
   PaginationParams,
@@ -93,7 +89,7 @@ export class RoleService {
       throw AppError.forbidden(`Cannot delete system role '${code}'.`);
     }
 
-    // Bắt lỗi Foregin Key ở DB (nếu role đang được gán cho user) thì PostgreSQL sẽ ném lỗi 
+    // Bắt lỗi Foregin Key ở DB (nếu role đang được gán cho user) thì PostgreSQL sẽ ném lỗi
     // "violates foreign key constraint", ta có thể handle ở đây hoặc để errorHandler lo.
     try {
       const deleted = await this.repo.delete(code);
@@ -102,8 +98,13 @@ export class RoleService {
       }
     } catch (err: unknown) {
       // Postgres error code for foreign key violation
-      if (err instanceof Error && err.message && err.message.includes("violates foreign key constraint")) {
-        throw AppError.conflict(`Cannot delete role '${code}' because it is still assigned to users.`);
+      if (
+        err instanceof Error && err.message &&
+        err.message.includes("violates foreign key constraint")
+      ) {
+        throw AppError.conflict(
+          `Cannot delete role '${code}' because it is still assigned to users.`,
+        );
       }
       throw err;
     }

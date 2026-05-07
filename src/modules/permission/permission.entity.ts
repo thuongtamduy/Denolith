@@ -80,8 +80,8 @@ export interface UserPermission {
  */
 export interface ResolvedPermissions {
   userId: string;
-  tier: UserTier;   // Tier hành vi — dùng để check owner bypass
+  tier: UserTier; // Tier hành vi — dùng để check owner bypass
   // Set các quyền cuối cùng sau khi đã merge profile + individual overrides
   granted: Set<string>; // "users.read", "reports.export", ...
-  denied: Set<string>;  // Quyền bị cấm tường minh (override > profile)
+  denied: Set<string>; // Quyền bị cấm tường minh (override > profile)
 }

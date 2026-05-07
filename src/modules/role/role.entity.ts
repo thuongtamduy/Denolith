@@ -6,11 +6,11 @@ import type { UserTier } from "../user/user.entity.ts";
  * system=true: không được xóa hoặc đổi tier.
  */
 export interface Role {
-  code: string;        // PK — "owner", "supervisor", "accountant"...
-  tier: UserTier;      // Hành vi bucket: "owner" | "admin" | "user"
-  name: string;        // Tên hiển thị: "Chủ sở hữu", "Giám sát viên"
+  code: string; // PK — "owner", "supervisor", "accountant"...
+  tier: UserTier; // Hành vi bucket: "owner" | "admin" | "user"
+  name: string; // Tên hiển thị: "Chủ sở hữu", "Giám sát viên"
   description: string | null;
-  system: boolean;     // true = 3 roles gốc, không được xóa
+  system: boolean; // true = 3 roles gốc, không được xóa
   active: boolean;
   created_at: Date;
 }

@@ -48,7 +48,7 @@ export class AuthService {
       {
         id: user.id,
         role: user.role,
-        tier: user.tier,  // lấy từ JOIN roles khi create user
+        tier: user.tier, // lấy từ JOIN roles khi create user
         exp: Math.floor(Date.now() / 1000) + 15 * 60,
       },
       config.jwtSecret,
@@ -104,7 +104,7 @@ export class AuthService {
       {
         id: user.id,
         role: user.role,
-        tier: user.tier,  // lấy từ JOIN roles khi findByEmailWithPassword
+        tier: user.tier, // lấy từ JOIN roles khi findByEmailWithPassword
         exp: Math.floor(Date.now() / 1000) + 15 * 60,
       },
       config.jwtSecret,
@@ -145,7 +145,7 @@ export class AuthService {
       {
         id: user.id,
         role: user.role,
-        tier: user.tier,  // lấy từ JOIN roles khi findById
+        tier: user.tier, // lấy từ JOIN roles khi findById
         exp: Math.floor(Date.now() / 1000) + 15 * 60,
       },
       config.jwtSecret,

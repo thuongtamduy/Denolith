@@ -94,7 +94,10 @@ app.use("/api/roles/*", authMiddleware);
 // Đăng ký các Route (Sử dụng Service từ Container)
 app.route("/api/auth", createAuthRoutes(container.authService));
 app.route("/api/users", createUserRoutes(container.userService));
-app.route("/api/permissions", createPermissionRoutes(container.permissionService));
+app.route(
+  "/api/permissions",
+  createPermissionRoutes(container.permissionService),
+);
 app.route("/api/roles", createRoleRoutes(container.roleService));
 
 // 4. Khởi động Server

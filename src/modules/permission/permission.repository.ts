@@ -31,7 +31,6 @@ export interface UpdateProfileData {
   active?: boolean;
 }
 
-
 export class PermissionRepository extends BaseRepository {
   constructor(db: Client) {
     super(db);

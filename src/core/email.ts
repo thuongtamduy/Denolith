@@ -30,7 +30,7 @@ function base64Encode(str: string): string {
 export async function sendEmail(payload: EmailPayload): Promise<void> {
   if (!config.smtp) {
     logger.warn(
-      `📧 [Email] SMTP chưa được cấu hình. Bỏ qua email tới ${payload.to}: "${payload.subject}"`,
+      `📧 [Email] SMTP not configured. Skipping email to ${payload.to}: "${payload.subject}"`,
     );
     return;
   }
@@ -114,10 +114,10 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
     }
 
     logger.info(
-      `✅ [Email] Đã gửi thành công tới ${payload.to}: "${payload.subject}"`,
+      `✅ [Email] Sent successfully to ${payload.to}: "${payload.subject}"`,
     );
   } catch (err) {
-    logger.error(`❌ [Email] Lỗi gửi email tới ${payload.to}`, err);
+    logger.error(`❌ [Email] Failed to send email to ${payload.to}`, err);
     // Không re-throw — email failure không nên crash request
   }
 }
@@ -147,20 +147,20 @@ export const EmailTemplates = {
     const safeHtmlName = escapeHtml(username);
 
     return {
-      subject: `Chào mừng ${cleanUsername} đến với Denolith! 🚀`,
+      subject: `Welcome ${cleanUsername} to Denolith! 🚀`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #4f46e5;">Chào mừng, ${safeHtmlName}! 🎉</h1>
-          <p>Tài khoản của bạn đã được tạo thành công trên <strong>Denolith</strong>.</p>
-          <p>Bắt đầu khám phá ngay!</p>
+          <h1 style="color: #4f46e5;">Welcome, ${safeHtmlName}! 🎉</h1>
+          <p>Your account has been successfully created on <strong>Denolith</strong>.</p>
+          <p>Start exploring now!</p>
           <hr style="border: 1px solid #e5e7eb;" />
           <p style="color: #9ca3af; font-size: 12px;">
-            Email này được gửi tự động, vui lòng không reply.
+            This is an automated email. Please do not reply.
           </p>
         </div>
       `,
       text:
-        `Chào mừng ${cleanUsername}! Tài khoản của bạn đã được tạo thành công trên Denolith.`,
+        `Welcome ${cleanUsername}! Your account has been successfully created on Denolith.`,
     };
   },
 };

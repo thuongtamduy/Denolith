@@ -1,6 +1,6 @@
 import type { Client, Transaction } from "@db/postgres";
 import { BaseRepository } from "../../core/base.repository.ts";
-import type { Role, CreateRoleData, UpdateRoleData } from "./role.entity.ts";
+import type { CreateRoleData, Role, UpdateRoleData } from "./role.entity.ts";
 import type {
   PaginatedResult,
   PaginationParams,

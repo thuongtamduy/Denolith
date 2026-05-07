@@ -5,13 +5,13 @@ import * as v from "valibot";
  */
 export const createProfileSchema = v.object({
   name: v.pipe(
-    v.string("Tên profile không được để trống"),
+    v.string("Profile name must not be empty."),
     v.minLength(1),
-    v.maxLength(100, "Tên profile tối đa 100 ký tự"),
+    v.maxLength(100, "Profile name must not exceed 100 characters."),
   ),
   tier: v.union(
     [v.literal("admin"), v.literal("user")],
-    "Tier phải là 'admin' hoặc 'user'",
+    "Tier must be 'admin' or 'user'.",
   ),
   description: v.optional(v.pipe(v.string(), v.maxLength(500))),
 });
@@ -30,7 +30,7 @@ export const updateProfileSchema = v.partial(v.object({
  * Thêm hoặc cập nhật permission vào profile.
  */
 export const setProfilePermissionSchema = v.object({
-  granted: v.boolean("Trường 'granted' phải là boolean"),
+  granted: v.boolean("Field 'granted' must be a boolean."),
 });
 
 /**
@@ -39,8 +39,8 @@ export const setProfilePermissionSchema = v.object({
  */
 export const assignProfileSchema = v.object({
   profileId: v.pipe(
-    v.string("profileId không được để trống"),
-    v.uuid("profileId phải là UUID hợp lệ"),
+    v.string("profileId must not be empty."),
+    v.uuid("profileId must be a valid UUID."),
   ),
 });
 
@@ -49,7 +49,7 @@ export const assignProfileSchema = v.object({
  * Set quyền override cá nhân.
  */
 export const setOverrideSchema = v.object({
-  granted: v.boolean("Trường 'granted' phải là boolean"),
+  granted: v.boolean("Field 'granted' must be a boolean."),
 });
 
 // Infer types để dùng trong route handlers

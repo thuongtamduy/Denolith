@@ -44,7 +44,7 @@ export const initWorkers = () => {
         ],
       );
     } catch (err) {
-      logger.error("❌ [Worker] Lỗi ghi Audit Log", err);
+      logger.error("❌ [Worker] Failed to write audit log", err);
     }
   });
 };

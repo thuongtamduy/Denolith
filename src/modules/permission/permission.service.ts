@@ -17,7 +17,6 @@ import type {
   PaginationParams,
 } from "../../shared/utils/pagination.ts";
 
-
 /** Cache TTL = 5 phút — ngắn để đảm bảo revoke quyền có hiệu lực sớm */
 const CACHE_TTL_SECONDS = 300;
 
@@ -210,24 +209,24 @@ export class PermissionService {
   ): Promise<void> {
     const userInfo = await this.repo.findUserRole(userId);
     if (!userInfo) {
-      throw AppError.notFound(`User ${userId} không tồn tại.`);
+      throw AppError.notFound(`User ${userId} not found.`);
     }
     if (userInfo.tier === "owner") {
-      throw AppError.badRequest("OWNER không cần permission profile.");
+      throw AppError.badRequest("OWNER does not require a permission profile.");
     }
 
     const profile = await this.findProfileById(profileId);
 
     if (!profile.active) {
       throw AppError.badRequest(
-        `Profile "${profile.name}" đang bị vô hiệu hóa.`,
+        `Profile "${profile.name}" is currently inactive.`,
       );
     }
 
     // So sánh tier của profile với tier của user
     if (profile.tier !== userInfo.tier) {
       throw AppError.badRequest(
-        `Profile tier "${profile.tier}" không khớp với user tier "${userInfo.tier}" (role: "${userInfo.role}").`,
+        `Profile tier "${profile.tier}" does not match user tier "${userInfo.tier}" (role: "${userInfo.role}").`,
       );
     }
 
@@ -243,7 +242,6 @@ export class PermissionService {
     });
   }
 
-
   async revokeProfile(
     userId: string,
     profileId: string,
@@ -252,7 +250,7 @@ export class PermissionService {
     const revoked = await this.repo.revokeProfileFromUser(userId, profileId);
     if (!revoked) {
       throw AppError.notFound(
-        `User không có profile này hoặc profile không tồn tại.`,
+        "Profile assignment not found for this user.",
       );
     }
     await this.invalidateCache(userId);
@@ -293,10 +291,13 @@ export class PermissionService {
     permissionCode: string,
     actorId: string,
   ): Promise<void> {
-    const removed = await this.repo.removeUserPermission(userId, permissionCode);
+    const removed = await this.repo.removeUserPermission(
+      userId,
+      permissionCode,
+    );
     if (!removed) {
       throw AppError.notFound(
-        `Override cho permission "${permissionCode}" không tồn tại.`,
+        `Override for permission "${permissionCode}" does not exist.`,
       );
     }
     await this.invalidateCache(userId);
@@ -345,7 +346,7 @@ export class PermissionService {
     );
     if (!removed) {
       throw AppError.notFound(
-        `Permission "${permissionCode}" không có trong profile này.`,
+        `Permission "${permissionCode}" does not exist in this profile.`,
       );
     }
   }
@@ -361,4 +362,3 @@ export class PermissionService {
     await this.repo.setProfilePermission(profileId, permissionCode, granted);
   }
 }
-

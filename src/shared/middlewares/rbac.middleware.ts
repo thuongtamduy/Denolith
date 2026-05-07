@@ -38,4 +38,3 @@ export const requireRole = (...allowedTiers: string[]) => {
     await next();
   };
 };
-

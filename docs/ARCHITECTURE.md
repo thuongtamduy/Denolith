@@ -1,25 +1,27 @@
 # ARCHITECTURE.md — Denolith Backend
 
-> **Mục đích:** Tài liệu kiến trúc bắt buộc đọc trước khi đóng góp code.  
+> **Mục đích:** Tài liệu kiến trúc bắt buộc đọc trước khi đóng góp code.\
 > Mọi AI agent hay developer phải bám sát tài liệu này. Vi phạm = PR bị reject.
 
 ---
 
 ## 1. Tech Stack
 
-| Thành phần | Công nghệ | Ghi chú |
-|---|---|---|
-| Runtime | **Deno 2** | Không dùng Node.js, không dùng npm packages |
-| Framework | **Hono** | `@hono/core`, không dùng Express/Fastify |
-| Database | **PostgreSQL** | `@db/postgres`, raw SQL — không dùng ORM |
-| Cache / Queue | **Redis** (optional) | Tự động fallback sang Memory nếu Redis tắt |
-| Validation | **Valibot** | `valibot` + `@hono/valibot-validator` |
-| Auth | **JWT** + **HttpOnly Cookie** | `@hono/jwt` cho access token, cookie cho refresh token |
+| Thành phần    | Công nghệ                     | Ghi chú                                                |
+| ------------- | ----------------------------- | ------------------------------------------------------ |
+| Runtime       | **Deno 2**                    | Không dùng Node.js, không dùng npm packages            |
+| Framework     | **Hono**                      | `@hono/core`, không dùng Express/Fastify               |
+| Database      | **PostgreSQL**                | `@db/postgres`, raw SQL — không dùng ORM               |
+| Cache / Queue | **Redis** (optional)          | Tự động fallback sang Memory nếu Redis tắt             |
+| Validation    | **Valibot**                   | `valibot` + `@hono/valibot-validator`                  |
+| Auth          | **JWT** + **HttpOnly Cookie** | `@hono/jwt` cho access token, cookie cho refresh token |
 
 ### ❌ Tuyệt đối không dùng
+
 - Prisma, Drizzle, TypeORM hay bất kỳ ORM nào
 - `npm:*` packages (chỉ dùng `jsr:` và `deno.land/x/`)
-- `bcryptjs` hoặc bất kỳ hash lib bên ngoài nào — dùng `crypto.subtle` (native Deno)
+- `bcryptjs` hoặc bất kỳ hash lib bên ngoài nào — dùng `crypto.subtle` (native
+  Deno)
 
 ---
 
@@ -136,12 +138,17 @@ HTTP Request
 
 ```typescript
 // ✅ ĐÚNG: Routes chỉ làm 3 việc: validate → call service → trả về response
-router.patch("/:id", validateUUID(), validateJson(updateUserSchema), async (c) => {
-  const id = c.req.param("id")!;
-  const body = c.req.valid("json") as UpdateUserInput; // cast từ InferOutput
-  const user = await service.update(id, body);
-  return c.json({ success: true, data: sanitizeUser(user) });
-});
+router.patch(
+  "/:id",
+  validateUUID(),
+  validateJson(updateUserSchema),
+  async (c) => {
+    const id = c.req.param("id")!;
+    const body = c.req.valid("json") as UpdateUserInput; // cast từ InferOutput
+    const user = await service.update(id, body);
+    return c.json({ success: true, data: sanitizeUser(user) });
+  },
+);
 
 // ❌ SAI: Không được có business logic trong routes
 // ❌ SAI: Không được dùng try/catch trong routes (dùng throw)
@@ -211,7 +218,8 @@ async update(id: string, data: UpdateUserData, tx?: Transaction): Promise<User |
 
 ## 5. Error Handling — Throw-to-Handler Pattern
 
-**Quy tắc tuyệt đối:** Không có `try/catch` trong route handlers và service methods. Mọi lỗi đều `throw AppError.*` và để `globalErrorHandler` bắt.
+**Quy tắc tuyệt đối:** Không có `try/catch` trong route handlers và service
+methods. Mọi lỗi đều `throw AppError.*` và để `globalErrorHandler` bắt.
 
 ```typescript
 // ✅ ĐÚNG: Throw AppError — globalErrorHandler tự format response
@@ -242,23 +250,26 @@ throw AppError.forbidden("Access denied");
 
 Các `catch {}` sau đây là **intentional** — không được thêm code vào:
 
-| File | Vị trí | Lý do |
-|---|---|---|
-| `auth.middleware.ts` | Redis blacklist check | Redis down → không block request |
-| `auth.routes.ts` | logout JWT decode | Token hết hạn khi logout là OK |
-| `cache.middleware.ts` | Redis cache read/write | Cache down → fallback memory |
-| `rate-limit.middleware.ts` | Redis rate limit | Down → fallback memory |
-| `queue.ts` | Redis queue fallback | Down → memory fallback / reconnect |
+| File                       | Vị trí                 | Lý do                              |
+| -------------------------- | ---------------------- | ---------------------------------- |
+| `auth.middleware.ts`       | Redis blacklist check  | Redis down → không block request   |
+| `auth.routes.ts`           | logout JWT decode      | Token hết hạn khi logout là OK     |
+| `cache.middleware.ts`      | Redis cache read/write | Cache down → fallback memory       |
+| `rate-limit.middleware.ts` | Redis rate limit       | Down → fallback memory             |
+| `queue.ts`                 | Redis queue fallback   | Down → memory fallback / reconnect |
 
 ---
 
 ## 6. Security Rules
 
 ### 6.1 Authentication & Authorization
+
 - **authMiddleware** chạy 3 lớp: JWT verify → Redis blacklist → DB alive check
 - **requireRole(...roles)** — legacy check theo tier: `requireRole("admin")`
-- **requirePermission(...codes)** — ABAC check theo permission code: `requirePermission("users.read")`
-- Role được lấy từ **JWT payload** (đã verify DB khi login). OWNER bypass mọi check.
+- **requirePermission(...codes)** — ABAC check theo permission code:
+  `requirePermission("users.read")`
+- Role được lấy từ **JWT payload** (đã verify DB khi login). OWNER bypass mọi
+  check.
 
 ### 6.6 RBAC + ABAC Permission Model
 
@@ -280,6 +291,7 @@ Tầng 3: INDIVIDUAL OVERRIDE (OWNER/Admin cấp cho từng user)
 ```
 
 **Priority chain khi check quyền:**
+
 ```
 1. OWNER?          → ✅ PASS ngay, 0 overhead
 2. denied set?     → ❌ DENY  (user_permissions.granted = false)
@@ -288,13 +300,18 @@ Tầng 3: INDIVIDUAL OVERRIDE (OWNER/Admin cấp cho từng user)
 ```
 
 **Cách dùng trong routes:**
+
 ```typescript
 // AND logic — phải có TẤT CẢ codes
 router.get("/users", requirePermission("users.read"), handler);
 router.delete("/users/:id", requirePermission("users.delete"), handler);
 
 // OR logic — có ÍT NHẤT 1 code
-router.get("/reports", requireAnyPermission("reports.view", "reports.export"), handler);
+router.get(
+  "/reports",
+  requireAnyPermission("reports.view", "reports.export"),
+  handler,
+);
 ```
 
 **Database tables hỗ trợ:**
@@ -330,23 +347,24 @@ Dev viết 1 lần (code):              Admin cấu hình runtime (DB):
   dù cấp/thu hồi bao nhiêu lần
 ```
 
-> Muốn cấp quyền cho ADMIN_C? → Assign profile, không cần sửa code, không cần deploy lại.
-
+> Muốn cấp quyền cho ADMIN_C? → Assign profile, không cần sửa code, không cần
+> deploy lại.
 
 **Permission codes hiện có** (developer-defined, thêm qua migration + seed):
 
-| Code | Mô tả |
-|---|---|
-| `users.read` | Xem danh sách và thông tin user |
-| `users.write` | Tạo mới và cập nhật user |
-| `users.delete` | Xóa user (soft delete) |
-| `users.restore` | Phục hồi user đã bị xóa |
-| `users.hard_delete` | Xóa vĩnh viễn user |
-| `reports.view` | Xem báo cáo |
-| `reports.export` | Xuất báo cáo ra file |
+| Code                 | Mô tả                                          |
+| -------------------- | ---------------------------------------------- |
+| `users.read`         | Xem danh sách và thông tin user                |
+| `users.write`        | Tạo mới và cập nhật user                       |
+| `users.delete`       | Xóa user (soft delete)                         |
+| `users.restore`      | Phục hồi user đã bị xóa                        |
+| `users.hard_delete`  | Xóa vĩnh viễn user                             |
+| `reports.view`       | Xem báo cáo                                    |
+| `reports.export`     | Xuất báo cáo ra file                           |
 | `permissions.manage` | Quản lý permission profiles và phân quyền user |
 
-**API quản lý permissions** (`/api/permissions/*`, yêu cầu `permissions.manage`):
+**API quản lý permissions** (`/api/permissions/*`, yêu cầu
+`permissions.manage`):
 
 ```
 GET    /api/permissions/codes                              — Xem tất cả permission codes
@@ -365,20 +383,28 @@ PUT    /api/permissions/users/:userId/overrides/:code      — Set override
 DELETE /api/permissions/users/:userId/overrides/:code      — Xóa override
 ```
 
-**Caching:** `ResolvedPermissions` được cache vào Redis với key `perm:v1:{userId}`, TTL 5 phút. Tự động invalidate khi assign/revoke profile hoặc set override.
+**Caching:** `ResolvedPermissions` được cache vào Redis với key
+`perm:v1:{userId}`, TTL 5 phút. Tự động invalidate khi assign/revoke profile
+hoặc set override.
 
 ### 6.2 Password Security
+
 - Hash bằng **PBKDF2 native** (`crypto.subtle`) — 100,000 iterations, SHA-256
 - Format lưu DB: `<uuid-salt>:<hex64-hash>`
 - **Chỉ** `UserService.create()` và `AuthService.register()` được hash password
-- **Chỉ** `findByEmailWithPassword()` được SELECT password — không dùng `SAFE_COLUMNS`
+- **Chỉ** `findByEmailWithPassword()` được SELECT password — không dùng
+  `SAFE_COLUMNS`
 
 ### 6.3 Timing Attack
-- `AuthService.login()` luôn chạy `verifyPassword()` dù user không tồn tại (`DUMMY_HASH`)
+
+- `AuthService.login()` luôn chạy `verifyPassword()` dù user không tồn tại
+  (`DUMMY_HASH`)
 - Không được `return` sớm trước khi hash hoàn thành
 
 ### 6.4 Audit Logging
-- Mọi action quan trọng phải gọi `AuditService.log()` — **trước khi throw** nếu cần
+
+- Mọi action quan trọng phải gọi `AuditService.log()` — **trước khi throw** nếu
+  cần
 - AuditService đẩy vào Queue (non-blocking) — không ảnh hưởng response time
 - Actions đã định nghĩa trong `AuditAction` type — phải thêm type trước khi dùng
 
@@ -389,8 +415,10 @@ throw AppError.unauthorized("Invalid email or password");
 ```
 
 ### 6.5 Input Validation
+
 - `validateUUID()` middleware chặn UUID sai định dạng trước khi xuống DB
-- `validateJson(schema)` wrap `vValidator` — trả về AppError.badRequest với message đầu tiên
+- `validateJson(schema)` wrap `vValidator` — trả về AppError.badRequest với
+  message đầu tiên
 - `extractPagination()` có NaN guard — `?page=abc` → fallback page=1
 
 ---
@@ -453,6 +481,7 @@ src/modules/foo/
 ```
 
 Sau đó đăng ký trong:
+
 - `src/core/container.ts` — khởi tạo repo + service
 - `src/migrations/` — thêm migration tạo table
 - `src/migrations/index.ts` — export migration mới
@@ -462,17 +491,18 @@ Sau đó đăng ký trong:
 
 ## 10. REST API Conventions
 
-| Hành động | Method | Path | Response |
-|---|---|---|---|
-| Lấy danh sách | `GET` | `/api/resources` | 200 + PaginatedResult |
-| Lấy 1 resource | `GET` | `/api/resources/:id` | 200 + data |
-| Tạo mới | `POST` | `/api/resources` | 201 + data + Location header |
-| Cập nhật (partial) | `PATCH` | `/api/resources/:id` | 200 + data |
-| Soft delete | `DELETE` | `/api/resources/:id` | 200 + message |
-| Hard delete | `DELETE` | `/api/resources/:id?force=true` | **204 No Content** |
-| Action/Hành động | `POST` | `/api/resources/:id/action` | 200 + data/message |
+| Hành động          | Method   | Path                            | Response                     |
+| ------------------ | -------- | ------------------------------- | ---------------------------- |
+| Lấy danh sách      | `GET`    | `/api/resources`                | 200 + PaginatedResult        |
+| Lấy 1 resource     | `GET`    | `/api/resources/:id`            | 200 + data                   |
+| Tạo mới            | `POST`   | `/api/resources`                | 201 + data + Location header |
+| Cập nhật (partial) | `PATCH`  | `/api/resources/:id`            | 200 + data                   |
+| Soft delete        | `DELETE` | `/api/resources/:id`            | 200 + message                |
+| Hard delete        | `DELETE` | `/api/resources/:id?force=true` | **204 No Content**           |
+| Action/Hành động   | `POST`   | `/api/resources/:id/action`     | 200 + data/message           |
 
 **Lưu ý:**
+
 - Dùng `PATCH` (không phải `PUT`) cho update vì đây là partial update
 - Action endpoints (restore, approve...) dùng `POST`, không dùng `PATCH`
 - Hard delete trả về `204` — không có body
@@ -486,17 +516,17 @@ Sau đó đăng ký trong:
 // src/core/container.ts — Singleton pattern
 
 class AppContainer {
-  db: Client
-  userService: UserService
-  authService: AuthService
-  permissionService: PermissionService
+  db: Client;
+  userService: UserService;
+  authService: AuthService;
+  permissionService: PermissionService;
 
   async init() {
-    const userRepo       = new UserRepository(this.db);
-    const authRepo       = new AuthRepository(this.db);
+    const userRepo = new UserRepository(this.db);
+    const authRepo = new AuthRepository(this.db);
     const permissionRepo = new PermissionRepository(this.db);
-    this.userService       = new UserService(userRepo);
-    this.authService       = new AuthService(userRepo, authRepo);
+    this.userService = new UserService(userRepo);
+    this.authService = new AuthService(userRepo, authRepo);
     this.permissionService = new PermissionService(permissionRepo);
   }
 }
@@ -505,10 +535,12 @@ export const container = new AppContainer();
 ```
 
 **Quy tắc:**
+
 - Không `new Service()` hay `new Repository()` trong route files
 - Mọi dependency được inject qua constructor (testable)
 - Container được import 1 lần duy nhất tại `main.ts`
-- Permission middleware dùng **dynamic import** (`await import("../../core/container.ts")`) để tránh circular dependency
+- Permission middleware dùng **dynamic import**
+  (`await import("../../core/container.ts")`) để tránh circular dependency
 
 ---
 
@@ -526,19 +558,171 @@ Signal → shutdown()
   └── closeDb()           # Đóng DB connection
 ```
 
-**Không gọi `Deno.exit()`** trong shutdown — để event loop tự kết thúc (cho Deno watcher hot-reload).
+**Không gọi `Deno.exit()`** trong shutdown — để event loop tự kết thúc (cho Deno
+watcher hot-reload).
 
 ---
 
 ## 13. Logging
 
 ```typescript
-logger.info("...")    // Thông tin thông thường
-logger.warn("...")    // Cảnh báo — business errors (AppError)
-logger.error("...")   // Lỗi nghiêm trọng — unhandled exceptions
-logger.debug("...")   // Chỉ hiện ở development mode
+logger.info("..."); // Thông tin thông thường
+logger.warn("..."); // Cảnh báo — business errors (AppError)
+logger.error("..."); // Lỗi nghiêm trọng — unhandled exceptions
+logger.debug("..."); // Chỉ hiện ở development mode
 
 // globalErrorHandler tự động log:
 // AppError → logger.warn("[CODE] message")
 // Unhandled → logger.error("[UNHANDLED] message", stack)
+```
+
+---
+
+## 14. Quy Ước Dành Cho AI Agent và Developer
+
+> **⚠️ Đây là phần BẮT BUỘC đọc trước khi viết bất kỳ dòng code nào.** Vi phạm
+> các quy tắc dưới đây sẽ bị reject trong quá trình review.
+
+---
+
+### 14.1 Quy tắc Ngôn ngữ (Language Rules)
+
+**Comments được viết bằng tiếng Việt. Runtime strings phải là tiếng Anh.**
+
+| Loại                                 | Ngôn ngữ      | Ví dụ                                            |
+| ------------------------------------ | ------------- | ------------------------------------------------ |
+| `// Comments` trong code             | ✅ Tiếng Việt | `// Kiểm tra tier compatibility trước khi gán`   |
+| `/** JSDoc */`                       | ✅ Tiếng Việt | `/** Lấy danh sách roles theo tier */`           |
+| `-- SQL comments` trong migration    | ✅ Tiếng Việt | `-- Trigger: tự động cập nhật updated_at`        |
+| `throw AppError.*()` messages        | ✅ Tiếng Anh  | `throw AppError.notFound("Role not found.")`     |
+| `c.json({ message: ... })` responses | ✅ Tiếng Anh  | `{ message: "Profile deleted successfully." }`   |
+| `logger.info/warn/error()`           | ✅ Tiếng Anh  | `logger.error("Failed to write audit log", err)` |
+| Validation error messages (Valibot)  | ✅ Tiếng Anh  | `v.string("Name must not be empty.")`            |
+| Email subject/body                   | ✅ Tiếng Anh  | `subject: "Welcome to Denolith! 🚀"`             |
+
+---
+
+### 14.2 Cấu trúc Module
+
+Mỗi feature module phải tuân theo cấu trúc sau (không thêm, không bớt file trừ
+khi có lý do rõ ràng):
+
+```
+src/modules/<tên_module>/
+├── <tên>.entity.ts       # TypeScript interfaces/types — KHÔNG có logic
+├── <tên>.repository.ts   # Tất cả SQL queries — extends BaseRepository
+├── <tên>.service.ts      # Business logic — inject Repository
+├── <tên>.routes.ts       # Hono router — thin controller, chỉ parse input/output
+└── <tên>.validation.ts   # Valibot schemas + inferred types
+```
+
+**Cấm** để SQL raw trong `routes.ts` hoặc `service.ts`. SQL chỉ được phép ở
+`repository.ts`.
+
+---
+
+### 14.3 Error Handling
+
+**Luôn dùng `AppError` cho business errors, không bao giờ throw `new Error()`.**
+
+```typescript
+// ✅ Đúng
+throw AppError.notFound("User not found.");
+throw AppError.badRequest("Role tier mismatch.");
+throw AppError.forbidden("You do not have permission.");
+throw AppError.conflict("Email already exists.");
+
+// ❌ Sai — không bao giờ dùng
+throw new Error("User not found");
+```
+
+Bảng mã lỗi chuẩn:
+
+| Method                       | HTTP Status | Dùng khi                          |
+| ---------------------------- | ----------- | --------------------------------- |
+| `AppError.badRequest()`      | 400         | Input không hợp lệ, tier mismatch |
+| `AppError.unauthorized()`    | 401         | Chưa đăng nhập, token hết hạn     |
+| `AppError.forbidden()`       | 403         | Đã đăng nhập nhưng không có quyền |
+| `AppError.notFound()`        | 404         | Resource không tồn tại            |
+| `AppError.conflict()`        | 409         | Duplicate key, FK đang được dùng  |
+| `AppError.tooManyRequests()` | 429         | Vượt rate limit                   |
+
+---
+
+### 14.4 Permission & Security
+
+**Bất kỳ route nào liên quan đến dữ liệu nhạy cảm phải có middleware bảo vệ.**
+
+```typescript
+// ✅ Đúng — guard rõ ràng
+router.use("*", requirePermission("permissions.manage"));
+router.patch("/:id/role", requirePermission("permissions.manage"), ...);
+
+// ❌ Sai — không có guard
+router.delete("/roles/:code", async (c) => { ... });
+```
+
+Các quy tắc bất biến:
+
+- **OWNER** (`tier = "owner"`) bypass tất cả mọi permission check. Không được
+  thêm logic kiểm tra cho OWNER.
+- **System roles** (`system = true`) không bao giờ được xóa hoặc thay đổi
+  `tier`. Phải kiểm tra ở Service layer trước khi gọi Repository.
+- **Không bao giờ** expose `password` hash trong response — luôn dùng
+  `sanitizeUser()`.
+- **Mọi hành động ghi** (create, update, delete, assign) phải gọi
+  `AuditService.log()` sau khi thao tác thành công.
+
+---
+
+### 14.5 Database & Migration
+
+**Không sửa migration đã chạy (`001_init.ts`) nếu database đang ở production.**
+Tạo migration mới (`002_xxx.ts`) cho mọi thay đổi schema.
+
+Quy ước đặt tên:
+
+- Bảng: `snake_case`, số nhiều → `users`, `refresh_tokens`,
+  `permission_profiles`
+- FK: luôn khai báo `ON DELETE CASCADE` hoặc `ON DELETE SET NULL` — không được
+  để trống
+- Index: `idx_<tên_bảng>_<cột>` → `idx_users_email`, `idx_roles_tier`
+- Mọi bảng có thao tác update phải có `updated_at` + trigger
+  `trigger_set_updated_at()`
+
+**Cấm dùng ORM.** Mọi query đều là raw SQL qua `BaseRepository`.
+
+---
+
+### 14.6 Redis Cache Invalidation
+
+Khi nào phải gọi `permissionService.invalidateCache(userId)`:
+
+| Hành động                     | Bắt buộc invalidate?                                    |
+| ----------------------------- | ------------------------------------------------------- |
+| Gán/Thu hồi Profile cho User  | ✅ Có                                                   |
+| Set/Xóa Override cá nhân      | ✅ Có                                                   |
+| Cập nhật `active` của Profile | ✅ Có (với tất cả user đang dùng profile đó)            |
+| Đổi Role của User             | ❌ Không cần (role nằm trong JWT, cần logout/login lại) |
+| Tạo/Xóa Role                  | ❌ Không cần                                            |
+
+**Cache TTL = 5 phút.** Nếu sửa DB trực tiếp (không qua API), cache sẽ không tự
+invalidate — phải xóa tay bằng `redis-cli DEL perm:v1:<userId>` hoặc đợi hết
+TTL.
+
+---
+
+### 14.7 Những điều AI Agent TUYỆT ĐỐI không được làm
+
+```
+❌ Tự ý thêm npm package (chỉ dùng jsr: và deno.land/x/)
+❌ Dùng ORM (Prisma, Drizzle, TypeORM, v.v.)
+❌ Viết SQL trong routes.ts hoặc service.ts
+❌ Throw new Error() cho business errors (dùng AppError)
+❌ Viết runtime message bằng tiếng Việt (comments được, strings không được)
+❌ Expose password field trong response (luôn sanitizeUser())
+❌ Thêm logic vào entity.ts (chỉ được chứa interfaces/types)
+❌ Sửa system roles (system = true) ở DB hoặc code
+❌ Gọi Deno.exit() trong bất kỳ flow nào (kể cả shutdown)
+❌ Hardcode secrets hoặc credentials trong code (dùng .env)
 ```
