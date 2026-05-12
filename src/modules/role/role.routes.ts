@@ -15,6 +15,7 @@ import {
 } from "./role.validation.ts";
 
 import { authMiddleware } from "../../shared/middlewares/auth.middleware.ts";
+import { describeRoute } from "../../shared/utils/openapi.ts";
 
 /**
  * Role management routes.
@@ -33,34 +34,66 @@ export const createRoleRoutes = (service: RoleService) => {
    * GET /api/roles
    * Lấy danh sách toàn bộ roles.
    */
-  router.get("/", validateQuery(paginationQuerySchema), async (c) => {
-    const params = extractPagination(c.req.query());
-    const result = await service.findMany(params);
-    return c.json({ success: true, ...result });
-  });
+  router.get(
+    "/",
+    describeRoute({
+      tags: ["Roles"],
+      summary: "Get Roles",
+      responses: {
+        200: { description: "Get roles successfully" },
+      },
+    }),
+    validateQuery(paginationQuerySchema),
+    async (c) => {
+      const params = extractPagination(c.req.query());
+      const result = await service.findMany(params);
+      return c.json({ success: true, ...result });
+    },
+  );
 
   /**
    * GET /api/roles/:code
    * Lấy chi tiết 1 role.
    */
-  router.get("/:code", async (c) => {
-    const code = c.req.param("code")!;
-    const role = await service.findByCode(code);
-    return c.json({ success: true, data: role });
-  });
+  router.get(
+    "/:code",
+    describeRoute({
+      tags: ["Roles"],
+      summary: "Get Role Details",
+      responses: {
+        200: { description: "Get role details successfully" },
+      },
+    }),
+    async (c) => {
+      const code = c.req.param("code")!;
+      const role = await service.findByCode(code);
+      return c.json({ success: true, data: role });
+    },
+  );
 
   /**
    * POST /api/roles
    * Tạo role mới. (Chỉ admin/user tier)
    */
-  router.post("/", validateJson(createRoleSchema), async (c) => {
-    const body = c.req.valid("json") as CreateRoleInput;
-    const actorId = c.get("jwtPayload").id;
-    const role = await service.create(body, actorId);
+  router.post(
+    "/",
+    describeRoute({
+      tags: ["Roles"],
+      summary: "Create Role",
+      responses: {
+        201: { description: "Role created successfully" },
+      },
+    }),
+    validateJson(createRoleSchema),
+    async (c) => {
+      const body = c.req.valid("json") as CreateRoleInput;
+      const actorId = c.get("jwtPayload").id;
+      const role = await service.create(body, actorId);
 
-    c.header("Location", `/api/roles/${role.code}`);
-    return c.json({ success: true, data: role }, 201);
-  });
+      c.header("Location", `/api/roles/${role.code}`);
+      return c.json({ success: true, data: role }, 201);
+    },
+  );
 
   /**
    * PATCH /api/roles/:code
@@ -68,6 +101,13 @@ export const createRoleRoutes = (service: RoleService) => {
    */
   router.patch(
     "/:code",
+    describeRoute({
+      tags: ["Roles"],
+      summary: "Update Role",
+      responses: {
+        200: { description: "Role updated successfully" },
+      },
+    }),
     validateJson(updateRoleSchema),
     async (c) => {
       const code = c.req.param("code")!;
@@ -83,16 +123,26 @@ export const createRoleRoutes = (service: RoleService) => {
    * DELETE /api/roles/:code
    * Xóa role. Không cho xóa system role.
    */
-  router.delete("/:code", async (c) => {
-    const code = c.req.param("code")!;
-    const actorId = c.get("jwtPayload").id;
+  router.delete(
+    "/:code",
+    describeRoute({
+      tags: ["Roles"],
+      summary: "Delete Role",
+      responses: {
+        200: { description: "Role deleted successfully" },
+      },
+    }),
+    async (c) => {
+      const code = c.req.param("code")!;
+      const actorId = c.get("jwtPayload").id;
 
-    await service.delete(code, actorId);
-    return c.json({
-      success: true,
-      message: `Role '${code}' has been deleted.`,
-    });
-  });
+      await service.delete(code, actorId);
+      return c.json({
+        success: true,
+        message: `Role '${code}' has been deleted.`,
+      });
+    },
+  );
 
   return router;
 };

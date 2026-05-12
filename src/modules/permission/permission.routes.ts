@@ -91,24 +91,49 @@ export const createPermissionRoutes = (service: PermissionService) => {
    * POST /api/permissions/profiles
    * Tạo permission profile mới.
    */
-  router.post("/profiles", validateJson(createProfileSchema), async (c) => {
-    const body = c.req.valid("json") as CreateProfileInput;
-    const actorId = c.get("jwtPayload").id;
-    const profile = await service.createProfile(body, actorId);
-    c.header("Location", `/api/permissions/profiles/${profile.id}`);
-    return c.json({ success: true, data: profile }, 201);
-  });
+  router.post(
+    "/profiles",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Create Permission Profile",
+      responses: {
+        201: { description: "Permission profile created successfully" },
+      },
+    }),
+    validateJson(createProfileSchema),
+    async (c) => {
+      const body = c.req.valid("json") as CreateProfileInput;
+      const actorId = c.get("jwtPayload").id;
+      const profile = await service.createProfile(body, actorId);
+      c.header("Location", `/api/permissions/profiles/${profile.id}`);
+      return c.json({ success: true, data: profile }, 201);
+    },
+  );
 
   /**
    * GET /api/permissions/profiles/:id
    * Chi tiết 1 profile kèm danh sách permissions bên trong.
    */
-  router.get("/profiles/:id", validateUUID("id"), async (c) => {
-    const id = c.req.param("id")!;
-    const profile = await service.findProfileById(id);
-    const codes = await service.findProfilePermissions(id);
-    return c.json({ success: true, data: { ...profile, permissions: codes } });
-  });
+  router.get(
+    "/profiles/:id",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Get Permission Profile",
+      responses: {
+        200: { description: "Get permission profile successfully" },
+      },
+    }),
+    validateUUID("id"),
+    async (c) => {
+      const id = c.req.param("id")!;
+      const profile = await service.findProfileById(id);
+      const codes = await service.findProfilePermissions(id);
+      return c.json({
+        success: true,
+        data: { ...profile, permissions: codes },
+      });
+    },
+  );
 
   /**
    * PATCH /api/permissions/profiles/:id
@@ -116,6 +141,13 @@ export const createPermissionRoutes = (service: PermissionService) => {
    */
   router.patch(
     "/profiles/:id",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Update Permission Profile",
+      responses: {
+        200: { description: "Permission profile updated successfully" },
+      },
+    }),
     validateUUID("id"),
     validateJson(updateProfileSchema),
     async (c) => {
@@ -131,12 +163,26 @@ export const createPermissionRoutes = (service: PermissionService) => {
    * DELETE /api/permissions/profiles/:id
    * Xóa profile. Toàn bộ user_profiles assignment bị cascade xóa.
    */
-  router.delete("/profiles/:id", validateUUID("id"), async (c) => {
-    const id = c.req.param("id")!;
-    const actorId = c.get("jwtPayload").id;
-    await service.deleteProfile(id, actorId);
-    return c.json({ success: true, message: "Profile deleted successfully." });
-  });
+  router.delete(
+    "/profiles/:id",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Delete Permission Profile",
+      responses: {
+        200: { description: "Permission profile deleted successfully" },
+      },
+    }),
+    validateUUID("id"),
+    async (c) => {
+      const id = c.req.param("id")!;
+      const actorId = c.get("jwtPayload").id;
+      await service.deleteProfile(id, actorId);
+      return c.json({
+        success: true,
+        message: "Profile deleted successfully.",
+      });
+    },
+  );
 
   // ───────────────────────────────────────────
   // PROFILE ↔ PERMISSION CODES
@@ -149,6 +195,13 @@ export const createPermissionRoutes = (service: PermissionService) => {
    */
   router.put(
     "/profiles/:id/codes/:code",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Set Profile Permission",
+      responses: {
+        200: { description: "Profile permission set successfully" },
+      },
+    }),
     validateUUID("id"),
     validateJson(setProfilePermissionSchema),
     async (c) => {
@@ -158,8 +211,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       await service.setProfilePermission(profileId, permissionCode, granted);
       return c.json({
         success: true,
-        message: `Permission "${permissionCode}" has been ${granted ? "granted to" : "denied in"
-          } the profile.`,
+        message: `Permission "${permissionCode}" has been ${
+          granted ? "granted to" : "denied in"
+        } the profile.`,
       });
     },
   );
@@ -168,15 +222,26 @@ export const createPermissionRoutes = (service: PermissionService) => {
    * DELETE /api/permissions/profiles/:id/codes/:code
    * Xóa 1 permission code khỏi profile.
    */
-  router.delete("/profiles/:id/codes/:code", validateUUID("id"), async (c) => {
-    const profileId = c.req.param("id")!;
-    const permissionCode = c.req.param("code")!;
-    await service.removeProfilePermission(profileId, permissionCode);
-    return c.json({
-      success: true,
-      message: `Permission "${permissionCode}" removed from profile.`,
-    });
-  });
+  router.delete(
+    "/profiles/:id/codes/:code",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Remove Profile Permission",
+      responses: {
+        200: { description: "Profile permission removed successfully" },
+      },
+    }),
+    validateUUID("id"),
+    async (c) => {
+      const profileId = c.req.param("id")!;
+      const permissionCode = c.req.param("code")!;
+      await service.removeProfilePermission(profileId, permissionCode);
+      return c.json({
+        success: true,
+        message: `Permission "${permissionCode}" removed from profile.`,
+      });
+    },
+  );
 
   // ───────────────────────────────────────────
   // USER ↔ PROFILES
@@ -188,6 +253,13 @@ export const createPermissionRoutes = (service: PermissionService) => {
    */
   router.get(
     "/users/:userId/profiles",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Get User Profiles",
+      responses: {
+        200: { description: "Get user profiles successfully" },
+      },
+    }),
     validateUUID("userId"),
     async (c) => {
       const userId = c.req.param("userId")!;
@@ -203,6 +275,13 @@ export const createPermissionRoutes = (service: PermissionService) => {
    */
   router.post(
     "/users/:userId/profiles",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Assign Profile to User",
+      responses: {
+        200: { description: "Profile assigned successfully" },
+      },
+    }),
     validateUUID("userId"),
     validateJson(assignProfileSchema),
     async (c) => {
@@ -223,6 +302,13 @@ export const createPermissionRoutes = (service: PermissionService) => {
    */
   router.delete(
     "/users/:userId/profiles/:profileId",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Revoke Profile from User",
+      responses: {
+        200: { description: "Profile revoked successfully" },
+      },
+    }),
     validateUUID("userId"),
     validateUUID("profileId"),
     async (c) => {
@@ -247,6 +333,13 @@ export const createPermissionRoutes = (service: PermissionService) => {
    */
   router.get(
     "/users/:userId/overrides",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Get User Overrides",
+      responses: {
+        200: { description: "Get user overrides successfully" },
+      },
+    }),
     validateUUID("userId"),
     async (c) => {
       const userId = c.req.param("userId")!;
@@ -262,6 +355,13 @@ export const createPermissionRoutes = (service: PermissionService) => {
    */
   router.put(
     "/users/:userId/overrides/:code",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Set User Override",
+      responses: {
+        200: { description: "User override set successfully" },
+      },
+    }),
     validateUUID("userId"),
     validateJson(setOverrideSchema),
     async (c) => {
@@ -272,8 +372,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       await service.setOverride(userId, permissionCode, granted, actorId);
       return c.json({
         success: true,
-        message: `Override "${permissionCode}" has been ${granted ? "granted" : "revoked"
-          }.`,
+        message: `Override "${permissionCode}" has been ${
+          granted ? "granted" : "revoked"
+        }.`,
       });
     },
   );
@@ -284,6 +385,13 @@ export const createPermissionRoutes = (service: PermissionService) => {
    */
   router.delete(
     "/users/:userId/overrides/:code",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Remove User Override",
+      responses: {
+        200: { description: "User override removed successfully" },
+      },
+    }),
     validateUUID("userId"),
     async (c) => {
       const userId = c.req.param("userId")!;
