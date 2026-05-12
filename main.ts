@@ -91,6 +91,10 @@ app.get(
           url: `http://localhost:${config.port}`,
           description: "Local environment",
         },
+        {
+          url: `https://api.denolith.com`,
+          description: "Production environment",
+        },
       ],
       components: {
         securitySchemes: {
