@@ -11,12 +11,14 @@
     "migrate:reset": "deno run -A --env npm:prisma migrate reset --schema=prisma/schema",
     "migrate:status": "deno run -A --env npm:prisma migrate status --schema=prisma/schema",
     "seed": "deno run -A --env ./prisma/seeds/index.ts",
-    "compile": "deno compile -A --env --output ./dist/denolith main.ts",
-    "compile:linux": "deno compile -A --env --target x86_64-unknown-linux-gnu --output ./dist/denolith-linux main.ts",
-    "format": "deno fmt && deno lint --fix && deno task prisma:format",
+  "format": "deno fmt && deno lint --fix && deno task prisma:format",
     "prisma:format": "deno run -A --env npm:prisma format --schema=prisma/schema",
     "prisma:generate": "deno run -A --env npm:prisma generate --schema=prisma/schema",
-    "prisma:push": "deno run -A --env npm:prisma db push --schema=prisma/schema"
+    "prisma:push": "deno run -A --env npm:prisma db push --schema=prisma/schema",
+    "deps:check": "deno outdated --latest",
+    "deps:update": "deno outdated --update --latest",
+    "compile": "deno compile -A --env --output ./dist/denolith main.ts",
+    "compile:linux": "deno compile -A --env --target x86_64-unknown-linux-gnu --output ./dist/denolith-linux main.ts"
   },
   "imports": {
     "@hono/core": "jsr:@hono/hono@4.12.18",
