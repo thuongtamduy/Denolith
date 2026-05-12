@@ -1,13 +1,17 @@
 model Permission {
   id          String   @id @default(uuid()) @db.Uuid
   code        String   @unique
+  module      String? // Nhóm permission: users, reports, permissions...
   description String?
+  active      Boolean  @default(true)
   createdAt   DateTime @default(now()) @map("created_at")
 
   profilePermissions ProfilePermission[]
   userPermissions    UserPermission[]
 
   @@index([code])
+  @@index([module])
+  @@index([active])
   @@map("permissions")
 }
 

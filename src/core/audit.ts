@@ -27,7 +27,11 @@ export interface AuditEntry {
   action: AuditAction; // Loại hành động
   targetType?: string; // Loại đối tượng: "user", "post"...
   targetId?: string; // ID của đối tượng bị tác động
-  metadata?: Record<string, unknown>; // IP, user-agent, thông tin bổ sung
+  status?: "success" | "failure"; // Kết quả hành động (default: success)
+  ipAddress?: string; // IP client thực hiện
+  userAgent?: string; // User-Agent header
+  duration?: number; // Thời gian xử lý (ms)
+  metadata?: Record<string, unknown>; // Thông tin bổ sung
 }
 
 /**

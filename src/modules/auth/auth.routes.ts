@@ -57,7 +57,18 @@ export const createAuthRoutes = (service: AuthService) => {
     validateJson(loginSchema),
     async (c) => {
       const body = c.req.valid("json") as LoginInput;
-      const result = await service.login(body);
+
+      // Lấy IP client (ưu tiên X-Forwarded-For khi qua reverse proxy)
+      const clientIp = c.req.header("X-Forwarded-For")?.split(",")[0]?.trim() ||
+        c.req.header("X-Real-Ip") ||
+        "unknown";
+      const clientUserAgent = c.req.header("User-Agent") || "unknown";
+
+      const result = await service.login({
+        ...body,
+        clientIp,
+        clientUserAgent,
+      });
 
       setCookie(c, "refresh_token", result.refreshToken, {
         httpOnly: true,

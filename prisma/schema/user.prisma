@@ -3,14 +3,19 @@ model Role {
   tier        String // CHECK (tier IN ('owner', 'admin', 'user'))
   name        String
   description String?
+  color       String? // Màu badge hiển thị trên UI (hex: #EF4444)
+  icon        String? // Icon name cho UI (shield, crown, user)
+  sortOrder   Int      @default(0) @map("sort_order")
   system      Boolean  @default(false)
   active      Boolean  @default(true)
   createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
   users User[]
 
   @@index([tier])
   @@index([active])
+  @@index([sortOrder])
   @@map("roles")
 }
 
@@ -19,16 +24,40 @@ model User {
   username String  @unique
   email    String  @unique
   password String
-  phone    String?
   roleCode String  @default("user") @map("role")
   role     Role    @relation(fields: [roleCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
   active   Boolean @default(true)
 
+  // --- Thông tin cá nhân ---
+  firstName   String?   @map("first_name")
+  lastName    String?   @map("last_name")
+  displayName String?   @map("display_name")
+  avatar      String? // URL to avatar image
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date
+  gender      String? // CHECK (gender IN ('male', 'female', 'other'))
+  bio         String?
+
+  // --- Liên hệ ---
+  phone         String? @unique
+  phoneVerified Boolean @default(false) @map("phone_verified")
+  emailVerified Boolean @default(false) @map("email_verified")
+
+  // --- Địa chỉ ---
+  address String?
+  city    String?
+  country String?
+
+  // --- Theo dõi đăng nhập ---
+  lastLoginAt DateTime? @map("last_login_at")
+  lastLoginIp String?   @map("last_login_ip")
+
+  // --- Timestamps & Soft delete ---
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
   deleted   Boolean   @default(false)
   deletedAt DateTime? @map("deleted_at")
 
+  // --- Relations ---
   refreshTokens   RefreshToken[]
   userProfiles    UserProfile[]
   userPermissions UserPermission[]
@@ -39,17 +68,22 @@ model User {
   @@index([email])
   @@index([username])
   @@index([roleCode])
+  @@index([active])
   @@map("users")
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  ipAddress String?   @map("ip_address")
+  userAgent String?   @map("user_agent")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([token])
+  @@index([userId])
   @@map("refresh_tokens")
 }

@@ -19,6 +19,8 @@ export interface RegisterData {
 export interface LoginData {
   email: string;
   password: string;
+  clientIp?: string;
+  clientUserAgent?: string;
 }
 
 export interface AuthTokens {
@@ -95,6 +97,9 @@ export class AuthService {
     if (!user || !valid) {
       await AuditService.log({
         action: "auth.login_failed",
+        status: "failure",
+        ipAddress: data.clientIp,
+        userAgent: data.clientUserAgent,
         metadata: { email: data.email },
       });
       throw AppError.unauthorized("Invalid email or password");
@@ -124,6 +129,17 @@ export class AuthService {
         userId: user.id,
         token: refreshToken,
         expiresAt,
+        ipAddress: data.clientIp ?? null,
+        userAgent: data.clientUserAgent ?? null,
+      },
+    });
+
+    // Cập nhật thông tin đăng nhập cuối cùng
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        lastLoginAt: new Date(),
+        lastLoginIp: data.clientIp ?? null,
       },
     });
 
@@ -132,6 +148,8 @@ export class AuthService {
       action: "auth.login",
       targetType: "user",
       targetId: user.id,
+      ipAddress: data.clientIp,
+      userAgent: data.clientUserAgent,
     });
 
     return { user, accessToken, refreshToken };

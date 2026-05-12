@@ -4,12 +4,17 @@ model AuditLog {
   action     String
   targetType String?  @map("target_type")
   targetId   String?  @map("target_id")
+  status     String   @default("success") // success | failure
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  duration   Int? // Thời gian xử lý request (ms)
   metadata   Json?    @default("{}")
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@index([actorId])
   @@index([targetType, targetId])
   @@index([action])
+  @@index([ipAddress])
   @@index([createdAt(sort: Desc)])
   @@map("audit_logs")
 }
