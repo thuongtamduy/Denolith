@@ -1,43 +1,61 @@
+import type { PrismaClient } from "@db";
 import { AppError } from "../../shared/errors/AppError.ts";
 import { AuditService } from "../../core/audit.ts";
-import type { RoleRepository } from "./role.repository.ts";
-import type { CreateRoleData, Role, UpdateRoleData } from "./role.entity.ts";
-import type {
-  PaginatedResult,
-  PaginationParams,
-} from "../../shared/utils/pagination.ts";
+import type { PaginationParams } from "../../shared/utils/pagination.ts";
+import type { CreateRoleInput, UpdateRoleInput } from "./role.validation.ts";
 
 export class RoleService {
-  constructor(private repo: RoleRepository) {}
+  constructor(private prisma: PrismaClient) {}
 
-  async findMany(params: PaginationParams): Promise<PaginatedResult<Role>> {
-    return await this.repo.findMany(params);
+  async findMany(params: PaginationParams) {
+    const { page, limit } = params;
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.role.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+      }),
+      this.prisma.role.count(),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
-  async findByCode(code: string): Promise<Role> {
-    const role = await this.repo.findByCode(code);
+  async findByCode(code: string) {
+    const role = await this.prisma.role.findUnique({ where: { code } });
     if (!role) {
       throw AppError.notFound(`Role '${code}' not found.`);
     }
     return role;
   }
 
-  async create(data: CreateRoleData, actorId?: string): Promise<Role> {
-    // 1. Kiểm tra tồn tại
-    const existing = await this.repo.findByCode(data.code);
+  async create(data: CreateRoleInput, actorId?: string) {
+    const existing = await this.prisma.role.findUnique({
+      where: { code: data.code },
+    });
     if (existing) {
       throw AppError.conflict(`Role code '${data.code}' already exists.`);
     }
 
-    // 2. Không cho phép tạo tier owner (validation đã block, nhưng check thêm để an toàn)
-    if ((data.tier as string) === "owner") {
-      throw AppError.badRequest("Cannot create a role with 'owner' tier.");
-    }
+    const role = await this.prisma.role.create({
+      data: {
+        code: data.code,
+        tier: data.tier,
+        name: data.name,
+        description: data.description,
+      },
+    });
 
-    // 3. Tạo
-    const role = await this.repo.create(data);
-
-    // 4. Audit
     await AuditService.log({
       actorId,
       action: "role.create",
@@ -51,10 +69,10 @@ export class RoleService {
 
   async update(
     code: string,
-    data: UpdateRoleData,
+    data: UpdateRoleInput,
     actorId?: string,
-  ): Promise<Role> {
-    const existing = await this.repo.findByCode(code);
+  ) {
+    const existing = await this.prisma.role.findUnique({ where: { code } });
     if (!existing) {
       throw AppError.notFound(`Role '${code}' not found.`);
     }
@@ -63,10 +81,14 @@ export class RoleService {
       throw AppError.forbidden(`Cannot update system role '${code}'.`);
     }
 
-    const updated = await this.repo.update(code, data);
-    if (!updated) {
-      throw AppError.notFound(`Role '${code}' not found.`);
-    }
+    const updated = await this.prisma.role.update({
+      where: { code },
+      data: {
+        name: data.name,
+        description: data.description,
+        active: data.active,
+      },
+    });
 
     await AuditService.log({
       actorId,
@@ -80,7 +102,7 @@ export class RoleService {
   }
 
   async delete(code: string, actorId?: string): Promise<void> {
-    const existing = await this.repo.findByCode(code);
+    const existing = await this.prisma.role.findUnique({ where: { code } });
     if (!existing) {
       throw AppError.notFound(`Role '${code}' not found.`);
     }
@@ -89,19 +111,11 @@ export class RoleService {
       throw AppError.forbidden(`Cannot delete system role '${code}'.`);
     }
 
-    // Bắt lỗi Foregin Key ở DB (nếu role đang được gán cho user) thì PostgreSQL sẽ ném lỗi
-    // "violates foreign key constraint", ta có thể handle ở đây hoặc để errorHandler lo.
     try {
-      const deleted = await this.repo.delete(code);
-      if (!deleted) {
-        throw AppError.notFound(`Role '${code}' not found.`);
-      }
+      await this.prisma.role.delete({ where: { code } });
     } catch (err: unknown) {
-      // Postgres error code for foreign key violation
-      if (
-        err instanceof Error && err.message &&
-        err.message.includes("violates foreign key constraint")
-      ) {
+      // Prisma error code for foreign key violation: P2003
+      if ((err as { code?: string }).code === "P2003") {
         throw AppError.conflict(
           `Cannot delete role '${code}' because it is still assigned to users.`,
         );

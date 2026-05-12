@@ -1,13 +1,12 @@
 import { sign } from "@hono/jwt";
-import type { UserRepository } from "../user/user.repository.ts";
-import type { AuthRepository } from "./auth.repository.ts";
+import type { PrismaClient } from "@db";
 import { hashPassword, verifyPassword } from "../../shared/utils/hash.ts";
 import { AppError } from "../../shared/errors/AppError.ts";
 import { config } from "../../core/config.ts";
 import { Queue } from "../../core/queue.ts";
 import { AuditService } from "../../core/audit.ts";
+import { redisClient } from "../../core/redis.ts";
 
-// Mã băm giả lập để chống Timing Attack (Có độ dài bằng chính xác Hash thật)
 const DUMMY_HASH =
   "00000000000000000000000000000000:0000000000000000000000000000000000000000000000000000000000000000";
 
@@ -28,64 +27,72 @@ export interface AuthTokens {
 }
 
 export class AuthService {
-  constructor(
-    private userRepo: UserRepository,
-    private authRepo: AuthRepository,
-  ) {}
+  constructor(private prisma: PrismaClient) {}
 
   async register(data: RegisterData) {
-    const existing = await this.userRepo.findByEmail(data.email);
-    if (existing) throw AppError.conflict("Email already in use");
+    return await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.user.findUnique({
+        where: { email: data.email },
+      });
+      if (existing) throw AppError.conflict("Email already in use");
 
-    const hashedPassword = await hashPassword(data.password);
-    const user = await this.userRepo.create({
-      username: data.username,
-      email: data.email,
-      password: hashedPassword,
+      const hashedPassword = await hashPassword(data.password);
+      const user = await tx.user.create({
+        data: {
+          username: data.username,
+          email: data.email,
+          password: hashedPassword,
+        },
+        include: { role: { select: { tier: true } } },
+      });
+
+      const accessToken = await sign(
+        {
+          id: user.id,
+          role: user.roleCode,
+          tier: user.role.tier,
+          exp: Math.floor(Date.now() / 1000) + 15 * 60,
+        },
+        config.jwtSecret,
+      );
+
+      const refreshToken = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      await tx.refreshToken.create({
+        data: {
+          userId: user.id,
+          token: refreshToken,
+          expiresAt,
+        },
+      });
+
+      await Queue.enqueue("send_welcome_email", {
+        email: user.email,
+        username: user.username,
+      });
+
+      await AuditService.log({
+        actorId: user.id,
+        action: "auth.register",
+        targetType: "user",
+        targetId: user.id,
+      });
+
+      return { user, accessToken, refreshToken };
     });
-
-    const accessToken = await sign(
-      {
-        id: user.id,
-        role: user.role,
-        tier: user.tier, // lấy từ JOIN roles khi create user
-        exp: Math.floor(Date.now() / 1000) + 15 * 60,
-      },
-      config.jwtSecret,
-    );
-
-    const refreshToken = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await this.authRepo.saveRefreshToken(user.id, refreshToken, expiresAt);
-
-    // Ném tác vụ cực nặng vào Queue để giải phóng API lập tức!
-    await Queue.enqueue("send_welcome_email", {
-      email: user.email,
-      username: user.username,
-    });
-
-    // Ghi audit log bất đồng bộ — không block response
-    await AuditService.log({
-      actorId: user.id,
-      action: "auth.register",
-      targetType: "user",
-      targetId: user.id,
-    });
-
-    return { user, accessToken, refreshToken };
   }
 
   async login(data: LoginData) {
-    // Dùng findByEmailWithPassword vì đây là nơi DUY NHẤT cần password để xác thực
-    const user = await this.userRepo.findByEmailWithPassword(data.email);
+    const user = await this.prisma.user.findUnique({
+      where: { email: data.email, deleted: false },
+      include: { role: { select: { tier: true } } },
+    });
 
-    // Luôn chạy hàm băm mật khẩu (100.000 vòng) để tiêu tốn thời gian như nhau, chống Timing Attack
     const hashToVerify = user ? user.password : DUMMY_HASH;
     const valid = await verifyPassword(data.password, hashToVerify);
 
-    // Báo lỗi chung chung nếu không có user hoặc password sai
     if (!user || !valid) {
-      // Ghi audit TRƯỚC khi throw — đảm bảo không bị skip
       await AuditService.log({
         action: "auth.login_failed",
         metadata: { email: data.email },
@@ -93,7 +100,6 @@ export class AuthService {
       throw AppError.unauthorized("Invalid email or password");
     }
 
-    // Check xem tài khoản có bị khóa (active = false) không
     if (!user.active) {
       throw AppError.forbidden(
         "Your account has been disabled. Please contact admin.",
@@ -103,8 +109,8 @@ export class AuthService {
     const accessToken = await sign(
       {
         id: user.id,
-        role: user.role,
-        tier: user.tier, // lấy từ JOIN roles khi findByEmailWithPassword
+        role: user.roleCode,
+        tier: user.role.tier,
         exp: Math.floor(Date.now() / 1000) + 15 * 60,
       },
       config.jwtSecret,
@@ -112,9 +118,15 @@ export class AuthService {
 
     const refreshToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await this.authRepo.saveRefreshToken(user.id, refreshToken, expiresAt);
 
-    // Ghi audit log bất đồng bộ — không block response
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        token: refreshToken,
+        expiresAt,
+      },
+    });
+
     await AuditService.log({
       actorId: user.id,
       action: "auth.login",
@@ -126,44 +138,64 @@ export class AuthService {
   }
 
   async refreshToken(oldToken: string): Promise<AuthTokens> {
-    // [VÁ LỖI RACE CONDITION]
-    // Sử dụng consume thay vì find. Lệnh này sẽ XÓA và trả về data cùng lúc (Atomic).
-    // Kẻ gian có gửi 10.000 request cùng 1 mili-giây thì Database chỉ trả kết quả cho ĐÚNG 1 request.
-    const session = await this.authRepo.consumeRefreshToken(oldToken);
+    // Atomic delete and return
+    const session = await this.prisma.refreshToken.delete({
+      where: { token: oldToken },
+    }).catch(() => null);
+
     if (!session) {
       throw AppError.unauthorized("Invalid or already consumed refresh token");
     }
 
-    if (new Date() > new Date(session.expires_at)) {
+    if (new Date() > new Date(session.expiresAt)) {
       throw AppError.unauthorized("Refresh token expired");
     }
 
-    const user = await this.userRepo.findById(session.user_id);
+    const user = await this.prisma.user.findUnique({
+      where: { id: session.userId, deleted: false },
+      include: { role: { select: { tier: true } } },
+    });
+
     if (!user) throw AppError.unauthorized("User not found");
 
     const accessToken = await sign(
       {
         id: user.id,
-        role: user.role,
-        tier: user.tier, // lấy từ JOIN roles khi findById
+        role: user.roleCode,
+        tier: user.role.tier,
         exp: Math.floor(Date.now() / 1000) + 15 * 60,
       },
       config.jwtSecret,
     );
     const refreshToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await this.authRepo.saveRefreshToken(user.id, refreshToken, expiresAt);
+
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        token: refreshToken,
+        expiresAt,
+      },
+    });
 
     return { accessToken, refreshToken };
   }
 
   async logout(refreshToken: string, accessToken?: string, exp?: number) {
-    // Xóa refresh token khỏi DB
-    await this.authRepo.deleteRefreshToken(refreshToken);
+    await this.prisma.refreshToken.deleteMany({
+      where: { token: refreshToken },
+    });
 
-    // Blacklist access token vào Redis nếu còn hạn — ngăn dùng lại ngay lập tức
-    if (accessToken && exp) {
-      await this.authRepo.blacklistAccessToken(accessToken, exp);
+    // Blacklist access token in Redis so it can't be reused until expiry
+    if (accessToken && exp && redisClient) {
+      const ttl = exp - Math.floor(Date.now() / 1000);
+      if (ttl > 0) {
+        try {
+          await redisClient.set(`blacklist:${accessToken}`, "1", { ex: ttl });
+        } catch {
+          // Redis failure is non-critical — token will expire naturally
+        }
+      }
     }
   }
 }

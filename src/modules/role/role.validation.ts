@@ -1,5 +1,4 @@
 import * as v from "valibot";
-import type { CreateRoleData, UpdateRoleData } from "./role.entity.ts";
 
 export const createRoleSchema = v.object({
   code: v.pipe(
@@ -48,6 +47,6 @@ export const updateRoleSchema = v.object({
   active: v.optional(v.boolean("Active status must be a boolean.")),
 });
 
-// Type extraction (optional but good for type safety checks)
-export type CreateRoleInput = CreateRoleData;
-export type UpdateRoleInput = UpdateRoleData;
+// Type extraction
+export type CreateRoleInput = v.InferOutput<typeof createRoleSchema>;
+export type UpdateRoleInput = v.InferOutput<typeof updateRoleSchema>;

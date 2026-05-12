@@ -11,6 +11,8 @@ import {
   updateRoleSchema,
 } from "./role.validation.ts";
 
+import { authMiddleware } from "../../shared/middlewares/auth.middleware.ts";
+
 /**
  * Role management routes.
  *
@@ -21,8 +23,8 @@ import {
 export const createRoleRoutes = (service: RoleService) => {
   const router = new Hono<AppEnv>();
 
-  // Guard chung: Phải có quyền permissions.manage
-  router.use("*", requirePermission("permissions.manage"));
+  // Guard chung: Phải đăng nhập và có quyền permissions.manage
+  router.use("*", authMiddleware, requirePermission("permissions.manage"));
 
   /**
    * GET /api/roles

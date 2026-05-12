@@ -2,54 +2,30 @@ import { redisClient } from "../../core/redis.ts";
 import { logger } from "../../core/logger.ts";
 import { AppError } from "../../shared/errors/AppError.ts";
 import { AuditService } from "../../core/audit.ts";
-import type { UserTier } from "../user/user.entity.ts";
+import type { PrismaClient } from "@db";
+import type { PaginationParams } from "../../shared/utils/pagination.ts";
 import type {
-  CreateProfileData,
-  PermissionRepository,
-  UpdateProfileData,
-} from "./permission.repository.ts";
-import type {
-  PermissionProfile,
-  ResolvedPermissions,
-} from "./permission.entity.ts";
-import type {
-  PaginatedResult,
-  PaginationParams,
-} from "../../shared/utils/pagination.ts";
+  CreateProfileInput,
+  UpdateProfileInput,
+} from "./permission.validation.ts";
 
-/** Cache TTL = 5 phút — ngắn để đảm bảo revoke quyền có hiệu lực sớm */
+import type { ResolvedPermissions, UserTier } from "../../core/context.ts";
+export type { ResolvedPermissions, UserTier };
+
 const CACHE_TTL_SECONDS = 300;
-
-/** Cache key versioned — dễ invalidate toàn bộ khi đổi schema */
 const cacheKey = (userId: string) => `perm:v1:${userId}`;
 
 export class PermissionService {
-  constructor(private repo: PermissionRepository) {}
+  constructor(private prisma: PrismaClient) {}
 
-  // ─────────────────────────────────────────────
-  // CORE: Resolve & Cache permissions
-  // ─────────────────────────────────────────────
-
-  /**
-   * Resolve toàn bộ quyền của user và cache vào Redis.
-   * - OWNER: trả về empty ResolvedPermissions (bypass mọi check)
-   * - ADMIN/USER: tổng hợp từ profiles + individual overrides
-   *
-   * Luồng:
-   *   1. Thử đọc từ Redis cache
-   *   2. Cache miss → query DB → ghi cache
-   *   3. Trả về ResolvedPermissions (dùng Set để O(1) lookup)
-   */
   async resolvePermissions(
     userId: string,
     tier: UserTier,
   ): Promise<ResolvedPermissions> {
-    // OWNER không cần load permission gì cả
     if (tier === "owner") {
       return { userId, tier, granted: new Set(), denied: new Set() };
     }
 
-    // Thử cache
     if (redisClient) {
       try {
         const cached = await redisClient.get(cacheKey(userId));
@@ -66,22 +42,46 @@ export class PermissionService {
           };
         }
       } catch {
-        // Cache lỗi → fallback DB
         logger.warn(`⚠️ [Permission] Redis cache miss for user ${userId}`);
       }
     }
 
-    // Cache miss: query DB
-    const rows = await this.repo.resolveForUser(userId);
+    // Resolve via Prisma
+    // Fetch profile permissions
+    const userProfiles = await this.prisma.userProfile.findMany({
+      where: { userId, profile: { active: true } },
+      include: { profile: { include: { profilePermissions: true } } },
+    });
+
+    const profilePerms = userProfiles.flatMap((up) =>
+      up.profile.profilePermissions
+    );
+
+    // Fetch individual overrides
+    const userOverrides = await this.prisma.userPermission.findMany({
+      where: { userId },
+    });
 
     const granted = new Set<string>();
     const denied = new Set<string>();
-    for (const row of rows) {
-      if (row.granted) granted.add(row.permission_code);
-      else denied.add(row.permission_code);
+
+    // 1. Apply profile permissions first
+    for (const p of profilePerms) {
+      if (p.granted) granted.add(p.permissionCode);
+      else denied.add(p.permissionCode);
     }
 
-    // Ghi cache
+    // 2. Overrides have higher precedence
+    for (const o of userOverrides) {
+      if (o.granted) {
+        granted.add(o.permissionCode);
+        denied.delete(o.permissionCode);
+      } else {
+        denied.add(o.permissionCode);
+        granted.delete(o.permissionCode);
+      }
+    }
+
     if (redisClient) {
       try {
         await redisClient.set(
@@ -93,19 +93,13 @@ export class PermissionService {
           { ex: CACHE_TTL_SECONDS },
         );
       } catch {
-        // Cache write fail không phải lỗi nghiêm trọng
+        // Ignore
       }
     }
 
     return { userId, tier, granted, denied };
   }
 
-  /**
-   * Invalidate cache của 1 user — gọi khi:
-   *   - Assign/revoke profile
-   *   - Set/remove individual override
-   *   - Profile bị update hoặc deactivate
-   */
   async invalidateCache(userId: string): Promise<void> {
     if (!redisClient) return;
     try {
@@ -115,14 +109,6 @@ export class PermissionService {
     }
   }
 
-  /**
-   * Kiểm tra 1 permission cụ thể trong ResolvedPermissions đã có sẵn.
-   * Thứ tự ưu tiên:
-   *   1. OWNER → luôn true
-   *   2. denied set → false (tường minh cấm)
-   *   3. granted set → true
-   *   4. Mặc định → false (deny-by-default)
-   */
   hasPermission(resolved: ResolvedPermissions, code: string): boolean {
     if (resolved.tier === "owner") return true;
     if (resolved.denied.has(code)) return false;
@@ -136,21 +122,52 @@ export class PermissionService {
   async findManyProfiles(
     params: PaginationParams,
     tier?: "admin" | "user",
-  ): Promise<PaginatedResult<PermissionProfile>> {
-    return await this.repo.findManyProfiles(params, tier);
+  ) {
+    const { page, limit } = params;
+    const skip = (page - 1) * limit;
+
+    const where = tier ? { tier } : {};
+
+    const [data, total] = await Promise.all([
+      this.prisma.permissionProfile.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+      }),
+      this.prisma.permissionProfile.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
-  async findProfileById(id: string): Promise<PermissionProfile> {
-    const profile = await this.repo.findProfileById(id);
+  async findProfileById(id: string) {
+    const profile = await this.prisma.permissionProfile.findUnique({
+      where: { id },
+    });
     if (!profile) throw AppError.notFound(`Permission profile ${id} not found`);
     return profile;
   }
 
   async createProfile(
-    data: CreateProfileData,
+    data: CreateProfileInput,
     actorId: string,
-  ): Promise<PermissionProfile> {
-    const profile = await this.repo.createProfile(data);
+  ) {
+    const profile = await this.prisma.permissionProfile.create({
+      data: {
+        name: data.name,
+        tier: data.tier,
+        description: data.description,
+      },
+    });
 
     await AuditService.log({
       actorId,
@@ -165,11 +182,24 @@ export class PermissionService {
 
   async updateProfile(
     id: string,
-    data: UpdateProfileData,
+    data: UpdateProfileInput,
     actorId: string,
-  ): Promise<PermissionProfile> {
-    const profile = await this.repo.updateProfile(id, data);
-    if (!profile) throw AppError.notFound(`Permission profile ${id} not found`);
+  ) {
+    const existing = await this.prisma.permissionProfile.findUnique({
+      where: { id },
+    });
+    if (!existing) {
+      throw AppError.notFound(`Permission profile ${id} not found`);
+    }
+
+    const profile = await this.prisma.permissionProfile.update({
+      where: { id },
+      data: {
+        name: data.name,
+        description: data.description,
+        active: data.active,
+      },
+    });
 
     await AuditService.log({
       actorId,
@@ -182,8 +212,11 @@ export class PermissionService {
   }
 
   async deleteProfile(id: string, actorId: string): Promise<void> {
-    const deleted = await this.repo.deleteProfile(id);
-    if (!deleted) throw AppError.notFound(`Permission profile ${id} not found`);
+    try {
+      await this.prisma.permissionProfile.delete({ where: { id } });
+    } catch (_error) {
+      throw AppError.notFound(`Permission profile ${id} not found`);
+    }
 
     await AuditService.log({
       actorId,
@@ -197,21 +230,20 @@ export class PermissionService {
   // USER ↔ PROFILES
   // ─────────────────────────────────────────────
 
-  /**
-   * Assign profile cho user — tự động kiểm tra tier compatibility.
-   * ADMIN chỉ nhận profile tier="admin", USER chỉ nhận tier="user".
-   * Service tự lookup role từ DB để route handler không cần biết.
-   */
   async assignProfile(
     userId: string,
     profileId: string,
     actorId: string,
   ): Promise<void> {
-    const userInfo = await this.repo.findUserRole(userId);
+    const userInfo = await this.prisma.user.findUnique({
+      where: { id: userId, deleted: false },
+      include: { role: { select: { tier: true } } },
+    });
+
     if (!userInfo) {
       throw AppError.notFound(`User ${userId} not found.`);
     }
-    if (userInfo.tier === "owner") {
+    if (userInfo.role.tier === "owner") {
       throw AppError.badRequest("OWNER does not require a permission profile.");
     }
 
@@ -223,14 +255,18 @@ export class PermissionService {
       );
     }
 
-    // So sánh tier của profile với tier của user
-    if (profile.tier !== userInfo.tier) {
+    if (profile.tier !== userInfo.role.tier) {
       throw AppError.badRequest(
-        `Profile tier "${profile.tier}" does not match user tier "${userInfo.tier}" (role: "${userInfo.role}").`,
+        `Profile tier "${profile.tier}" does not match user tier "${userInfo.role.tier}" (role: "${userInfo.roleCode}").`,
       );
     }
 
-    await this.repo.assignProfileToUser(userId, profileId, actorId);
+    await this.prisma.userProfile.upsert({
+      where: { userId_profileId: { userId, profileId } },
+      create: { userId, profileId, assignedBy: actorId },
+      update: { assignedAt: new Date(), assignedBy: actorId },
+    });
+
     await this.invalidateCache(userId);
 
     await AuditService.log({
@@ -247,12 +283,14 @@ export class PermissionService {
     profileId: string,
     actorId: string,
   ): Promise<void> {
-    const revoked = await this.repo.revokeProfileFromUser(userId, profileId);
-    if (!revoked) {
-      throw AppError.notFound(
-        "Profile assignment not found for this user.",
-      );
+    try {
+      await this.prisma.userProfile.delete({
+        where: { userId_profileId: { userId, profileId } },
+      });
+    } catch {
+      throw AppError.notFound("Profile assignment not found for this user.");
     }
+
     await this.invalidateCache(userId);
 
     await AuditService.log({
@@ -274,7 +312,12 @@ export class PermissionService {
     granted: boolean,
     actorId: string,
   ): Promise<void> {
-    await this.repo.setUserPermission(userId, permissionCode, granted, actorId);
+    await this.prisma.userPermission.upsert({
+      where: { userId_permissionCode: { userId, permissionCode } },
+      create: { userId, permissionCode, granted, assignedBy: actorId },
+      update: { granted, assignedAt: new Date(), assignedBy: actorId },
+    });
+
     await this.invalidateCache(userId);
 
     await AuditService.log({
@@ -291,11 +334,11 @@ export class PermissionService {
     permissionCode: string,
     actorId: string,
   ): Promise<void> {
-    const removed = await this.repo.removeUserPermission(
-      userId,
-      permissionCode,
-    );
-    if (!removed) {
+    try {
+      await this.prisma.userPermission.delete({
+        where: { userId_permissionCode: { userId, permissionCode } },
+      });
+    } catch {
       throw AppError.notFound(
         `Override for permission "${permissionCode}" does not exist.`,
       );
@@ -312,53 +355,61 @@ export class PermissionService {
   }
 
   // ─────────────────────────────────────────────
-  // CONVENIENCE — Delegate trực tiếp xuống repo
+  // CONVENIENCE
   // ─────────────────────────────────────────────
 
-  /** Lấy toàn bộ atomic permission codes (developer-seeded) */
   async findAllPermissions() {
-    return await this.repo.findAllPermissions();
+    return await this.prisma.permission.findMany({
+      orderBy: { code: "asc" },
+    });
   }
 
-  /** Lấy permissions bên trong 1 profile cụ thể */
   async findProfilePermissions(profileId: string) {
-    return await this.repo.findProfilePermissions(profileId);
+    return await this.prisma.profilePermission.findMany({
+      where: { profileId },
+      include: { permission: true },
+    });
   }
 
-  /** Lấy danh sách profiles đang assign cho user */
   async findUserProfiles(userId: string) {
-    return await this.repo.findUserProfiles(userId);
+    return await this.prisma.userProfile.findMany({
+      where: { userId },
+      include: { profile: true },
+    });
   }
 
-  /** Lấy toàn bộ individual overrides của user */
   async findUserOverrides(userId: string) {
-    return await this.repo.findUserPermissions(userId);
+    return await this.prisma.userPermission.findMany({
+      where: { userId },
+      include: { permission: true },
+    });
   }
 
-  /** Xóa 1 permission khỏi profile */
   async removeProfilePermission(
     profileId: string,
     permissionCode: string,
   ): Promise<void> {
-    const removed = await this.repo.removeProfilePermission(
-      profileId,
-      permissionCode,
-    );
-    if (!removed) {
+    try {
+      await this.prisma.profilePermission.delete({
+        where: { profileId_permissionCode: { profileId, permissionCode } },
+      });
+    } catch {
       throw AppError.notFound(
         `Permission "${permissionCode}" does not exist in this profile.`,
       );
     }
   }
 
-  /** Set (upsert) 1 permission vào profile */
   async setProfilePermission(
     profileId: string,
     permissionCode: string,
     granted: boolean,
   ): Promise<void> {
-    // Kiểm tra profile tồn tại trước
     await this.findProfileById(profileId);
-    await this.repo.setProfilePermission(profileId, permissionCode, granted);
+    await this.prisma.profilePermission.upsert({
+      where: { profileId_permissionCode: { profileId, permissionCode } },
+      create: { profileId, permissionCode, granted },
+      update: { granted },
+    });
   }
 }

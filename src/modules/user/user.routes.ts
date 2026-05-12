@@ -32,8 +32,8 @@ export const createUserRoutes = (service: UserService) => {
     const result = await service.findMany(params);
     return c.json({
       success: true,
-      ...result,
-      data: result.data.map(sanitizeUser),
+      data: result.data,
+      meta: result.meta,
     });
   });
 
@@ -146,6 +146,35 @@ export const createUserRoutes = (service: UserService) => {
       message: `User '${user.username}' has been restored successfully.`,
       data: sanitizeUser(user),
     });
+  });
+
+  return router;
+};
+
+/**
+ * Public User Routes (v0)
+ * Các route ở đây KHÔNG đi qua authMiddleware, nên ai cũng có thể gọi được.
+ * Chỉ cung cấp các API Read-Only an toàn (GET).
+ */
+export const createPublicUserRoutes = (service: UserService) => {
+  const router = new Hono<AppEnv>();
+
+  // GET /api/v0/users — Lấy danh sách user
+  router.get("/", cacheResponse(60), async (c) => {
+    const params = extractPagination(c.req.query());
+    const result = await service.findMany(params);
+    return c.json({
+      success: true,
+      data: result.data,
+      meta: result.meta,
+    });
+  });
+
+  // GET /api/v0/users/:id — Lấy thông tin chi tiết
+  router.get("/:id", validateUUID(), async (c) => {
+    const id = c.req.param("id")!;
+    const user = await service.findById(id);
+    return c.json({ success: true, data: sanitizeUser(user) });
   });
 
   return router;

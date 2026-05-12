@@ -1,45 +1,25 @@
 import { Hono } from "@hono/core";
 
-// Khởi tạo Dependency Injection Container
-import { container } from "./src/core/container.ts";
-
 // Core & Middlewares
 import { cors } from "@hono/cors";
 import { secureHeaders } from "@hono/secure-headers";
 import { globalErrorHandler } from "./src/shared/errors/error.handler.ts";
-import { authMiddleware } from "./src/shared/middlewares/auth.middleware.ts";
 import { rateLimiter } from "./src/shared/middlewares/rate-limit.middleware.ts";
-import { Migrator } from "./src/core/migrator.ts";
-import { allMigrations } from "./src/migrations/index.ts";
 import { logger } from "./src/core/logger.ts";
 import { config } from "./src/core/config.ts";
-import { closeDb } from "./src/core/database.ts";
-import { closeRedis, redisClient } from "./src/core/redis.ts";
+import { closeDb, prisma } from "./src/core/database.ts";
+import { closeRedis, initRedis, redisClient } from "./src/core/redis.ts";
 import { initWorkers } from "./src/workers/index.ts";
 import { Queue } from "./src/core/queue.ts";
 import { initCrons } from "./src/core/cron.ts";
 
-// Routes
-import { createUserRoutes } from "./src/modules/user/user.routes.ts";
-import { createAuthRoutes } from "./src/modules/auth/auth.routes.ts";
-import { createPermissionRoutes } from "./src/modules/permission/permission.routes.ts";
-import { createRoleRoutes } from "./src/modules/role/role.routes.ts";
+// Router trung tâm
+import { createApiRouter, createNormalRouter } from "./src/app.router.ts";
 
-// 1. Boot Container
-await container.init();
+// 2.5 Kết nối Redis (phải trước khi khởi động Workers/Queue)
+await initRedis();
 
-// 2. Tự động kiểm tra Migration khi khởi động
-const migrator = new Migrator(container.db);
-const migrationResult = await migrator.migrate(allMigrations);
-if (migrationResult.applied.length > 0) {
-  logger.info(
-    `Applied ${migrationResult.applied.length} migration(s) on startup.`,
-  );
-} else {
-  logger.debug("Database schema is up to date.");
-}
-
-// 2.5 Khởi động Background Workers
+// 2.6 Khởi động Background Workers
 initWorkers();
 setTimeout(() => Queue.startWorkerLoop(), 0);
 
@@ -66,7 +46,7 @@ app.use("*", rateLimiter({ windowMs: 60 * 1000, max: 100 }));
 // Advanced Health Check (Chủ động Ping DB & Redis)
 app.get("/health", async (c) => {
   try {
-    await container.db.queryObject("SELECT 1"); // Ping Database
+    await prisma.$queryRaw`SELECT 1`; // Ping Database
 
     if (redisClient) {
       await redisClient.ping(); // Ping Redis
@@ -86,19 +66,9 @@ app.get("/health", async (c) => {
 
 app.get("/", (c) => c.text("Backend is running."));
 
-// Bảo vệ routes bằng JWT — PHẢI đăng ký TRƯỚC khi mount routes
-app.use("/api/users/*", authMiddleware);
-app.use("/api/permissions/*", authMiddleware);
-app.use("/api/roles/*", authMiddleware);
-
-// Đăng ký các Route (Sử dụng Service từ Container)
-app.route("/api/auth", createAuthRoutes(container.authService));
-app.route("/api/users", createUserRoutes(container.userService));
-app.route(
-  "/api/permissions",
-  createPermissionRoutes(container.permissionService),
-);
-app.route("/api/roles", createRoleRoutes(container.roleService));
+// Đăng ký toàn bộ các Route thông qua Router trung tâm
+app.route("/api", createApiRouter());
+app.route("/api/v0", createNormalRouter());
 
 // 4. Khởi động Server
 logger.info(
@@ -107,15 +77,30 @@ logger.info(
 
 const abortController = new AbortController();
 
+let isShuttingDown = false;
 const shutdown = async () => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
   logger.info("Shutting down gracefully...");
+
+  // Bắt buộc thoát sau 3 giây nếu các connection bị treo (đảm bảo không bị đơ Terminal)
+  const fallbackTimer = setTimeout(() => {
+    logger.error("Force quitting after 3s due to hanging connections...");
+    Deno.exit(1);
+  }, 3000);
+  Deno.unrefTimer(fallbackTimer);
+
   stopCrons(); // Dừng toàn bộ cronjob
   abortController.abort(); // Dừng HTTP server
   await Queue.shutdown();
   await closeRedis();
   await closeDb();
-  // KHÔNG gọi Deno.exit(0) ở đây, để event loop tự kết thúc
-  // Giúp Deno watcher có thể hot-reload thành công.
+
+  // Chỉ gọi Deno.exit() trong production — ở dev mode, để Deno --watch tự restart
+  if (config.env === "production") {
+    Deno.exit(0);
+  }
 };
 
 Deno.addSignalListener("SIGINT", shutdown);

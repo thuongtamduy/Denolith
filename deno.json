@@ -1,34 +1,41 @@
 {
   "name": "denolith",
+  "nodeModulesDir": "auto",
   "version": "3.0.0",
   "exports": "./main.ts",
   "tasks": {
     "dev": "deno run -A --env --watch main.ts",
     "start": "deno run -A --env main.ts",
-    "migrate": "deno run -A --env scripts/migrate.ts up",
-    "migrate:down": "deno run -A --env scripts/migrate.ts down",
-    "migrate:status": "deno run -A --env scripts/migrate.ts status",
-    "migrate:reset": "deno run -A --env scripts/migrate.ts reset",
-    "migrate:generate": "deno run -A --env scripts/generate-migration.ts",
-    "seed": "deno run -A --env scripts/seed.ts",
+    "migrate": "deno run -A --env npm:prisma migrate deploy --schema=prisma/schema",
+    "migrate:dev": "deno run -A --env npm:prisma migrate dev --schema=prisma/schema",
+    "migrate:reset": "deno run -A --env npm:prisma migrate reset --schema=prisma/schema",
+    "migrate:status": "deno run -A --env npm:prisma migrate status --schema=prisma/schema",
+    "seed": "deno run -A --env ./prisma/seeds/index.ts",
     "compile": "deno compile -A --env --output ./dist/denolith main.ts",
     "compile:linux": "deno compile -A --env --target x86_64-unknown-linux-gnu --output ./dist/denolith-linux main.ts",
-    "test": "deno test -A --env src/ scratch/",
-    "test:watch": "deno test -A --env --watch src/ scratch/",
-    "format": "deno fmt && deno lint --fix"
+    "format": "deno fmt && deno lint --fix && deno task prisma:format",
+    "prisma:format": "deno run -A --env npm:prisma format --schema=prisma/schema",
+    "prisma:generate": "deno run -A --env npm:prisma generate --schema=prisma/schema",
+    "prisma:push": "deno run -A --env npm:prisma db push --schema=prisma/schema"
   },
   "imports": {
-    "@hono/core": "jsr:@hono/hono@4.12.17",
-    "@hono/jwt": "jsr:@hono/hono@4.12.17/jwt",
-    "@hono/http-status": "jsr:@hono/hono@4.12.17/utils/http-status",
+    "@hono/core": "jsr:@hono/hono@4.12.18",
+    "@hono/jwt": "jsr:@hono/hono@4.12.18/jwt",
+    "@hono/http-status": "jsr:@hono/hono@4.12.18/utils/http-status",
     "@hono/valibot-validator": "jsr:@hono/valibot-validator@0.6.1",
-    "@hono/cors": "jsr:@hono/hono@4.12.17/cors",
-    "@hono/secure-headers": "jsr:@hono/hono@4.12.17/secure-headers",
-    "@hono/cookie": "jsr:@hono/hono@4.12.17/cookie",
-    "@db/postgres": "jsr:@db/postgres@0.19.5",
-    "@db/redis": "jsr:@db/redis@0.41.1",
+    "@hono/cors": "jsr:@hono/hono@4.12.18/cors",
+    "@hono/secure-headers": "jsr:@hono/hono@4.12.18/secure-headers",
+    "@hono/cookie": "jsr:@hono/hono@4.12.18/cookie",
     "valibot": "jsr:@valibot/valibot@1.4.0",
-    "@hono/hono/deno": "jsr:@hono/hono@4.12.17/deno",
-    "@std/assert": "jsr:@std/assert@1.0.19"
-  }
+    "@hono/hono/deno": "jsr:@hono/hono@4.12.18/deno",
+    "@std/assert": "jsr:@std/assert@1.0.19",
+    "@db/redis": "jsr:@db/redis@0.41.1",
+
+    "@prisma/adapter-pg": "npm:@prisma/adapter-pg@^7.8.0",
+    "@types/pg": "npm:@types/pg@^8.20.0",
+    "pg": "npm:pg@^8.20.0",
+    "prisma": "npm:prisma@^7.8.0",
+    "@db": "npm:@prisma/client@^7.8.0"
+  },
+  "allowScripts": ["npm:@prisma/engines@7.8.0", "npm:prisma@7.8.0"]
 }

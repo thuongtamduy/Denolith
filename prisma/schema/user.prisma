@@ -1,0 +1,55 @@
+model Role {
+  code        String   @id
+  tier        String // CHECK (tier IN ('owner', 'admin', 'user'))
+  name        String
+  description String?
+  system      Boolean  @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  users User[]
+
+  @@index([tier])
+  @@index([active])
+  @@map("roles")
+}
+
+model User {
+  id       String  @id @default(uuid()) @db.Uuid
+  username String  @unique
+  email    String  @unique
+  password String
+  phone    String?
+  roleCode String  @default("user") @map("role")
+  role     Role    @relation(fields: [roleCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
+  active   Boolean @default(true)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+  deleted   Boolean   @default(false)
+  deletedAt DateTime? @map("deleted_at")
+
+  refreshTokens   RefreshToken[]
+  userProfiles    UserProfile[]
+  userPermissions UserPermission[]
+
+  assignedProfiles    UserProfile[]    @relation("AssignedByProfile")
+  assignedPermissions UserPermission[] @relation("AssignedByPermission")
+
+  @@index([email])
+  @@index([username])
+  @@index([roleCode])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([token])
+  @@map("refresh_tokens")
+}

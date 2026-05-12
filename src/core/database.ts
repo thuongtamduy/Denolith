@@ -1,26 +1,30 @@
-import { Client } from "@db/postgres";
+import pkg from "@db";
+import type { PrismaClient as PrismaClientType } from "@db";
+const { PrismaClient } = pkg;
 import { logger } from "./logger.ts";
-import { config } from "./config.ts";
+import pg from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const db = new Client(config.databaseUrl);
+const isProduction = Deno.env.get("DENO_ENV") === "production";
+
+const connectionString = Deno.env.get("DATABASE_URL") || "";
+const pool = new pg.Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+
+// Khởi tạo một singleton instance của PrismaClient
+export const prisma = new PrismaClient({
+  adapter,
+  log: isProduction ? ["warn", "error"] : ["query", "info", "warn", "error"],
+});
 
 /**
- * Connect to PostgreSQL
+ * Connect to PostgreSQL via Prisma
  */
-export async function connectDb(): Promise<Client> {
+export async function connectDb(): Promise<PrismaClientType> {
   try {
-    await db.connect();
-    logger.info("PostgreSQL Database connected.");
-
-    // Tự động chuyển schema (search_path) nếu có chỉ định trong URL
-    const url = new URL(config.databaseUrl);
-    const schema = url.searchParams.get("schema") ||
-      url.searchParams.get("search_path");
-    if (schema) {
-      await db.queryObject(`SET search_path TO "${schema}"`);
-    }
-
-    return db;
+    await prisma.$connect();
+    logger.info("PostgreSQL Database connected via Prisma.");
+    return prisma;
   } catch (error) {
     logger.error(`Database connection failed: ${(error as Error).message}`);
     throw error;
@@ -28,10 +32,10 @@ export async function connectDb(): Promise<Client> {
 }
 
 /**
- * Get the database client instance
+ * Get the Prisma database client instance
  */
-export function getDb(): Client {
-  return db;
+export function getDb(): PrismaClientType {
+  return prisma;
 }
 
 /**
@@ -39,9 +43,11 @@ export function getDb(): Client {
  */
 export async function closeDb(): Promise<void> {
   try {
-    await db.end();
-    logger.info("PostgreSQL Database connection closed.");
+    await prisma.$disconnect();
+    logger.info("Prisma connection closed.");
   } catch (_e) {
     // Ignore already closed errors
   }
 }
+
+export default prisma;

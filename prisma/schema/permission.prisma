@@ -1,0 +1,71 @@
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  profilePermissions ProfilePermission[]
+  userPermissions    UserPermission[]
+
+  @@index([code])
+  @@map("permissions")
+}
+
+model PermissionProfile {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  tier        String // CHECK (tier IN ('admin', 'user'))
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  profilePermissions ProfilePermission[]
+  userProfiles       UserProfile[]
+
+  @@index([tier])
+  @@index([active])
+  @@map("permission_profiles")
+}
+
+model ProfilePermission {
+  profileId      String            @map("profile_id") @db.Uuid
+  profile        PermissionProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  permissionCode String            @map("permission_code")
+  permission     Permission        @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
+  granted        Boolean           @default(true)
+
+  @@id([profileId, permissionCode])
+  @@index([profileId])
+  @@map("profile_permissions")
+}
+
+model UserProfile {
+  userId     String            @map("user_id") @db.Uuid
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId  String            @map("profile_id") @db.Uuid
+  profile    PermissionProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  assignedAt DateTime          @default(now()) @map("assigned_at")
+  assignedBy String?           @map("assigned_by") @db.Uuid
+  assigner   User?             @relation("AssignedByProfile", fields: [assignedBy], references: [id], onDelete: SetNull)
+
+  @@id([userId, profileId])
+  @@index([userId])
+  @@index([profileId])
+  @@map("user_profiles")
+}
+
+model UserPermission {
+  userId         String     @map("user_id") @db.Uuid
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permissionCode String     @map("permission_code")
+  permission     Permission @relation(fields: [permissionCode], references: [code], onDelete: Cascade)
+  granted        Boolean
+  assignedAt     DateTime   @default(now()) @map("assigned_at")
+  assignedBy     String?    @map("assigned_by") @db.Uuid
+  assigner       User?      @relation("AssignedByPermission", fields: [assignedBy], references: [id], onDelete: SetNull)
+
+  @@id([userId, permissionCode])
+  @@index([userId])
+  @@map("user_permissions")
+}

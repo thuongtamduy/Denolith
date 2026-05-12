@@ -1,5 +1,5 @@
 import { logger } from "./logger.ts";
-import { container } from "./container.ts";
+import { prisma } from "./database.ts";
 
 /**
  * Helper: Hẹn giờ chạy mỗi ngày vào khung giờ cố định
@@ -54,10 +54,10 @@ export function initCrons() {
   // 1. Dọn rác Refresh Token (Mỗi 6 tiếng)
   const cleanupTokensInterval = setInterval(async () => {
     try {
-      const res = await container.db.queryObject<{ count: bigint }>(
-        "WITH deleted AS (DELETE FROM refresh_tokens WHERE expires_at < NOW() RETURNING *) SELECT COUNT(*) FROM deleted",
-      );
-      const deletedCount = Number(res.rows[0].count);
+      const res = await prisma.refreshToken.deleteMany({
+        where: { expiresAt: { lt: new Date() } },
+      });
+      const deletedCount = res.count;
       if (deletedCount > 0) {
         logger.info(
           `🧹 [Cronjob] Cleaned up ${deletedCount} expired refresh token(s).`,

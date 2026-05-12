@@ -2,16 +2,21 @@ import { verify } from "@hono/jwt";
 import type { Context, Next } from "@hono/core";
 import { config } from "../../core/config.ts";
 import { redisClient } from "../../core/redis.ts";
+import { prisma } from "../../core/database.ts";
 import { AppError } from "../errors/AppError.ts";
 
+const USER_STATUS_TTL = 30; // Cache user active/deleted status for 30 seconds
+const userStatusKey = (id: string) => `user_status:${id}`;
+
 /**
- * Auth Middleware với Blacklist Check.
+ * Auth Middleware với Blacklist Check và Redis-cached User Verification.
  *
  * Luồng xử lý:
  * 1. Đọc Bearer token từ Authorization header
  * 2. Verify JWT (signature + expiry)
  * 3. Kiểm tra token có trong Redis blacklist không (user đã logout)
- * 4. Gán payload vào context để các handler phía sau dùng
+ * 4. Verify user vẫn tồn tại và active (Redis-cached, TTL 30s)
+ * 5. Gán payload vào context để các handler phía sau dùng
  */
 export const authMiddleware = async (c: Context, next: Next) => {
   // Bước 1: Đọc token
@@ -41,38 +46,61 @@ export const authMiddleware = async (c: Context, next: Next) => {
           "Token has been revoked. Please log in again.",
         );
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof AppError) throw err;
       // Redis lỗi → không chặn request, token tự hết hạn tự nhiên sau 15 phút
     }
   }
 
-  // Bước 3.5: Truy vấn Database để đảm bảo User vẫn tồn tại và chưa bị khóa/xóa
-  // JOIN roles để lấy tier — tier quyết định hành vi permission (owner bypass, v.v.)
-  try {
-    const { container } = await import("../../core/container.ts");
-    const userId = payload.id as string;
+  // Bước 3.5: Verify user vẫn tồn tại và active — ưu tiên Redis cache để giảm tải DB
+  const userId = payload.id as string;
 
-    const res = await container.db.queryObject<{ role: string; tier: string }>(
-      `SELECT u.role, r.tier
-       FROM users u
-       JOIN roles r ON u.role = r.code
-       WHERE u.id = $1 AND u.deleted = false AND u.active = true`,
-      [userId],
-    );
+  // Thử đọc từ Redis cache trước
+  let userStatus: { roleCode: string; tier: string } | null = null;
 
-    if (res.rows.length === 0) {
+  if (redisClient) {
+    try {
+      const cached = await redisClient.get(userStatusKey(userId));
+      if (cached) {
+        userStatus = JSON.parse(cached);
+      }
+    } catch {
+      // Redis fail → fall through to DB
+    }
+  }
+
+  // Cache miss → truy vấn DB
+  if (!userStatus) {
+    const user = await prisma.user.findFirst({
+      where: { id: userId, deleted: false, active: true },
+      select: { roleCode: true, role: { select: { tier: true } } },
+    });
+
+    if (!user) {
       throw AppError.unauthorized(
         "User account no longer exists or has been disabled.",
       );
     }
 
-    // Ghi đè role + tier từ Database — luôn dùng giá trị mới nhất
-    payload.role = res.rows[0].role;
-    payload.tier = res.rows[0].tier;
-  } catch (err) {
-    if (err instanceof AppError) throw err;
-    throw AppError.internal("Error verifying user identity.");
+    userStatus = { roleCode: user.roleCode, tier: user.role.tier };
+
+    // Ghi vào Redis cache (TTL 30s) — lần truy vấn tiếp theo sẽ không chạm DB
+    if (redisClient) {
+      try {
+        await redisClient.set(
+          userStatusKey(userId),
+          JSON.stringify(userStatus),
+          { ex: USER_STATUS_TTL },
+        );
+      } catch {
+        // Ignore cache write failure
+      }
+    }
   }
+
+  // Ghi đè role + tier từ source of truth (DB/cache) — luôn dùng giá trị mới nhất
+  payload.role = userStatus.roleCode;
+  payload.tier = userStatus.tier;
 
   // Bước 4: Gán payload vào context để RBAC middleware và handler dùng
   c.set("jwtPayload", payload);

@@ -1,4 +1,4 @@
-import type { User } from "../../modules/user/user.entity.ts";
+import type { User } from "@db";
 
 /**
  * Loại bỏ các trường nhạy cảm (password) khỏi User object

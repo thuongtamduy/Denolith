@@ -1,6 +1,6 @@
 import { Queue } from "../core/queue.ts";
 import { logger } from "../core/logger.ts";
-import { container } from "../core/container.ts";
+import { prisma } from "../core/database.ts";
 
 import { EmailTemplates, sendEmail } from "../core/email.ts";
 
@@ -32,17 +32,15 @@ export const initWorkers = () => {
       return;
     }
     try {
-      await container.db.queryObject(
-        `INSERT INTO audit_logs (actor_id, action, target_type, target_id, metadata)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [
-          (entry as { actorId?: string }).actorId ?? null,
-          entry.action,
-          (entry as { targetType?: string }).targetType ?? null,
-          (entry as { targetId?: string }).targetId ?? null,
-          JSON.stringify((entry as { metadata?: unknown }).metadata ?? {}),
-        ],
-      );
+      await prisma.auditLog.create({
+        data: {
+          actorId: (entry as { actorId?: string }).actorId ?? null,
+          action: entry.action,
+          targetType: (entry as { targetType?: string }).targetType ?? null,
+          targetId: (entry as { targetId?: string }).targetId ?? null,
+          metadata: (entry as { metadata?: unknown }).metadata ?? {},
+        },
+      });
     } catch (err) {
       logger.error("❌ [Worker] Failed to write audit log", err);
     }

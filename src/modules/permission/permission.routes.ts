@@ -18,6 +18,8 @@ import {
   updateProfileSchema,
 } from "./permission.validation.ts";
 
+import { authMiddleware } from "../../shared/middlewares/auth.middleware.ts";
+
 /**
  * Permission management routes.
  *
@@ -29,8 +31,8 @@ import {
 export const createPermissionRoutes = (service: PermissionService) => {
   const router = new Hono<AppEnv>();
 
-  // Guard chung cho toàn bộ router — chỉ OWNER hoặc user có "permissions.manage"
-  router.use("*", requirePermission("permissions.manage"));
+  // Guard chung cho toàn bộ router — phải đăng nhập và chỉ OWNER hoặc user có "permissions.manage"
+  router.use("*", authMiddleware, requirePermission("permissions.manage"));
 
   // ───────────────────────────────────────────
   // ATOMIC PERMISSIONS (developer-seeded, read-only)

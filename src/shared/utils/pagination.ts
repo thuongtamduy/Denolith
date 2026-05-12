@@ -3,17 +3,23 @@ export interface PaginationParams {
   limit: number;
 }
 
-export interface PaginatedResult<T> {
-  data: T[];
+export interface PaginationMeta {
   total: number;
   page: number;
   limit: number;
   totalPages: number;
 }
 
+export interface PaginatedResult<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
+
 export interface CollectionResult<T> {
   data: T[];
-  total: number;
+  meta: {
+    total: number;
+  };
 }
 
 /**

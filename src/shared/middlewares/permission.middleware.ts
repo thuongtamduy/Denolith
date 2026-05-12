@@ -1,6 +1,7 @@
 import type { Context, Next } from "@hono/core";
 import type { AppEnv } from "../../core/context.ts";
 import { AppError } from "../errors/AppError.ts";
+import { container } from "../../core/container.ts";
 
 /**
  * Middleware kiểm tra permission nguyên tử — AND logic.
@@ -27,8 +28,6 @@ export const requirePermission = (...codes: string[]) => {
       return;
     }
 
-    const { container } = await import("../../core/container.ts");
-
     // Lazy-load permissions nếu chưa có trong context (tránh query trùng)
     let resolved = c.get("resolvedPermissions");
     if (!resolved) {
@@ -41,7 +40,7 @@ export const requirePermission = (...codes: string[]) => {
 
     // AND check: phải có TẤT CẢ codes
     for (const code of codes) {
-      if (!container.permissionService.hasPermission(resolved, code)) {
+      if (!container.permissionService.hasPermission(resolved!, code)) {
         throw AppError.forbidden(
           `You do not have permission to perform this action. Required: "${code}"`,
         );
@@ -70,8 +69,6 @@ export const requireAnyPermission = (...codes: string[]) => {
       await next();
       return;
     }
-
-    const { container } = await import("../../core/container.ts");
 
     let resolved = c.get("resolvedPermissions");
     if (!resolved) {

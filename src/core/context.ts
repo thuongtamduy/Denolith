@@ -1,5 +1,16 @@
-import type { UserTier } from "../modules/user/user.entity.ts";
-import type { ResolvedPermissions } from "../modules/permission/permission.entity.ts";
+export type UserTier = "owner" | "admin" | "user";
+
+/**
+ * Resolved permission set for a user.
+ * Defined here in core so that both modules and middlewares can reference it
+ * without circular dependencies.
+ */
+export interface ResolvedPermissions {
+  userId: string;
+  tier: UserTier;
+  granted: Set<string>;
+  denied: Set<string>;
+}
 
 /**
  * Định nghĩa kiểu dữ liệu cho Hono Context Variables.
