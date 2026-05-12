@@ -47,6 +47,7 @@ function loadConfig() {
   const envVars = {
     PORT: Deno.env.get("PORT"),
     DATABASE_URL: Deno.env.get("DATABASE_URL"),
+    DIRECT_URL: Deno.env.get("DIRECT_URL"),
     REDIS_URL: Deno.env.get("REDIS_URL"),
     JWT_SECRET: Deno.env.get("JWT_SECRET"),
     FRONTEND_URL: Deno.env.get("FRONTEND_URL"),

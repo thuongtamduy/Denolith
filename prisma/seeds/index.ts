@@ -9,7 +9,18 @@ import { seedProfiles } from "./profile.seed.ts";
 
 const connectionString = Deno.env.get("DATABASE_URL") || "";
 const pool = new pg.Pool({ connectionString });
-const adapter = new PrismaPg(pool);
+
+// Extract schema from connection string dynamically (defaults to 'public')
+let schema = "public";
+try {
+  const parsedUrl = new URL(connectionString);
+  schema = parsedUrl.searchParams.get("schema") || "public";
+} catch {
+  // Ignore invalid URL
+}
+
+// Ensure Prisma adapter uses the correct schema dynamically
+const adapter = new PrismaPg(pool, { schema });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
