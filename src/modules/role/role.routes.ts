@@ -41,6 +41,9 @@ export const createRoleRoutes = (service: RoleService) => {
       summary: "Get Roles",
       responses: {
         200: { description: "Get roles successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateQuery(paginationQuerySchema),
@@ -62,6 +65,9 @@ export const createRoleRoutes = (service: RoleService) => {
       summary: "Get Role Details",
       responses: {
         200: { description: "Get role details successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     async (c) => {
@@ -82,6 +88,9 @@ export const createRoleRoutes = (service: RoleService) => {
       summary: "Create Role",
       responses: {
         201: { description: "Role created successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateJson(createRoleSchema),
@@ -106,6 +115,9 @@ export const createRoleRoutes = (service: RoleService) => {
       summary: "Update Role",
       responses: {
         200: { description: "Role updated successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateJson(updateRoleSchema),
@@ -130,6 +142,9 @@ export const createRoleRoutes = (service: RoleService) => {
       summary: "Delete Role",
       responses: {
         200: { description: "Role deleted successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     async (c) => {

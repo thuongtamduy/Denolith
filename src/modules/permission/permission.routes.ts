@@ -53,6 +53,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Get Permission Codes",
       responses: {
         200: { description: "Get permission codes successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     async (c) => {
@@ -76,6 +79,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Get Permission Profiles",
       responses: {
         200: { description: "Get permission profiles successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateQuery(paginationQuerySchema),
@@ -98,6 +104,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Create Permission Profile",
       responses: {
         201: { description: "Permission profile created successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateJson(createProfileSchema),
@@ -121,6 +130,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Get Permission Profile",
       responses: {
         200: { description: "Get permission profile successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateUUID("id"),
@@ -146,6 +158,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Update Permission Profile",
       responses: {
         200: { description: "Permission profile updated successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateUUID("id"),
@@ -170,6 +185,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Delete Permission Profile",
       responses: {
         200: { description: "Permission profile deleted successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateUUID("id"),
@@ -200,6 +218,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Set Profile Permission",
       responses: {
         200: { description: "Profile permission set successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateUUID("id"),
@@ -229,6 +250,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Remove Profile Permission",
       responses: {
         200: { description: "Profile permission removed successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateUUID("id"),
@@ -258,6 +282,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Get User Profiles",
       responses: {
         200: { description: "Get user profiles successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateUUID("userId"),
@@ -280,6 +307,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Assign Profile to User",
       responses: {
         200: { description: "Profile assigned successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateUUID("userId"),
@@ -307,6 +337,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Revoke Profile from User",
       responses: {
         200: { description: "Profile revoked successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateUUID("userId"),
@@ -338,6 +371,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Get User Overrides",
       responses: {
         200: { description: "Get user overrides successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateUUID("userId"),
@@ -360,6 +396,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Set User Override",
       responses: {
         200: { description: "User override set successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateUUID("userId"),
@@ -390,6 +429,9 @@ export const createPermissionRoutes = (service: PermissionService) => {
       summary: "Remove User Override",
       responses: {
         200: { description: "User override removed successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateUUID("userId"),

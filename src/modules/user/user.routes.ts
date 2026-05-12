@@ -38,6 +38,9 @@ export const createUserRoutes = (service: UserService) => {
       summary: "Get list of users",
       responses: {
         200: { description: "Successful response" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateQuery(paginationQuerySchema),
@@ -97,6 +100,9 @@ export const createUserRoutes = (service: UserService) => {
       },
       responses: {
         201: { description: "User created successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateJson(createUserSchema),
@@ -128,6 +134,9 @@ export const createUserRoutes = (service: UserService) => {
       },
       responses: {
         200: { description: "User updated successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateUUID(),
@@ -159,6 +168,9 @@ export const createUserRoutes = (service: UserService) => {
       },
       responses: {
         200: { description: "User role updated successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     requirePermission("permissions.manage"),
@@ -239,6 +251,9 @@ export const createUserRoutes = (service: UserService) => {
       summary: "Restore soft-deleted user",
       responses: {
         200: { description: "User restored successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateUUID(),
@@ -281,6 +296,9 @@ export const createPublicUserRoutes = (service: UserService) => {
       security: [],
       responses: {
         200: { description: "Successful response" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     validateQuery(paginationQuerySchema),

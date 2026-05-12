@@ -86,6 +86,12 @@ app.get(
         version: "1.0.0",
         description: "API for Denolith",
       },
+      servers: [
+        {
+          url: `http://localhost:${config.port}`,
+          description: "Local environment",
+        },
+      ],
       components: {
         securitySchemes: {
           BearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },

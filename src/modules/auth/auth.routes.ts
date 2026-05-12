@@ -33,6 +33,9 @@ export const createAuthRoutes = (service: AuthService) => {
       security: [],
       responses: {
         201: { description: "User registered successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     strictRateLimit,
@@ -68,6 +71,9 @@ export const createAuthRoutes = (service: AuthService) => {
       security: [],
       responses: {
         200: { description: "Successful login" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     strictRateLimit,
@@ -144,6 +150,9 @@ export const createAuthRoutes = (service: AuthService) => {
       summary: "User Logout",
       responses: {
         200: { description: "Logged out successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
     }),
     async (c) => {
