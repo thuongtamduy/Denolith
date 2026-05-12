@@ -1,187 +1,443 @@
-# 🚀 Denolith Enterprise
+# 🏛️ Denolith
 
-**Denolith** là một Backend Boilerplate đạt chuẩn **Enterprise &
-Production-Ready**, được xây dựng độc quyền trên nền tảng **Deno 2.x** kết hợp
-với **Hono**. Dự án hướng tới một kiến trúc siêu tối ưu, loại bỏ hoàn toàn
-`node_modules`, 100% sử dụng thư viện JSR và tuân thủ nghiêm ngặt mô hình
-**Clean Architecture**.
+**Denolith** (**Deno** + **Monolith**) là một backend framework monolithic hiệu năng cao, type-safe, và sẵn sàng cho production. Xây dựng hoàn toàn trên **Deno 2.x** + **Hono**, sử dụng **PostgreSQL native** qua `@db/postgres` — không cần ORM, không cần `node_modules`.
 
 ![Deno](https://img.shields.io/badge/Deno-2.x-black?logo=deno)
-![Hono](https://img.shields.io/badge/Hono-v4-blue?logo=hono)
+![Hono](https://img.shields.io/badge/Hono-v4-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Native-blue)
 ![Redis](https://img.shields.io/badge/Redis-Caching-red)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
 
 ---
 
-## ✨ Điểm Nổi Bật (Features)
+## ✨ Tính năng nổi bật
 
-Denolith không chỉ là một bộ khung cơ bản, mà đã được trang bị 9 lớp "vũ khí"
-tối tân nhất cho các dự án quy mô lớn:
-
-1. **Clean Architecture & Container DI:** Phân tách hoàn toàn các lớp (Routes →
-   Service → Repository), kết hợp Dependency Injection giúp code dễ bảo trì và
-   dễ dàng scale.
-2. **Hệ Thống Migration Tự Động:** Quản lý lịch sử thay đổi cấu trúc Database
-   bằng script SQL nguyên thuỷ siêu tốc, không cần các ORM nặng nề.
-3. **Bảo Mật Băm Mật Khẩu (Web Crypto):** Băm mật khẩu bằng chuẩn PBKDF2 native
-   của Deno với Salt ngẫu nhiên, miễn nhiễm với hình thức tấn công dò mật khẩu.
-4. **Rate Limiting & Graceful Fallback:** Chống Spam/DDoS mạnh mẽ qua Redis. Tự
-   động chuyển lùi về sử dụng Memory Cache cục bộ nếu máy chủ Redis gặp sự cố
-   (Đảm bảo Zero Downtime).
-5. **Advanced Authentication:** Cơ chế Refresh Token Rotation. Quản lý Access
-   Token (15 phút) và Refresh Token thông qua `HttpOnly`, `Secure` Cookie để
-   chống hoàn toàn XSS.
-6. **Dynamic RBAC + ABAC:** Hệ thống phân quyền 3 tầng linh hoạt:
-   - **OWNER** — Bypass toàn bộ, không cần check bất kỳ quyền nào.
-   - **ADMIN** — Được cấp `PermissionProfile` động, không hard-code role.
-   - **USER** — Bị giới hạn theo profile được assign và individual overrides.
-   - Router chỉ khai báo **permission code cần thiết** — ai được quyền là do
-     Admin cấu hình runtime, không cần deploy lại.
-7. **API Caching Siêu Tốc:** Bộ đệm Redis Caching cho các API đọc dữ liệu
-   (`GET`), tăng tốc độ phản hồi xuống dưới 1ms.
-8. **Background Job Queue:** Kiến trúc Message Queue tích hợp ngay trên Redis,
-   đưa các tác vụ nặng (như gửi Email) xuống chạy ngầm ở Background Worker không
-   làm block luồng xử lý chính.
-9. **CI/CD & Dockerization:** Đã cấu hình sẵn `Dockerfile`, `docker-compose.yml`
-   và Github Actions tự động kiểm duyệt code (`fmt`, `lint`, `type check`,
-   `test`).
+| Tính năng | Mô tả |
+|---|---|
+| 🚀 **Ultra-Fast Routing** | Powered by `Hono` — HTTP framework siêu nhanh trên Deno |
+| 🛡️ **100% Type-Safe** | End-to-end type safety từ Database đến API layer (Valibot) |
+| 🏰 **Clean Architecture** | Routes → Service → Repository, DI qua `AppContainer` |
+| 🔐 **RBAC + Granular Permissions** | 3-tier system (`owner > admin > user`) kết hợp Permission Profiles & Individual Overrides |
+| 🗃️ **Custom Migration Engine** | Tự viết `Migrator` thuần TypeScript — versioned SQL, transaction-safe, auto-run khi startup |
+| ☁️ **Background Workers & Cron** | Queue system (Redis BRPOP + memory fallback) và cronjob chạy song song HTTP |
+| ⚡ **Caching & Rate Limiting** | Redis-backed response cache + atomic Lua rate limiting (memory fallback) |
+| 📦 **File Storage Strategy** | `local` / `supabase` / `s3`-MinIO qua Strategy Pattern |
+| 📧 **SMTP Email Service** | Gửi email native qua Deno TCP + STARTTLS (không cần thư viện ngoài) |
+| 🗑️ **Soft Delete & Audit Logs** | Khôi phục bản ghi đã xóa, ghi log bất đồng bộ qua Queue |
+| 🛑 **Graceful Shutdown** | Guard + `removeSignalListener` đảm bảo shutdown đúng 1 lần |
 
 ---
 
-## 🛠 Tech Stack
+## 🛠️ Technology Stack
 
-- **Runtime:** Deno 2.x
-- **Web Framework:** Hono (`jsr:@hono/hono`)
-- **Database:** PostgreSQL (`jsr:@db/postgres`)
-- **Caching & Queue:** Redis (`jsr:@db/redis`)
-- **Validation:** Valibot (`jsr:@valibot/valibot`)
-- **Security:** Deno Web Crypto API
+| Layer | Technology |
+|---|---|
+| **Runtime** | [Deno 2.x](https://deno.land/) |
+| **API Framework** | [Hono 4.x](https://hono.dev/) (`jsr:@hono/hono`) |
+| **Database Driver** | [`@db/postgres`](https://jsr.io/@db/postgres) — native PostgreSQL, không ORM |
+| **Cache & Queue** | [`@db/redis`](https://jsr.io/@db/redis) với in-memory fallback |
+| **Validation** | [Valibot 1.x](https://valibot.dev/) (`jsr:@valibot/valibot`) |
+| **Storage** | Local / Supabase Storage / S3-MinIO (tự implement `MiniS3Client`) |
+| **Email** | Deno native TCP + STARTTLS (không cần thư viện ngoài) |
 
 ---
 
-## 🚀 Hướng Dẫn Khởi Chạy (Quick Start)
+## 📂 Cấu trúc thư mục
 
-### Yêu cầu hệ thống:
+```text
+Denolith/
+├── scripts/
+│   ├── migrate.ts              # CLI runner cho Migrator (up/down/reset/status)
+│   ├── generate-migration.ts   # Scaffold file migration mới
+│   └── seed.ts                 # Seed dữ liệu mẫu (roles, users, permissions)
+│
+├── src/
+│   ├── core/                   # Hạ tầng cốt lõi
+│   │   ├── config.ts           # Env validation & typed config (Valibot)
+│   │   ├── logger.ts           # Logger
+│   │   ├── database.ts         # PostgreSQL Client singleton (@db/postgres)
+│   │   ├── redis.ts            # Redis client (primary + queue connection)
+│   │   ├── migrator.ts         # Migration Engine (versioned SQL, transaction-safe)
+│   │   ├── base.repository.ts  # BaseRepository: queryOne/queryMany/paginate/transaction
+│   │   ├── queue.ts            # Background Job Queue (Redis BRPOP + memory fallback)
+│   │   ├── cron.ts             # Cronjob scheduler (token cleanup, daily tasks)
+│   │   ├── audit.ts            # AuditService — ghi log bất đồng bộ qua Queue
+│   │   ├── email.ts            # SMTP Email Service + Email Templates
+│   │   ├── storage.ts          # StorageService (Strategy: local | supabase | s3)
+│   │   ├── mini-s3.ts          # MiniS3Client — S3-compatible thuần Web Crypto API
+│   │   ├── context.ts          # Hono AppEnv type definition
+│   │   ├── schema.ts           # Shared Valibot schemas
+│   │   ├── schema-diff.ts      # Schema diffing utilities
+│   │   └── container.ts        # AppContainer — DI, khởi tạo DB + Redis + Services
+│   │
+│   ├── migrations/
+│   │   ├── index.ts            # Export tập hợp allMigrations
+│   │   └── 001_init.ts         # Migration khởi tạo toàn bộ schema (SQL thuần)
+│   │
+│   ├── modules/
+│   │   ├── auth/
+│   │   │   ├── auth.repository.ts   # Raw SQL queries: tạo/xóa refresh token
+│   │   │   ├── auth.routes.ts       # POST /register, /login, /refresh, /logout
+│   │   │   ├── auth.service.ts      # JWT, refresh token rotation, blacklist
+│   │   │   └── auth.validation.ts
+│   │   ├── user/
+│   │   │   ├── user.entity.ts       # TypeScript interface User
+│   │   │   ├── user.repository.ts   # Raw SQL: findMany, findById, create, update, softDelete...
+│   │   │   ├── user.routes.ts       # Admin CRUD (requires admin+)
+│   │   │   ├── user.schema.ts       # Reusable Valibot schemas
+│   │   │   ├── user.service.ts      # Business logic
+│   │   │   └── user.validation.ts
+│   │   ├── permission/
+│   │   │   ├── permission.entity.ts      # TypeScript interfaces
+│   │   │   ├── permission.repository.ts  # Raw SQL: profiles, profile_permissions, user_profiles, overrides
+│   │   │   ├── permission.routes.ts      # Permission profiles & user overrides API
+│   │   │   ├── permission.service.ts     # resolvePermissions, hasPermission
+│   │   │   └── permission.validation.ts
+│   │   └── role/
+│   │       ├── role.entity.ts       # TypeScript interface Role
+│   │       ├── role.repository.ts   # Raw SQL CRUD
+│   │       ├── role.routes.ts
+│   │       ├── role.service.ts
+│   │       └── role.validation.ts
+│   │
+│   ├── shared/
+│   │   ├── errors/              # AppError definitions & global error handler
+│   │   ├── middlewares/
+│   │   │   ├── auth.middleware.ts         # JWT verify + Redis blacklist + DB user check
+│   │   │   ├── rbac.middleware.ts         # requireRole() — tier-based
+│   │   │   ├── permission.middleware.ts   # requirePermission() / requireAnyPermission()
+│   │   │   ├── cache.middleware.ts        # cacheResponse() — Redis + memory LRU
+│   │   │   ├── rate-limit.middleware.ts   # rateLimiter() — atomic Lua + memory fallback
+│   │   │   └── validate-uuid.middleware.ts
+│   │   └── utils/
+│   │       ├── hash.ts          # Password hashing (Web Crypto PBKDF2)
+│   │       ├── pagination.ts    # extractPagination, PaginationParams, PaginatedResult
+│   │       ├── sanitize.ts      # sanitizeUser (strip sensitive fields)
+│   │       └── validator.ts     # validateJson, validateQuery wrappers
+│   │
+│   └── workers/
+│       └── index.ts             # Workers: send_welcome_email, audit_log
+│
+├── main.ts                      # Entrypoint: boot Container → Migrate → Hono → Serve
+├── deno.json                    # Deno tasks, import map, version
+├── Dockerfile                   # Docker image (denoland/deno:alpine)
+└── compose.yml.example          # Docker Compose: API + Redis
+```
 
-- Cài đặt **Deno 2.x**
-- Cài đặt **Docker & Docker Compose** (để chạy Database và Redis)
+---
 
-### Bước 1: Cấu hình Môi trường
+## 🔐 Hệ thống phân quyền (3-Tier RBAC)
 
-Sao chép file cấu hình mẫu và đổi tên thành `.env`:
+```
+OWNER  (tier: owner)  →  Bypass hoàn toàn, không query DB/Permission gì
+ADMIN  (tier: admin)  →  Gán Permission Profiles + Individual Overrides
+USER   (tier: user)   →  Gán Permission Profiles + Individual Overrides
+```
+
+### Luồng xác thực (mỗi request)
+
+```
+Request
+  → authMiddleware
+      1. Đọc Bearer token từ Authorization header
+      2. Verify JWT (signature + expiry, HS256)
+      3. Redis blacklist check (nếu có Redis)
+      4. DB query: SELECT role, tier FROM users WHERE id=$1 AND deleted=false
+      → inject payload.role + payload.tier vào context
+
+  → requirePermission("permission.code")
+      → tier === "owner" → BYPASS ngay
+      → others → resolvePermissions(userId, tier)
+          = Union(PermissionProfiles assigned) MERGE UserPermission overrides
+          → cached trong context (tránh query trùng)
+      → hasPermission(resolved, code) → AND check
+```
+
+### Permission Resolution Logic
+
+- **Profile permissions**: UNION quyền từ tất cả profiles được assign cho user
+- **Individual overrides**: `granted=true` cấp thêm, `granted=false` thu hồi tường minh — ưu tiên cao hơn profile
+
+---
+
+## 🗃️ Migration Engine
+
+Denolith tự implement `Migrator` — không dùng Prisma hay bất kỳ ORM nào.
+
+**Cách hoạt động:**
+- Mỗi migration là một file `{version}_{name}.ts` export `{ version, name, up: string, down: string }`
+- Migrator duy trì bảng `_migrations` trong PostgreSQL để track lịch sử
+- `up`/`down` là raw SQL string, chạy trong transaction — rollback tự động nếu lỗi
+- **Auto-run khi startup**: `main.ts` gọi `migrator.migrate(allMigrations)` mỗi lần khởi động, chỉ apply các migration chưa có
+
+**Thêm migration mới:**
+```bash
+deno task migrate:generate
+# → Tạo file src/migrations/{timestamp}_{name}.ts với template sẵn
+# → Chỉnh sửa up/down SQL
+# → Import vào src/migrations/index.ts
+```
+
+---
+
+## 🚀 Bắt đầu sử dụng
+
+### Yêu cầu hệ thống
+
+- [Deno 2.x](https://deno.com/)
+- PostgreSQL
+- Redis *(optional — tự fallback sang memory)*
+
+### 1. Cài đặt môi trường
 
 ```bash
 cp .env.example .env
+# Chỉnh sửa .env với thông tin kết nối của bạn
 ```
 
-Tạo mã bí mật siêu mạnh (CSPRNG) cho biến `JWT_SECRET` bằng script có sẵn:
+Các biến môi trường quan trọng:
 
-```bash
-deno run scripts/generate-secret.ts 64
-```
+| Biến | Bắt buộc | Mô tả |
+|---|---|---|
+| `DATABASE_URL` | ✅ | PostgreSQL connection string. Hỗ trợ `?schema=<name>` để set search_path |
+| `JWT_SECRET` | ✅ | Tối thiểu 32 ký tự ngẫu nhiên (`openssl rand -hex 32`) |
+| `PORT` | ❌ | Mặc định: `3000` |
+| `DENO_ENV` | ❌ | `development` \| `production` \| `test` |
+| `REDIS_URL` | ❌ | Mặc định: memory fallback |
+| `FRONTEND_URL` | ❌ | CORS origin (mặc định: `http://localhost:5173`) |
+| `TRUST_PROXY` | ❌ | `true` nếu đứng sau Nginx/Cloudflare |
+| `SMTP_HOST` | ❌ | SMTP server (optional, graceful degradation nếu không có) |
+| `STORAGE_TYPE` | ❌ | `local` \| `supabase` \| `s3` (mặc định: `supabase`) |
+| `SUPABASE_URL` | ❌ | Chỉ cần khi `STORAGE_TYPE=supabase` |
+| `S3_ENDPOINT` | ❌ | Chỉ cần khi `STORAGE_TYPE=s3` |
 
-Sau đó copy đoạn mã vừa tạo dán vào file `.env` (hoặc `compose.yml`).
-
-### Bước 2: Khởi chạy dự án
-
-**Cách 1: Chạy bằng Docker (Khuyên dùng cho Production & Môi trường đồng nhất)**
-Lệnh này sẽ tự build image, khởi chạy Database, Redis và cả API Server:
-
-```bash
-docker compose up -d
-```
-
-Server sẽ sẵn sàng tại: `http://localhost:9999`
-
-**Cách 2: Chạy môi trường phát triển (Hot-reload)** Nếu bạn muốn code và tự động
-nhận thay đổi, chỉ cần khởi động các service nền:
-
-```bash
-docker compose up -d db redis
-```
-
-Sau đó chạy server qua Deno:
-
-```bash
-# Lệnh này sẽ tự động chạy Migration tạo Table và khởi động Server với tính năng Hot-reload
-deno task dev
-```
-
-### Bước 3: Khởi tạo dữ liệu mẫu
+### 2. Seed dữ liệu mẫu
 
 ```bash
 deno task seed
 ```
 
-Seed sẽ tạo 4 users mặc định:
+Seed tạo ra:
+- Roles: `owner`, `admin`, `user`
+- Users mặc định:
 
-| Email                | Password       | Role    |
-| -------------------- | -------------- | ------- |
+| Email | Password | Role |
+|---|---|---|
 | `owner@denolith.dev` | `Owner@123456` | `owner` |
 | `admin@denolith.dev` | `Admin@123456` | `admin` |
-| `user1@denolith.dev` | `User1@123456` | `user`  |
-| `user2@denolith.dev` | `User2@123456` | `user`  |
+| `user1@denolith.dev` | `User1@123456` | `user` |
+| `user2@denolith.dev` | `User2@123456` | `user` |
 
-Và 8 permission codes cơ bản: `users.*`, `reports.*`, `permissions.manage`.
+- Permission codes: `users.read`, `users.create`, `users.update`, `users.delete`, `reports.view`, `reports.export`, `permissions.manage`, ...
 
-Server sẽ sẵn sàng phục vụ tại: `http://localhost:9999`
+### 3. Chạy server
 
----
+```bash
+# Development (hot-reload)
+deno task dev
 
-## 📜 Danh Sách Lệnh Tiện Ích (Deno Tasks)
-
-| Lệnh                      | Chức năng                                                      |
-| ------------------------- | -------------------------------------------------------------- |
-| `deno task dev`           | Chạy môi trường phát triển (Tự động Restart khi sửa code)      |
-| `deno task start`         | Chạy Server ở chế độ thông thường (Dùng cho Production)        |
-| `deno task migrate`       | Cập nhật các thay đổi Schema mới nhất vào DB                   |
-| `deno task migrate:down`  | Rollback (hoàn tác) file Migration được tạo gần nhất           |
-| `deno task migrate:reset` | Rollback TOÀN BỘ Database về trạng thái trống trơn             |
-| `deno task seed`          | Chạy dữ liệu mẫu (Seeding) vào Database                        |
-| `deno test -A`            | Chạy bộ Unit Tests bảo mật tự động                             |
-| `deno task compile`       | Đóng gói toàn bộ Backend thành 1 file nhị phân duy nhất (.exe) |
-| `deno task compile:linux` | Đóng gói toàn bộ Backend thành 1 file nhị phân cho Linux       |
-| `deno task format`        | Tự động format lại code theo chuẩn Denolith                    |
-
----
-
-## 🔐 Biến Môi Trường (.env)
-
-Dưới đây là các biến môi trường quan trọng cần cấu hình để ứng dụng vận hành:
-
-- `PORT`: Cổng ứng dụng (Mặc định: 9999)
-- `DATABASE_URL`: Chuỗi kết nối tới máy chủ PostgreSQL
-- `REDIS_URL`: Chuỗi kết nối Redis (Nếu hệ thống không có Redis, Denolith sẽ tự
-  động chuyển sang dùng RAM cục bộ)
-- `JWT_SECRET`: Chuỗi khóa bí mật siêu dài dùng để ký Token xác thực
-
----
-
-## 🔑 Hệ Thống Phân Quyền (RBAC + ABAC)
-
-Denolith sử dụng mô hình phân quyền **3 tầng** kết hợp RBAC và ABAC:
-
-```
-OWNER  →  Bypass tất cả, không check gì
-ADMIN  →  Phải được cấp PermissionProfile
-USER   →  Bị giới hạn theo PermissionProfile được assign
+# Production
+deno task start
 ```
 
-**Luồng cấu hình quyền (không cần deploy lại):**
+Migrations sẽ **tự động chạy khi startup** — không cần chạy lệnh riêng trong dev thông thường.
 
-1. Developer định nghĩa permission code trong migration: `"users.read"`,
-   `"reports.export"`...
-2. OWNER tạo PermissionProfile: `"Sales Manager"` =
-   `{ users.read ✅, reports.view ✅ }`
-3. OWNER assign profile cho ADMIN/USER → có quyền ngay lập tức (Redis cache 5
-   phút)
-4. OWNER set individual override cho user cụ thể nếu cần
-5. Router chỉ khai báo: `requirePermission("users.read")` — không cần sửa khi
-   muốn cấp/thu hồi quyền
-
-**Xem chi tiết:** [ARCHITECTURE.md — Section 6.6](./ARCHITECTURE.md)
+Các endpoint sau khi khởi động:
+- **Server**: `http://localhost:<PORT>`
+- **Health check**: `http://localhost:<PORT>/health`
 
 ---
 
-**Được thiết kế cho Tốc độ, Bảo mật và Trải nghiệm Developer tối thượng.**
+## 📜 Danh sách lệnh (deno task)
+
+### Application
+
+| Command | Mô tả |
+|---|---|
+| `dev` | Chạy development mode với `--watch` (hot-reload) |
+| `start` | Chạy production mode |
+| `format` | `deno fmt` + `deno lint --fix` |
+| `test` | Chạy test suite (`src/` + `scratch/`) |
+| `test:watch` | Chạy test với hot-reload |
+| `compile` | Compile thành binary macOS (`./dist/denolith`) |
+| `compile:linux` | Cross-compile cho Linux x86_64 (`./dist/denolith-linux`) |
+
+### Migration
+
+| Command | Mô tả |
+|---|---|
+| `migrate` | Apply tất cả pending migrations (up) |
+| `migrate:down` | Rollback migration gần nhất (down, 1 step) |
+| `migrate:reset` | Rollback toàn bộ về DB trống |
+| `migrate:status` | Xem danh sách migration đã/chưa apply |
+| `migrate:generate` | Scaffold file migration TypeScript mới |
+| `seed` | Seed dữ liệu mẫu vào DB |
+
+> **Lưu ý**: Khi `deno task dev` hay `deno task start`, migration **tự động apply** khi khởi động.
+
+---
+
+## 🌐 API Endpoints
+
+### Auth — `/api/auth`
+
+| Method | Path | Mô tả | Guard |
+|---|---|---|---|
+| `POST` | `/api/auth/register` | Đăng ký tài khoản | Rate limit 5/15min |
+| `POST` | `/api/auth/login` | Đăng nhập → access token + refresh cookie | Rate limit 5/15min |
+| `POST` | `/api/auth/refresh` | Làm mới access token từ refresh cookie | — |
+| `POST` | `/api/auth/logout` | Đăng xuất, blacklist token | — |
+
+### Admin Users — `/api/users` *(requires: admin tier)*
+
+| Method | Path | Mô tả |
+|---|---|---|
+| `GET` | `/api/users` | Danh sách users (paginated, cached 60s) |
+| `GET` | `/api/users/:id` | Chi tiết 1 user |
+| `POST` | `/api/users` | Tạo user mới |
+| `PATCH` | `/api/users/:id` | Cập nhật thông tin user |
+| `PATCH` | `/api/users/:id/role` | Cập nhật role *(requires: permissions.manage)* |
+| `DELETE` | `/api/users/:id` | Soft delete |
+| `DELETE` | `/api/users/:id?force=true` | Hard delete (204 No Content) |
+| `POST` | `/api/users/:id/restore` | Khôi phục user đã soft delete |
+
+### Permissions — `/api/permissions` *(requires: permissions.manage)*
+
+| Method | Path | Mô tả |
+|---|---|---|
+| `GET` | `/api/permissions/codes` | Xem tất cả permission codes |
+| `GET` | `/api/permissions/profiles` | Danh sách profiles (filter: `?tier=admin\|user`) |
+| `POST` | `/api/permissions/profiles` | Tạo profile mới |
+| `GET` | `/api/permissions/profiles/:id` | Chi tiết profile + permissions bên trong |
+| `PATCH` | `/api/permissions/profiles/:id` | Cập nhật profile |
+| `DELETE` | `/api/permissions/profiles/:id` | Xóa profile (cascade xóa assignments) |
+| `PUT` | `/api/permissions/profiles/:id/codes/:code` | Set permission code vào profile |
+| `DELETE` | `/api/permissions/profiles/:id/codes/:code` | Xóa permission code khỏi profile |
+| `GET` | `/api/permissions/users/:userId/profiles` | Xem profiles của user |
+| `POST` | `/api/permissions/users/:userId/profiles` | Assign profile cho user |
+| `DELETE` | `/api/permissions/users/:userId/profiles/:profileId` | Thu hồi profile |
+| `GET` | `/api/permissions/users/:userId/overrides` | Xem individual overrides của user |
+| `PUT` | `/api/permissions/users/:userId/overrides/:code` | Set individual override |
+| `DELETE` | `/api/permissions/users/:userId/overrides/:code` | Xóa override |
+
+### Roles — `/api/roles` *(requires: permissions.manage)*
+
+| Method | Path | Mô tả |
+|---|---|---|
+| `GET` | `/api/roles` | Danh sách roles |
+| `GET` | `/api/roles/:code` | Chi tiết 1 role |
+| `POST` | `/api/roles` | Tạo role mới |
+| `PATCH` | `/api/roles/:code` | Cập nhật role |
+| `DELETE` | `/api/roles/:code` | Xóa role (không xóa được system role) |
+
+### System
+
+| Method | Path | Mô tả |
+|---|---|---|
+| `GET` | `/health` | Health check: ping DB + Redis |
+| `GET` | `/` | `"Backend is running."` |
+
+---
+
+## ⚙️ Kiến trúc nội bộ
+
+### AppContainer (Dependency Injection)
+
+`src/core/container.ts` export một singleton `container`. Khi `container.init()` được gọi ở startup:
+1. Kết nối Redis
+2. Kết nối PostgreSQL
+3. Khởi tạo tất cả Repositories (inject `db`)
+4. Khởi tạo tất cả Services (inject Repositories)
+
+```typescript
+// main.ts
+await container.init();
+// → container.userService, container.authService... đã sẵn sàng
+```
+
+### Repository Pattern
+
+Mọi Repository đều extends `BaseRepository`, cung cấp sẵn:
+- `queryOne<T>(sql, params)` — lấy 1 dòng
+- `queryMany<T>(sql, params)` — lấy nhiều dòng
+- `execute(sql, params)` — INSERT/UPDATE/DELETE
+- `paginate<T>(baseSql, params, pagination)` — auto count + LIMIT/OFFSET
+- `collection<T>(sql, params)` — toàn bộ danh sách không phân trang
+- `transaction(fn)` — wrap trong DB transaction, auto rollback khi lỗi
+
+### Background Queue System
+
+- **Redis mode**: `LPUSH` để enqueue, `BRPOP` (5s timeout) trên connection riêng
+- **Memory fallback**: in-memory queue khi Redis không khả dụng
+- **Graceful shutdown**: chờ tối đa 5s để drain active jobs
+
+Workers đã đăng ký (`src/workers/index.ts`):
+- `send_welcome_email` — Gửi email chào mừng qua SMTP
+- `audit_log` — Ghi AuditLog vào bảng `audit_logs`
+
+### Rate Limiting
+
+- **Redis mode**: Lua script `INCR + PEXPIRE` — atomic, chống race condition
+- **Memory fallback**: in-memory Map với TTL cleanup mỗi 60s
+- Global: 100 req/phút
+- Auth endpoints: 5 req/15 phút (chống brute force)
+- Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
+
+### Response Caching
+
+Cache key: `cache:<userId>:<url>` — scope theo user + URL.
+- **Redis**: `SETEX` với TTL cấu hình per-route
+- **Memory**: LRU-lite với giới hạn 1000 keys
+- Header `X-Cache: HIT-REDIS | HIT-MEMORY | MISS`
+
+### Storage Service
+
+Strategy Pattern — chọn provider qua `STORAGE_TYPE` trong `.env`:
+
+| Provider | Cơ chế |
+|---|---|
+| `local` | Lưu file vào `./uploads/<bucket>/` trên server |
+| `supabase` | HTTP POST đến Supabase Storage REST API |
+| `s3` | `MiniS3Client` tự implement bằng Web Crypto API (AWS Signature V4) |
+
+---
+
+## 🐳 Docker
+
+### Chạy với Docker Compose
+
+```bash
+cp compose.yml.example compose.yml
+# Chỉnh sửa biến môi trường
+docker compose up -d
+```
+
+`compose.yml.example` bao gồm:
+- `denolith_api` — App container (build từ `Dockerfile`)
+- `redis` — Redis 7.4-alpine với healthcheck
+
+### Dockerfile
+
+- Base: `denoland/deno:alpine`
+- Layer cache dependencies trước khi copy source
+- Type-check `main.ts` trong build step
+- Chạy với non-root user `deno` (Principle of Least Privilege)
+
+---
+
+## 💡 Thêm Module mới
+
+1. **Migration**: Thêm bảng mới — `deno task migrate:generate`, viết SQL vào `up`/`down`
+2. **Entity**: Tạo `src/modules/<name>/<name>.entity.ts` định nghĩa TypeScript interface
+3. **Repository**: Tạo `<name>.repository.ts` extends `BaseRepository`, viết raw SQL
+4. **Service**: Tạo `<name>.service.ts`, inject Repository qua constructor
+5. **Validation**: Tạo `<name>.validation.ts` dùng Valibot
+6. **Routes**: Tạo `<name>.routes.ts`, áp dụng middlewares phù hợp
+7. **Container**: Thêm repo + service vào `src/core/container.ts`
+8. **Router**: Mount route trong `main.ts`
+
+---
+
+## 🛡️ License
+
+Proprietary / Closed Source.

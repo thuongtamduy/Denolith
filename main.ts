@@ -107,7 +107,23 @@ logger.info(
 
 const abortController = new AbortController();
 
+// Guard chống shutdown bị gọi nhiều lần (Deno --watch có thể fire SIGINT nhiều lần)
+let isShuttingDown = false;
+
 const shutdown = async () => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  // Xóa signal listener ngay lập tức để không bị trigger lần nữa
+  try {
+    Deno.removeSignalListener("SIGINT", shutdown);
+    if (Deno.build.os !== "windows") {
+      Deno.removeSignalListener("SIGTERM", shutdown);
+    }
+  } catch {
+    // Ignore nếu listener chưa được đăng ký
+  }
+
   logger.info("Shutting down gracefully...");
   stopCrons(); // Dừng toàn bộ cronjob
   abortController.abort(); // Dừng HTTP server
