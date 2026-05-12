@@ -1,8 +1,11 @@
 import { Hono } from "@hono/core";
-import { validateJson } from "../../shared/utils/validator.ts";
+import { validateJson, validateQuery } from "../../shared/utils/validator.ts";
 import { requirePermission } from "../../shared/middlewares/permission.middleware.ts";
 import type { AppEnv } from "../../core/context.ts";
-import { extractPagination } from "../../shared/utils/pagination.ts";
+import {
+  extractPagination,
+  paginationQuerySchema,
+} from "../../shared/utils/pagination.ts";
 import type { RoleService } from "./role.service.ts";
 import {
   type CreateRoleInput,
@@ -30,7 +33,7 @@ export const createRoleRoutes = (service: RoleService) => {
    * GET /api/roles
    * Lấy danh sách toàn bộ roles.
    */
-  router.get("/", async (c) => {
+  router.get("/", validateQuery(paginationQuerySchema), async (c) => {
     const params = extractPagination(c.req.query());
     const result = await service.findMany(params);
     return c.json({ success: true, ...result });

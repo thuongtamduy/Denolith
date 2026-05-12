@@ -32,14 +32,21 @@ export class AuthService {
   constructor(private prisma: PrismaClient) {}
 
   async register(data: RegisterData) {
-    return await this.prisma.$transaction(async (tx) => {
-      const existing = await tx.user.findUnique({
-        where: { email: data.email },
-      });
-      if (existing) throw AppError.conflict("Email already in use");
+    // Check existing before transaction to fail fast
+    const existing = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
+    if (existing) throw AppError.conflict("Email already in use");
 
-      const hashedPassword = await hashPassword(data.password);
-      const user = await tx.user.create({
+    // Hash password outside transaction (slow operation)
+    const hashedPassword = await hashPassword(data.password);
+
+    const refreshToken = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    // Transaction only handles DB writes
+    const user = await this.prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
         data: {
           username: data.username,
           email: data.email,
@@ -48,41 +55,42 @@ export class AuthService {
         include: { role: { select: { tier: true } } },
       });
 
-      const accessToken = await sign(
-        {
-          id: user.id,
-          role: user.roleCode,
-          tier: user.role.tier,
-          exp: Math.floor(Date.now() / 1000) + 15 * 60,
-        },
-        config.jwtSecret,
-      );
-
-      const refreshToken = crypto.randomUUID();
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
       await tx.refreshToken.create({
         data: {
-          userId: user.id,
+          userId: createdUser.id,
           token: refreshToken,
           expiresAt,
         },
       });
 
-      await Queue.enqueue("send_welcome_email", {
-        email: user.email,
-        username: user.username,
-      });
-
-      await AuditService.log({
-        actorId: user.id,
-        action: "auth.register",
-        targetType: "user",
-        targetId: user.id,
-      });
-
-      return { user, accessToken, refreshToken };
+      return createdUser;
     });
+
+    // Generate token outside transaction
+    const accessToken = await sign(
+      {
+        id: user.id,
+        role: user.roleCode,
+        tier: user.role.tier,
+        exp: Math.floor(Date.now() / 1000) + 15 * 60,
+      },
+      config.jwtSecret,
+    );
+
+    // Run side effects outside transaction
+    await Queue.enqueue("send_welcome_email", {
+      email: user.email,
+      username: user.username,
+    });
+
+    await AuditService.log({
+      actorId: user.id,
+      action: "auth.register",
+      targetType: "user",
+      targetId: user.id,
+    });
+
+    return { user, accessToken, refreshToken };
   }
 
   async login(data: LoginData) {

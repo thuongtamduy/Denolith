@@ -1,22 +1,67 @@
-import { vValidator } from "@hono/valibot-validator";
+import { validator as openapiValidator } from "hono-openapi";
 import { AppError } from "../errors/AppError.ts";
-import type { GenericSchema, GenericSchemaAsync } from "valibot";
+import type {
+  GenericSchema,
+  GenericSchemaAsync,
+  InferInput,
+  InferOutput,
+} from "valibot";
+import type { Env, MiddlewareHandler } from "@hono/core";
 
 /**
  * Wrapper cho vValidator của Hono để đồng nhất lỗi trả về theo chuẩn AppError.
- * Tránh việc Valibot ném ra toàn bộ issues rác làm Frontend bối rối.
+ * Đồng thời tự động nhúng schema vào OpenAPI (Swagger).
  */
 export const validateJson = <T extends GenericSchema | GenericSchemaAsync>(
   schema: T,
-) => {
-  return vValidator("json", schema, (result, _c) => {
+): MiddlewareHandler<
+  Env,
+  string,
+  {
+    in: { json: InferInput<T> };
+    out: { json: InferOutput<T> };
+  }
+> => {
+  // deno-lint-ignore no-explicit-any
+  return openapiValidator("json", schema as any, (result: any, _c: any) => {
     if (!result.success) {
-      // Lấy câu thông báo lỗi đầu tiên (ví dụ: "Số điện thoại phải dài 10-11 ký tự...")
       const firstIssue = result.issues[0];
       const message = firstIssue?.message || "Invalid input data";
-
-      // Ném lỗi 400 Bad Request để globalErrorHandler bắt và format chuẩn
       throw AppError.badRequest(message);
     }
-  });
+  }) as unknown as MiddlewareHandler<
+    Env,
+    string,
+    {
+      in: { json: InferInput<T> };
+      out: { json: InferOutput<T> };
+    }
+  >;
+};
+
+export const validateQuery = <T extends GenericSchema | GenericSchemaAsync>(
+  schema: T,
+): MiddlewareHandler<
+  Env,
+  string,
+  {
+    in: { query: InferInput<T> };
+    out: { query: InferOutput<T> };
+  }
+> => {
+  // deno-lint-ignore no-explicit-any
+  return openapiValidator("query", schema as any, (result: any, _c: any) => {
+    if (!result.success) {
+      const firstIssue = result.issues[0];
+      const message = firstIssue?.message || "Invalid query parameters";
+      throw AppError.badRequest(message);
+    }
+  }) as unknown as MiddlewareHandler<
+    Env,
+    string,
+    {
+      in: { query: InferInput<T> };
+      out: { query: InferOutput<T> };
+    }
+  >;
 };

@@ -20,6 +20,12 @@ export const createUserSchema = v.object({
   email: v.pipe(v.string(), v.email(), v.maxLength(255)),
   password: v.pipe(v.string(), v.minLength(6), v.maxLength(100)),
   phone: v.optional(phoneSchema),
+  roleCode: v.optional(v.string(), "user"),
+  firstName: v.optional(v.pipe(v.string(), v.maxLength(100))),
+  lastName: v.optional(v.pipe(v.string(), v.maxLength(100))),
+  displayName: v.optional(v.pipe(v.string(), v.maxLength(100))),
+  gender: v.optional(v.picklist(["male", "female", "other"])),
+  bio: v.optional(v.pipe(v.string(), v.maxLength(500))),
 });
 
 /**
@@ -31,6 +37,11 @@ export const updateUserSchema = v.partial(
     username: v.pipe(v.string(), v.minLength(3), v.maxLength(50)),
     phone: phoneSchema,
     active: v.boolean(),
+    firstName: v.pipe(v.string(), v.maxLength(100)),
+    lastName: v.pipe(v.string(), v.maxLength(100)),
+    displayName: v.pipe(v.string(), v.maxLength(100)),
+    gender: v.picklist(["male", "female", "other"]),
+    bio: v.pipe(v.string(), v.maxLength(500)),
   }),
 );
 

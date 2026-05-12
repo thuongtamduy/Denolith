@@ -1,8 +1,6 @@
 import { Hono } from "@hono/core";
 import type { AppEnv } from "./core/context.ts";
 import { container } from "./core/container.ts";
-
-// Routes
 import {
   createPublicUserRoutes,
   createUserRoutes,

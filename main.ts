@@ -1,4 +1,6 @@
 import { Hono } from "@hono/core";
+import { swaggerUI } from "@hono/swagger-ui";
+import { openAPIRouteHandler } from "hono-openapi";
 
 // Core & Middlewares
 import { cors } from "@hono/cors";
@@ -64,11 +66,36 @@ app.get("/health", async (c) => {
   }
 });
 
-app.get("/", (c) => c.text("Backend is running."));
-
 // Đăng ký toàn bộ các Route thông qua Router trung tâm
 app.route("/api", createApiRouter());
 app.route("/api/v0", createNormalRouter());
+
+// Thêm Swagger UI ở root
+app.get(
+  "/api/swagger",
+  // deno-lint-ignore no-explicit-any
+  swaggerUI({ url: "/api/swagger/openapi.json" }) as any,
+);
+app.get(
+  "/api/swagger/openapi.json",
+  // deno-lint-ignore no-explicit-any
+  openAPIRouteHandler(app as any, {
+    documentation: {
+      info: {
+        title: "Denolith API",
+        version: "1.0.0",
+        description: "API for Denolith",
+      },
+      components: {
+        securitySchemes: {
+          BearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
+        },
+      },
+      security: [{ BearerAuth: [] }],
+    },
+    // deno-lint-ignore no-explicit-any
+  }) as any,
+);
 
 // 4. Khởi động Server
 logger.info(

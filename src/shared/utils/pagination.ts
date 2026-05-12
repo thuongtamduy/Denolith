@@ -1,7 +1,16 @@
+import * as v from "valibot";
+
 export interface PaginationParams {
   page: number;
   limit: number;
+  search?: string;
 }
+
+export const paginationQuerySchema = v.object({
+  page: v.optional(v.string(), "1"),
+  limit: v.optional(v.string(), "20"),
+  search: v.optional(v.string(), ""),
+});
 
 export interface PaginationMeta {
   total: number;
@@ -36,5 +45,5 @@ export function extractPagination(
   const page = Math.max(1, isNaN(rawPage) ? 1 : rawPage);
   const limit = Math.min(100, Math.max(1, isNaN(rawLimit) ? 20 : rawLimit));
 
-  return { page, limit };
+  return { page, limit, search: query.search };
 }

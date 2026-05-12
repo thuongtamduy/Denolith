@@ -1,10 +1,13 @@
 import { Hono } from "@hono/core";
-import { validateJson } from "../../shared/utils/validator.ts";
+import { validateJson, validateQuery } from "../../shared/utils/validator.ts";
 import { validateUUID } from "../../shared/middlewares/validate-uuid.middleware.ts";
 import { requirePermission } from "../../shared/middlewares/permission.middleware.ts";
 import type { PermissionService } from "./permission.service.ts";
 import type { AppEnv } from "../../core/context.ts";
-import { extractPagination } from "../../shared/utils/pagination.ts";
+import {
+  extractPagination,
+  paginationQuerySchema,
+} from "../../shared/utils/pagination.ts";
 import {
   type AssignProfileInput,
   assignProfileSchema,
@@ -19,6 +22,7 @@ import {
 } from "./permission.validation.ts";
 
 import { authMiddleware } from "../../shared/middlewares/auth.middleware.ts";
+import { describeRoute } from "../../shared/utils/openapi.ts";
 
 /**
  * Permission management routes.
@@ -42,10 +46,20 @@ export const createPermissionRoutes = (service: PermissionService) => {
    * GET /api/permissions/codes
    * Xem toàn bộ permission codes đang có trong hệ thống.
    */
-  router.get("/codes", async (c) => {
-    const permissions = await service.findAllPermissions();
-    return c.json({ success: true, data: permissions });
-  });
+  router.get(
+    "/",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Get Permission Codes",
+      responses: {
+        200: { description: "Get permission codes successfully" },
+      },
+    }),
+    async (c) => {
+      const permissions = await service.findAllPermissions();
+      return c.json({ success: true, data: permissions });
+    },
+  );
 
   // ───────────────────────────────────────────
   // PERMISSION PROFILES
@@ -55,12 +69,23 @@ export const createPermissionRoutes = (service: PermissionService) => {
    * GET /api/permissions/profiles?page=1&limit=20&tier=admin
    * Danh sách profiles, có thể filter theo tier.
    */
-  router.get("/profiles", async (c) => {
-    const params = extractPagination(c.req.query());
-    const tier = c.req.query("tier") as "admin" | "user" | undefined;
-    const result = await service.findManyProfiles(params, tier);
-    return c.json({ success: true, ...result });
-  });
+  router.get(
+    "/profiles",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Get Permission Profiles",
+      responses: {
+        200: { description: "Get permission profiles successfully" },
+      },
+    }),
+    validateQuery(paginationQuerySchema),
+    async (c) => {
+      const params = extractPagination(c.req.query());
+      const tier = c.req.query("tier") as "admin" | "user" | undefined;
+      const result = await service.findManyProfiles(params, tier);
+      return c.json({ success: true, ...result });
+    },
+  );
 
   /**
    * POST /api/permissions/profiles
@@ -133,9 +158,8 @@ export const createPermissionRoutes = (service: PermissionService) => {
       await service.setProfilePermission(profileId, permissionCode, granted);
       return c.json({
         success: true,
-        message: `Permission "${permissionCode}" has been ${
-          granted ? "granted to" : "denied in"
-        } the profile.`,
+        message: `Permission "${permissionCode}" has been ${granted ? "granted to" : "denied in"
+          } the profile.`,
       });
     },
   );
@@ -248,9 +272,8 @@ export const createPermissionRoutes = (service: PermissionService) => {
       await service.setOverride(userId, permissionCode, granted, actorId);
       return c.json({
         success: true,
-        message: `Override "${permissionCode}" has been ${
-          granted ? "granted" : "revoked"
-        }.`,
+        message: `Override "${permissionCode}" has been ${granted ? "granted" : "revoked"
+          }.`,
       });
     },
   );
