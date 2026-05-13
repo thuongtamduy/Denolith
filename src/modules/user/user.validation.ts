@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { keysToSnakeCase } from "../../shared/utils/case.ts";
 
 /**
  * Shared phone schema — dùng chung cho cả create và update.
@@ -23,31 +24,35 @@ export const createUserSchema = v.object({
 });
 
 /**
- * Schema cho PATCH /api/users/:id — Partial update, chỉ các field được phép chỉnh sửa.
+ * Schema cho PATCH /api/users/:id — Partial update, nhận camelCase từ Client.
  * Không bao gồm: email, role, password, deleted — chống Mass Assignment ở tầng validation.
+ * Sau khi validate, tự động transform key về snake_case để truyền xuống Repository.
  */
-export const updateUserSchema = v.partial(
-  v.object({
-    username: v.pipe(v.string(), v.minLength(3), v.maxLength(50)),
-    phone: phoneSchema,
-    first_name: v.union([v.string(), v.null_()]),
-    last_name: v.union([v.string(), v.null_()]),
-    display_name: v.union([v.string(), v.null_()]),
-    avatar: v.union([v.pipe(v.string(), v.url()), v.null_()]),
-    date_of_birth: v.union([
-      v.pipe(v.string(), v.transform((val) => new Date(val))),
-      v.null_(),
-    ]),
-    gender: v.union([
-      v.union([v.literal("male"), v.literal("female"), v.literal("other")]),
-      v.null_(),
-    ]),
-    bio: v.union([v.string(), v.null_()]),
-    address: v.union([v.string(), v.null_()]),
-    city: v.union([v.string(), v.null_()]),
-    country: v.union([v.string(), v.null_()]),
-    active: v.boolean(),
-  }),
+export const updateUserSchema = v.pipe(
+  v.partial(
+    v.object({
+      username: v.pipe(v.string(), v.minLength(3), v.maxLength(50)),
+      phone: phoneSchema,
+      firstName: v.union([v.string(), v.null_()]),
+      lastName: v.union([v.string(), v.null_()]),
+      displayName: v.union([v.string(), v.null_()]),
+      avatar: v.union([v.pipe(v.string(), v.url()), v.null_()]),
+      dateOfBirth: v.union([
+        v.pipe(v.string(), v.transform((val) => new Date(val))),
+        v.null_(),
+      ]),
+      gender: v.union([
+        v.union([v.literal("male"), v.literal("female"), v.literal("other")]),
+        v.null_(),
+      ]),
+      bio: v.union([v.string(), v.null_()]),
+      address: v.union([v.string(), v.null_()]),
+      city: v.union([v.string(), v.null_()]),
+      country: v.union([v.string(), v.null_()]),
+      active: v.boolean(),
+    }),
+  ),
+  v.transform((val) => keysToSnakeCase(val)),
 );
 
 // Infer types để dùng trực tiếp trong route handlers (type-safe, không cần cast)
