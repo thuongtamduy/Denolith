@@ -26,6 +26,14 @@ export const createRoleSchema = v.object({
       v.maxLength(255, "Description must not exceed 255 characters."),
     ),
   ),
+  color: v.optional(
+    v.pipe(
+      v.string(),
+      v.regex(/^#[0-9a-fA-F]{6}$/, "Color must be a valid hex code."),
+    ),
+  ),
+  icon: v.optional(v.string()),
+  sort_order: v.optional(v.number()),
 });
 
 export const updateRoleSchema = v.object({
@@ -46,6 +54,17 @@ export const updateRoleSchema = v.object({
     ]),
   ),
   active: v.optional(v.boolean("Active status must be a boolean.")),
+  color: v.optional(
+    v.union([
+      v.pipe(
+        v.string(),
+        v.regex(/^#[0-9a-fA-F]{6}$/, "Color must be a valid hex code."),
+      ),
+      v.null_(),
+    ]),
+  ),
+  icon: v.optional(v.union([v.string(), v.null_()])),
+  sort_order: v.optional(v.number()),
 });
 
 // Type extraction (optional but good for type safety checks)

@@ -12,6 +12,7 @@ native** — không ORM, không `node_modules`.
 - **Database**: `@db/postgres` (raw SQL + custom Migrator)
 - **Cache/Queue**: `@db/redis` (memory fallback)
 - **Validation**: Valibot 1.x
+- **Architecture**: 100% JSR, Zero `node_modules`
 
 ---
 
@@ -49,18 +50,26 @@ deno task seed          # Seed roles, users, permissions mẫu
 | `format`           | fmt + lint                                  |
 | `compile`          | Build binary (macOS)                        |
 | `compile:linux`    | Build binary (Linux x86_64)                 |
+| `deps:check`       | Kiểm tra cập nhật package JSR               |
+| `deps:update`      | Cập nhật toàn bộ dependencies               |
 
 ---
 
-## API
+## API Routes
 
-| Prefix                               | Guard                | Mô tả                                |
-| ------------------------------------ | -------------------- | ------------------------------------ |
-| `POST /api/auth/*`                   | Rate limit           | register, login, refresh, logout     |
-| `GET/POST/PATCH/DELETE /api/users/*` | admin tier           | User CRUD, soft/hard delete, restore |
-| `/api/permissions/*`                 | `permissions.manage` | Profiles, codes, user overrides      |
-| `/api/roles/*`                       | `permissions.manage` | Role CRUD                            |
-| `GET /health`                        | —                    | Ping DB + Redis                      |
+Hệ thống hỗ trợ API Versioning:
+
+- `/api/v0/*`: Public endpoints (Không yêu cầu xác thực).
+- `/api/v1/*`: Protected endpoints (Bắt buộc xác thực JWT).
+
+| Prefix                                  | Guard                | Mô tả                                |
+| --------------------------------------- | -------------------- | ------------------------------------ |
+| `GET /api/v0/ping`                      | —                    | Public test endpoint                 |
+| `POST /api/v1/auth/*`                   | Rate limit           | register, login, refresh, logout     |
+| `GET/POST/PATCH/DELETE /api/v1/users/*` | admin tier           | User CRUD, soft/hard delete, restore |
+| `/api/v1/permissions/*`                 | `permissions.manage` | Profiles, codes, user overrides      |
+| `/api/v1/roles/*`                       | `permissions.manage` | Role CRUD                            |
+| `GET /health`                           | —                    | Ping DB + Redis                      |
 
 ---
 
@@ -91,13 +100,26 @@ khi startup.
 
 ---
 
+## Enterprise Features
+
+- **Request Tracing**: Tự động sinh `X-Request-Id` cho mọi request, chèn vào
+  header và log để dễ dàng truy vết (Datadog, ELK).
+- **Asynchronous Audit Logging**: Tự động thu thập các hành động thay đổi dữ
+  liệu (POST, PUT, DELETE) qua Middleware và lưu xuống DB bằng Redis Background
+  Worker, giúp API không bị chậm đi dù chỉ 1 mili-giây.
+- **Graceful Shutdown**: Chống rò rỉ bộ nhớ, an toàn khi tắt app bằng cách ngắt
+  Worker, ngắt Cron và đóng sạch Database connections.
+
+---
+
 ## Env Variables
 
 | Biến           | Bắt buộc       | Mặc định                               |
 | -------------- | -------------- | -------------------------------------- |
-| `DATABASE_URL` | ✅             | —                                      |
+| `DATABASE_URL` | ✅             | — (Connection Pooling)                 |
+| `DIRECT_URL`   | ✅             | — (Dùng riêng cho Migrations)          |
 | `JWT_SECRET`   | ✅ (≥32 ký tự) | —                                      |
-| `PORT`         | ❌             | `3000`                                 |
+| `PORT`         | ❌             | `9999`                                 |
 | `DENO_ENV`     | ❌             | `development`                          |
 | `REDIS_URL`    | ❌             | memory fallback                        |
 | `FRONTEND_URL` | ❌             | `http://localhost:5173`                |

@@ -30,6 +30,19 @@ export const updateUserSchema = v.partial(
   v.object({
     username: v.pipe(v.string(), v.minLength(3), v.maxLength(50)),
     phone: phoneSchema,
+    first_name: v.union([v.string(), v.null_()]),
+    last_name: v.union([v.string(), v.null_()]),
+    display_name: v.union([v.string(), v.null_()]),
+    avatar: v.union([v.pipe(v.string(), v.url()), v.null_()]),
+    date_of_birth: v.union([v.string(), v.null_()]),
+    gender: v.union([
+      v.union([v.literal("male"), v.literal("female"), v.literal("other")]),
+      v.null_(),
+    ]),
+    bio: v.union([v.string(), v.null_()]),
+    address: v.union([v.string(), v.null_()]),
+    city: v.union([v.string(), v.null_()]),
+    country: v.union([v.string(), v.null_()]),
     active: v.boolean(),
   }),
 );

@@ -4,8 +4,8 @@ import { logger } from "./logger.ts";
 export interface Migration {
   version: string;
   name: string;
-  up: string;
-  down: string;
+  up: string | string[];
+  down: string | string[];
 }
 
 interface MigrationRecord {
@@ -67,7 +67,14 @@ export class Migrator {
       const transaction = this.db.createTransaction(`mig_${migration.version}`);
       await transaction.begin();
       try {
-        await transaction.queryObject(migration.up);
+        const upQueries = Array.isArray(migration.up)
+          ? migration.up
+          : [migration.up];
+        for (const query of upQueries) {
+          if (query.trim().length > 0) {
+            await transaction.queryObject(query);
+          }
+        }
         await transaction.queryObject(
           "INSERT INTO _migrations (version, name) VALUES ($1, $2)",
           [migration.version, migration.name],
@@ -76,8 +83,18 @@ export class Migrator {
         applied.push(`${migration.version}_${migration.name}`);
         logger.info(`  ✅ Applied: ${migration.version}_${migration.name}`);
       } catch (error) {
-        logger.error(`  ❌ Failed: ${migration.version}_${migration.name}`);
-        await transaction.rollback();
+        logger.error(
+          `  ❌ Failed: ${migration.version}_${migration.name}`,
+          error,
+        );
+        try {
+          await transaction.rollback();
+        } catch (rbError) {
+          logger.error(
+            `  ⚠ Rollback failed (can be ignored if tx is dead):`,
+            rbError,
+          );
+        }
         throw error;
       }
     }
@@ -109,7 +126,14 @@ export class Migrator {
       const transaction = this.db.createTransaction(`rb_${migration.version}`);
       await transaction.begin();
       try {
-        await transaction.queryObject(migration.down);
+        const downQueries = Array.isArray(migration.down)
+          ? migration.down
+          : [migration.down];
+        for (const query of downQueries) {
+          if (query.trim().length > 0) {
+            await transaction.queryObject(query);
+          }
+        }
         await transaction.queryObject(
           "DELETE FROM _migrations WHERE version = $1",
           [migration.version],

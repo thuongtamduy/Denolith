@@ -10,8 +10,8 @@ try {
   // SEED: roles (System Roles - Bắt buộc phải có trước users)
   // ─────────────────────────────────────────────
   const roleSql = `
-    INSERT INTO roles (code, tier, name, description, system, active)
-    VALUES ($1, $2, $3, $4, true, true)
+    INSERT INTO roles (code, tier, name, description, color, icon, sort_order, system, active)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, true, true)
     ON CONFLICT (code) DO NOTHING
   `;
 
@@ -21,18 +21,27 @@ try {
       tier: "owner",
       name: "System Owner",
       description: "Full access, bypasses all permission checks",
+      color: "#ef4444",
+      icon: "crown",
+      sort_order: 1,
     },
     {
       code: "admin",
       tier: "admin",
       name: "Administrator",
       description: "Manages the system based on assigned permission profiles",
+      color: "#3b82f6",
+      icon: "shield",
+      sort_order: 2,
     },
     {
       code: "user",
       tier: "user",
       name: "Standard User",
       description: "Basic end-user with limited access",
+      color: "#10b981",
+      icon: "user",
+      sort_order: 3,
     },
   ];
 
@@ -42,6 +51,9 @@ try {
       role.tier,
       role.name,
       role.description,
+      role.color,
+      role.icon,
+      role.sort_order,
     ]);
   }
   logger.info(`✅ Seeded ${roles.length} system roles.`);
@@ -50,8 +62,8 @@ try {
   // SEED: users
   // ─────────────────────────────────────────────
   const userSql = `
-    INSERT INTO users (username, email, password, role, active)
-    VALUES ($1, $2, $3, $4, true)
+    INSERT INTO users (username, email, password, role, active, first_name, last_name, display_name, email_verified)
+    VALUES ($1, $2, $3, $4, true, $5, $6, $7, true)
     ON CONFLICT (email) DO NOTHING
   `;
 
@@ -61,24 +73,36 @@ try {
       email: "owner@denolith.dev",
       password: "Owner@123456",
       role: "owner",
+      first_name: "System",
+      last_name: "Owner",
+      display_name: "Master Admin",
     },
     {
       username: "admin",
       email: "admin@denolith.dev",
       password: "Admin@123456",
       role: "admin",
+      first_name: "Super",
+      last_name: "Admin",
+      display_name: "Administrator",
     },
     {
       username: "user1",
       email: "user1@denolith.dev",
       password: "User1@123456",
       role: "user",
+      first_name: "John",
+      last_name: "Doe",
+      display_name: "John D.",
     },
     {
       username: "user2",
       email: "user2@denolith.dev",
       password: "User2@123456",
       role: "user",
+      first_name: "Jane",
+      last_name: "Smith",
+      display_name: "Jane S.",
     },
   ];
 
@@ -89,6 +113,9 @@ try {
       user.email,
       hashedPw,
       user.role,
+      user.first_name,
+      user.last_name,
+      user.display_name,
     ]);
   }
   logger.info(`✅ Seeded ${users.length} users.`);

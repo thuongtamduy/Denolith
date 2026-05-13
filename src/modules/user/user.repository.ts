@@ -8,6 +8,8 @@ import { BaseRepository } from "../../core/base.repository.ts";
 
 // Các cột an toàn (không bao gồm password) dùng cho hầu hết các query
 const SAFE_COLUMNS = `id, username, email, role, phone, active,
+   first_name, last_name, display_name, avatar, date_of_birth, gender, bio,
+   phone_verified, email_verified, address, city, country, last_login_at, last_login_ip,
    created_at, updated_at, deleted, deleted_at`;
 
 export class UserRepository extends BaseRepository {
@@ -30,6 +32,8 @@ export class UserRepository extends BaseRepository {
   async findById(id: string, tx?: Transaction): Promise<User | undefined> {
     return await this.queryOne<User>(
       `SELECT u.id, u.username, u.email, u.role, u.phone, u.active,
+              u.first_name, u.last_name, u.display_name, u.avatar, u.date_of_birth, u.gender, u.bio,
+              u.phone_verified, u.email_verified, u.address, u.city, u.country, u.last_login_at, u.last_login_ip,
               u.created_at, u.updated_at, u.deleted, u.deleted_at,
               r.tier
        FROM users u
@@ -61,6 +65,8 @@ export class UserRepository extends BaseRepository {
   ): Promise<User | undefined> {
     return await this.queryOne<User>(
       `SELECT u.id, u.username, u.email, u.password, u.role, u.phone, u.active,
+              u.first_name, u.last_name, u.display_name, u.avatar, u.date_of_birth, u.gender, u.bio,
+              u.phone_verified, u.email_verified, u.address, u.city, u.country, u.last_login_at, u.last_login_ip,
               u.created_at, u.updated_at, u.deleted, u.deleted_at,
               r.tier
        FROM users u
@@ -128,6 +134,8 @@ export class UserRepository extends BaseRepository {
          RETURNING *
        )
        SELECT u.id, u.username, u.email, u.role, u.phone, u.active,
+              u.first_name, u.last_name, u.display_name, u.avatar, u.date_of_birth, u.gender, u.bio,
+              u.phone_verified, u.email_verified, u.address, u.city, u.country, u.last_login_at, u.last_login_ip,
               u.created_at, u.updated_at, u.deleted, u.deleted_at,
               r.tier
        FROM updated u

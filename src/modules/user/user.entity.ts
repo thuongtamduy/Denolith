@@ -22,7 +22,26 @@ export interface User {
   password: string;
   role: UserRole; // FK → roles.code
   tier?: UserTier; // Populated via JOIN roles — không lưu trong DB, chỉ có khi auth query
+
+  first_name: string | null;
+  last_name: string | null;
+  display_name: string | null;
+  avatar: string | null;
+  date_of_birth: Date | null;
+  gender: string | null;
+  bio: string | null;
+
   phone: string | null;
+  phone_verified: boolean;
+  email_verified: boolean;
+
+  address: string | null;
+  city: string | null;
+  country: string | null;
+
+  last_login_at: Date | null;
+  last_login_ip: string | null;
+
   active: boolean;
   // --- Audit Fields (bắt buộc có ở mọi bảng) ---
   created_at: Date; // Auto-set bởi DB khi INSERT
@@ -42,6 +61,16 @@ export interface CreateUserData {
 export interface UpdateUserData {
   username?: string;
   phone?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  display_name?: string | null;
+  avatar?: string | null;
+  date_of_birth?: Date | null;
+  gender?: string | null;
+  bio?: string | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
   active?: boolean;
   // Không cho phép update role, email, password qua đây — chống Mass Assignment
 }

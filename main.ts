@@ -9,6 +9,8 @@ import { secureHeaders } from "@hono/secure-headers";
 import { globalErrorHandler } from "./src/shared/errors/error.handler.ts";
 import { authMiddleware } from "./src/shared/middlewares/auth.middleware.ts";
 import { rateLimiter } from "./src/shared/middlewares/rate-limit.middleware.ts";
+import { tracingMiddleware } from "./src/shared/middlewares/tracing.middleware.ts";
+import { auditMiddleware } from "./src/shared/middlewares/audit.middleware.ts";
 import { Migrator } from "./src/core/migrator.ts";
 import { allMigrations } from "./src/migrations/index.ts";
 import { logger } from "./src/core/logger.ts";
@@ -66,7 +68,7 @@ app.use(
 app.use("*", rateLimiter({ windowMs: 60 * 1000, max: 100 }));
 
 // Advanced Health Check (Chủ động Ping DB & Redis)
-app.get("/health", async (c) => {
+app.get("/", async (c) => {
   try {
     await container.db.queryObject("SELECT 1"); // Ping Database
 
@@ -86,21 +88,47 @@ app.get("/health", async (c) => {
   }
 });
 
-app.get("/", (c) => c.text("Backend is running."));
+// =========================================================
+// API VERSION 0 (Public API - Không cần auth)
+// =========================================================
+const v0 = new Hono();
+
+// Áp dụng Request Tracing cho v0
+v0.use("*", tracingMiddleware);
+
+// V0 có thể để trống hoặc thêm các route không cần JWT
+v0.get(
+  "/ping",
+  (c) => c.json({ success: true, message: "v0 public endpoint is running" }),
+);
+
+// Mount v0 vào app chính
+app.route("/api/v0", v0);
+
+// =========================================================
+// API VERSION 1 (Protected API - Yêu cầu xác thực phần lớn)
+// =========================================================
+const v1 = new Hono();
+
+// Áp dụng Request Tracing cho toàn bộ API v1
+v1.use("*", tracingMiddleware);
+
+// Áp dụng Audit Logging ngầm cho các thao tác thay đổi dữ liệu
+v1.use("*", auditMiddleware);
 
 // Bảo vệ routes bằng JWT — PHẢI đăng ký TRƯỚC khi mount routes
-app.use("/api/users/*", authMiddleware);
-app.use("/api/permissions/*", authMiddleware);
-app.use("/api/roles/*", authMiddleware);
+v1.use("/users/*", authMiddleware);
+v1.use("/permissions/*", authMiddleware);
+v1.use("/roles/*", authMiddleware);
 
 // Đăng ký các Route (Sử dụng Service từ Container)
-app.route("/api/auth", createAuthRoutes(container.authService));
-app.route("/api/users", createUserRoutes(container.userService));
-app.route(
-  "/api/permissions",
-  createPermissionRoutes(container.permissionService),
-);
-app.route("/api/roles", createRoleRoutes(container.roleService));
+v1.route("/auth", createAuthRoutes(container.authService));
+v1.route("/users", createUserRoutes(container.userService));
+v1.route("/permissions", createPermissionRoutes(container.permissionService));
+v1.route("/roles", createRoleRoutes(container.roleService));
+
+// Mount v1 vào app chính
+app.route("/api/v1", v1);
 
 // 4. Khởi động Server
 logger.info(

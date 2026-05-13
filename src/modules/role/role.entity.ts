@@ -10,6 +10,9 @@ export interface Role {
   tier: UserTier; // Hành vi bucket: "owner" | "admin" | "user"
   name: string; // Tên hiển thị: "Chủ sở hữu", "Giám sát viên"
   description: string | null;
+  color: string | null;
+  icon: string | null;
+  sort_order: number;
   system: boolean; // true = 3 roles gốc, không được xóa
   active: boolean;
   created_at: Date;
@@ -20,10 +23,16 @@ export interface CreateRoleData {
   tier: "admin" | "user"; // Không được phép tạo role tier 'owner'
   name: string;
   description?: string;
+  color?: string;
+  icon?: string;
+  sort_order?: number;
 }
 
 export interface UpdateRoleData {
   name?: string;
   description?: string | null;
+  color?: string | null;
+  icon?: string | null;
+  sort_order?: number;
   active?: boolean;
 }

@@ -16,9 +16,9 @@ export class RoleRepository extends BaseRepository {
     tx?: Transaction,
   ): Promise<PaginatedResult<Role>> {
     return await this.paginate<Role>(
-      `SELECT code, tier, name, description, system, active, created_at
+      `SELECT code, tier, name, description, color, icon, sort_order, system, active, created_at
        FROM roles
-       ORDER BY system DESC, tier ASC, name ASC`,
+       ORDER BY sort_order ASC, system DESC, tier ASC, name ASC`,
       [],
       params,
       tx,
@@ -27,7 +27,7 @@ export class RoleRepository extends BaseRepository {
 
   async findByCode(code: string, tx?: Transaction): Promise<Role | undefined> {
     return await this.queryOne<Role>(
-      `SELECT code, tier, name, description, system, active, created_at
+      `SELECT code, tier, name, description, color, icon, sort_order, system, active, created_at
        FROM roles
        WHERE code = $1`,
       [code],
@@ -37,10 +37,18 @@ export class RoleRepository extends BaseRepository {
 
   async create(data: CreateRoleData, tx?: Transaction): Promise<Role> {
     const role = await this.queryOne<Role>(
-      `INSERT INTO roles (code, tier, name, description, system, active)
-       VALUES ($1, $2, $3, $4, false, true)
+      `INSERT INTO roles (code, tier, name, description, color, icon, sort_order, system, active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, false, true)
        RETURNING *`,
-      [data.code, data.tier, data.name, data.description || null],
+      [
+        data.code,
+        data.tier,
+        data.name,
+        data.description || null,
+        data.color || null,
+        data.icon || null,
+        data.sort_order ?? 0,
+      ],
       tx,
     );
     return role!;
