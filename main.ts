@@ -121,12 +121,15 @@ const shutdown = async () => {
 
   logger.info("Shutting down gracefully...");
 
-  // Bắt buộc thoát sau 3 giây nếu các connection bị treo (đảm bảo không bị đơ Terminal)
-  const fallbackTimer = setTimeout(() => {
-    logger.error("Force quitting after 3s due to hanging connections...");
-    Deno.exit(1);
-  }, 3000);
-  Deno.unrefTimer(fallbackTimer);
+  // Bắt buộc thoát sau 3 giây nếu các connection bị treo — chỉ trong production
+  // Ở dev mode KHÔNG gọi Deno.exit() để Deno --watch có thể hot-reload
+  if (config.env === "production") {
+    const fallbackTimer = setTimeout(() => {
+      logger.error("Force quitting after 3s due to hanging connections...");
+      Deno.exit(1);
+    }, 3000);
+    Deno.unrefTimer(fallbackTimer);
+  }
 
   stopCrons(); // Dừng toàn bộ cronjob
   abortController.abort(); // Dừng HTTP server
