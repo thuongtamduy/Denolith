@@ -26,7 +26,13 @@ export const globalErrorHandler = (err: Error, c: Context) => {
     );
   }
 
-  logger.error(`[${requestId || "SYS"}] [UNHANDLED] ${err.message}`, err.stack);
+  const isProduction = Deno.env.get("DENO_ENV") === "production";
+  // Ở production: chỉ log message, ẩn stack trace (tránh lộ đường dẫn nội bộ, tên thư viện)
+  // Ở development: log đầy đủ stack trace để debug dễ hơn
+  logger.error(
+    `[${requestId || "SYS"}] [UNHANDLED] ${err.message}`,
+    isProduction ? undefined : err.stack,
+  );
   return c.json<ApiErrorResponse>(
     {
       success: false as const,
