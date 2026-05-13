@@ -11,8 +11,8 @@ export const tracingMiddleware = async (c: Context, next: Next) => {
   const method = c.req.method;
   const url = c.req.url;
 
-  // Log khi request bắt đầu
-  logger.info(`[${requestId}] ➡️ ${method} ${url}`);
+  // Log khi request bắt đầu (ẩn ở production)
+  logger.debug(`[${requestId}] ➡️ ${method} ${url}`);
 
   await next();
 
@@ -30,7 +30,8 @@ export const tracingMiddleware = async (c: Context, next: Next) => {
       `[${requestId}] ⚠️ ${method} ${url} - ${status} (${duration}ms)`,
     );
   } else {
-    logger.info(
+    // Log request thành công (ẩn ở production)
+    logger.debug(
       `[${requestId}] ✅ ${method} ${url} - ${status} (${duration}ms)`,
     );
   }
