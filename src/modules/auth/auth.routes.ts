@@ -1,6 +1,7 @@
 import { Hono } from "@hono/core";
 import { deleteCookie, getCookie, setCookie } from "@hono/cookie";
 import { AppError } from "../../shared/errors/AppError.ts";
+import { sendMessage, sendSuccess } from "../../shared/utils/response.ts";
 import { validateJson } from "../../shared/utils/validator.ts";
 import type { AuthService } from "./auth.service.ts";
 import { rateLimiter } from "../../shared/middlewares/rate-limit.middleware.ts";
@@ -13,7 +14,7 @@ import {
   registerSchema,
 } from "./auth.validation.ts";
 
-export const createAuthRoutes = (service: AuthService) => {
+export const createPublicAuthRoutes = (service: AuthService) => {
   const router = new Hono();
 
   // Chống Brute force: tối đa 5 lần thử đăng ký / đăng nhập mỗi 15 phút
@@ -41,13 +42,16 @@ export const createAuthRoutes = (service: AuthService) => {
       });
 
       c.header("Location", `/api/users/${result.user.id}`);
-      return c.json({
-        success: true,
-        data: {
+      c.header("Location", `/api/users/${result.user.id}`);
+      return sendSuccess(
+        c,
+        {
           user: sanitizeUser(result.user),
           accessToken: result.accessToken,
         },
-      }, 201);
+        undefined,
+        201,
+      );
     },
   );
 
@@ -57,7 +61,8 @@ export const createAuthRoutes = (service: AuthService) => {
     validateJson(loginSchema),
     async (c) => {
       const body = c.req.valid("json") as LoginInput;
-      const result = await service.login(body);
+      const ip = c.req.header("x-forwarded-for") || "unknown";
+      const result = await service.login(body, ip);
 
       setCookie(c, "refresh_token", result.refreshToken, {
         httpOnly: true,
@@ -67,15 +72,18 @@ export const createAuthRoutes = (service: AuthService) => {
         path: "/api/auth",
       });
 
-      return c.json({
-        success: true,
-        data: {
-          user: sanitizeUser(result.user),
-          accessToken: result.accessToken,
-        },
+      return sendSuccess(c, {
+        user: sanitizeUser(result.user),
+        accessToken: result.accessToken,
       });
     },
   );
+
+  return router;
+};
+
+export const createProtectedAuthRoutes = (service: AuthService) => {
+  const router = new Hono();
 
   router.post("/refresh", async (c) => {
     const token = getCookie(c, "refresh_token");
@@ -92,7 +100,7 @@ export const createAuthRoutes = (service: AuthService) => {
       path: "/api/auth",
     });
 
-    return c.json({ success: true, data: { accessToken: result.accessToken } });
+    return sendSuccess(c, { accessToken: result.accessToken });
   });
 
   router.post("/logout", async (c) => {
@@ -125,7 +133,7 @@ export const createAuthRoutes = (service: AuthService) => {
       });
     }
 
-    return c.json({ success: true, message: "Logged out successfully" });
+    return sendMessage(c, "Logged out successfully");
   });
 
   return router;

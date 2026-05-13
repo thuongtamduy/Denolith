@@ -4,16 +4,30 @@
 export class AppError extends Error {
   public readonly code: string;
   public readonly statusCode: number;
+  public readonly details?: Record<string, unknown>[];
 
-  constructor(message: string, code: string, statusCode: number = 500) {
+  constructor(
+    message: string,
+    code: string,
+    statusCode: number = 500,
+    details?: Record<string, unknown>[],
+  ) {
     super(message);
     this.name = "AppError";
     this.code = code;
     this.statusCode = statusCode;
+    this.details = details;
   }
 
   static badRequest(message: string): AppError {
     return new AppError(message, "BAD_REQUEST", 400);
+  }
+
+  static validationError(
+    message: string,
+    details: Record<string, unknown>[],
+  ): AppError {
+    return new AppError(message, "VALIDATION_ERROR", 400, details);
   }
 
   static unauthorized(message: string): AppError {

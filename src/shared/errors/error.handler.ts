@@ -15,7 +15,11 @@ export const globalErrorHandler = (err: Error, c: Context) => {
     return c.json<ApiErrorResponse>(
       {
         success: false as const,
-        error: { code: err.code, message: err.message },
+        error: {
+          code: err.code,
+          message: err.message,
+          ...(err.details ? { details: err.details } : {}),
+        },
         meta: { requestId },
       },
       err.statusCode as ContentfulStatusCode,

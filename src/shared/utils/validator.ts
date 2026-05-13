@@ -15,8 +15,13 @@ export const validateJson = <T extends GenericSchema | GenericSchemaAsync>(
       const firstIssue = result.issues[0];
       const message = firstIssue?.message || "Invalid input data";
 
-      // Ném lỗi 400 Bad Request để globalErrorHandler bắt và format chuẩn
-      throw AppError.badRequest(message);
+      // Ném lỗi Validation kèm danh sách chi tiết các field bị lỗi
+      const details = result.issues.map((issue) => ({
+        field: issue.path?.map((p) => p.key).join(".") || "unknown",
+        message: issue.message,
+      }));
+
+      throw AppError.validationError(message, details);
     }
   });
 };

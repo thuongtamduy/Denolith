@@ -9,6 +9,7 @@ import { sanitizeUser } from "../../shared/utils/sanitize.ts";
 import type { AppEnv } from "../../core/context.ts";
 import { validateUUID } from "../../shared/middlewares/validate-uuid.middleware.ts";
 import { AuditService } from "../../core/audit.ts";
+import { sendSuccess } from "../../shared/utils/response.ts";
 import { AppError } from "../../shared/errors/AppError.ts";
 import {
   type CreateUserInput,
@@ -30,10 +31,13 @@ export const createUserRoutes = (service: UserService) => {
   router.get("/", cacheResponse(60), async (c) => {
     const params = extractPagination(c.req.query());
     const result = await service.findMany(params);
-    return c.json({
-      success: true,
-      ...result,
-      data: result.data.map(sanitizeUser),
+    return sendSuccess(c, result.data.map(sanitizeUser), {
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+        totalPages: result.totalPages,
+      },
     });
   });
 
@@ -41,7 +45,7 @@ export const createUserRoutes = (service: UserService) => {
   router.get("/:id", validateUUID(), async (c) => {
     const id = c.req.param("id")!; // validateUUID() đã đảm bảo id luôn hợp lệ
     const user = await service.findById(id);
-    return c.json({ success: true, data: sanitizeUser(user) });
+    return sendSuccess(c, sanitizeUser(user));
   });
 
   // POST /api/users — Tạo user mới (Admin)
@@ -50,7 +54,7 @@ export const createUserRoutes = (service: UserService) => {
     const user = await service.create(body);
 
     c.header("Location", `/api/users/${user.id}`);
-    return c.json({ success: true, data: sanitizeUser(user) }, 201);
+    return sendSuccess(c, sanitizeUser(user), undefined, 201);
   });
 
   // PATCH /api/users/:id — Cập nhật user (Partial Update)
@@ -63,7 +67,7 @@ export const createUserRoutes = (service: UserService) => {
       const body = c.req.valid("json") as UpdateUserInput;
 
       const user = await service.update(id, body);
-      return c.json({ success: true, data: sanitizeUser(user) });
+      return sendSuccess(c, sanitizeUser(user));
     },
   );
 
@@ -80,7 +84,7 @@ export const createUserRoutes = (service: UserService) => {
       const actorId = c.get("jwtPayload")?.id;
 
       const user = await service.updateRole(id, body.role, actorId);
-      return c.json({ success: true, data: sanitizeUser(user) });
+      return sendSuccess(c, sanitizeUser(user));
     },
   );
 

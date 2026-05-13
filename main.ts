@@ -23,7 +23,10 @@ import { initCrons } from "./src/core/cron.ts";
 
 // Routes
 import { createUserRoutes } from "./src/modules/user/user.routes.ts";
-import { createAuthRoutes } from "./src/modules/auth/auth.routes.ts";
+import {
+  createProtectedAuthRoutes,
+  createPublicAuthRoutes,
+} from "./src/modules/auth/auth.routes.ts";
 import { createPermissionRoutes } from "./src/modules/permission/permission.routes.ts";
 import { createRoleRoutes } from "./src/modules/role/role.routes.ts";
 
@@ -89,6 +92,15 @@ app.get("/", async (c) => {
 });
 
 // =========================================================
+// AUTHENTICATION API (Độc lập, không phụ thuộc version)
+// =========================================================
+const authApi = new Hono();
+authApi.use("*", tracingMiddleware);
+authApi.route("/", createPublicAuthRoutes(container.authService));
+
+app.route("/api/auth", authApi);
+
+// =========================================================
 // API VERSION 0 (Public API - Không cần auth)
 // =========================================================
 const v0 = new Hono();
@@ -122,7 +134,7 @@ v1.use("/permissions/*", authMiddleware);
 v1.use("/roles/*", authMiddleware);
 
 // Đăng ký các Route (Sử dụng Service từ Container)
-v1.route("/auth", createAuthRoutes(container.authService));
+v1.route("/auth", createProtectedAuthRoutes(container.authService));
 v1.route("/users", createUserRoutes(container.userService));
 v1.route("/permissions", createPermissionRoutes(container.permissionService));
 v1.route("/roles", createRoleRoutes(container.roleService));

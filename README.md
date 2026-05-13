@@ -65,7 +65,8 @@ Hệ thống hỗ trợ API Versioning:
 | Prefix                                  | Guard                | Mô tả                                |
 | --------------------------------------- | -------------------- | ------------------------------------ |
 | `GET /api/v0/ping`                      | —                    | Public test endpoint                 |
-| `POST /api/v1/auth/*`                   | Rate limit           | register, login, refresh, logout     |
+| `POST /api/auth/*`                      | Rate limit           | register, login (Public Auth)        |
+| `POST /api/v1/auth/*`                   | JWT/Cookie           | refresh, logout (Protected Auth)     |
 | `GET/POST/PATCH/DELETE /api/v1/users/*` | admin tier           | User CRUD, soft/hard delete, restore |
 | `/api/v1/permissions/*`                 | `permissions.manage` | Profiles, codes, user overrides      |
 | `/api/v1/roles/*`                       | `permissions.manage` | Role CRUD                            |

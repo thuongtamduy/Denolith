@@ -75,7 +75,7 @@ export class AuthService {
     return { user, accessToken, refreshToken };
   }
 
-  async login(data: LoginData) {
+  async login(data: LoginData, ip: string | null = null) {
     // Dùng findByEmailWithPassword vì đây là nơi DUY NHẤT cần password để xác thực
     const user = await this.userRepo.findByEmailWithPassword(data.email);
 
@@ -113,6 +113,12 @@ export class AuthService {
     const refreshToken = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await this.authRepo.saveRefreshToken(user.id, refreshToken, expiresAt);
+
+    // Cập nhật thông tin đăng nhập cuối cùng (last_login)
+    await this.userRepo.update(user.id, {
+      last_login_at: new Date(),
+      last_login_ip: ip,
+    });
 
     // Ghi audit log bất đồng bộ — không block response
     await AuditService.log({

@@ -72,5 +72,7 @@ export interface UpdateUserData {
   city?: string | null;
   country?: string | null;
   active?: boolean;
+  last_login_at?: Date | null;
+  last_login_ip?: string | null;
   // Không cho phép update role, email, password qua đây — chống Mass Assignment
 }

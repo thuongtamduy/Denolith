@@ -1,9 +1,18 @@
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 /** Standard API success response */
-export interface ApiResponse<T> {
+export interface ApiResponse<T = unknown> {
   success: true;
-  data: T;
+  message?: string;
+  data?: T;
   meta?: {
     requestId?: string;
+    pagination?: PaginationMeta;
     [key: string]: unknown;
   };
 }
@@ -14,6 +23,7 @@ export interface ApiErrorResponse {
   error: {
     code: string;
     message: string;
+    details?: Record<string, unknown>[]; // Chi tiết lỗi validation (VD: mảng các field bị lỗi)
   };
   meta?: {
     requestId?: string;
