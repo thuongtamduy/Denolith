@@ -76,7 +76,11 @@ export class AuthService {
     return { user, accessToken, refreshToken };
   }
 
-  async login(data: LoginData, ip: string | null = null, userAgent: string | null = null) {
+  async login(
+    data: LoginData,
+    ip: string | null = null,
+    userAgent: string | null = null,
+  ) {
     // Dùng findByEmailWithPassword vì đây là nơi DUY NHẤT cần password để xác thực
     const user = await this.userRepo.findByEmailWithPassword(data.email);
 
