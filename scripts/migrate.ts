@@ -1,12 +1,14 @@
-import { closeDb, connectDb } from "../src/core/database.ts";
+import { connectMigrationDb } from "../src/core/database.ts";
 import { Migrator } from "../src/core/migrator.ts";
 import { allMigrations } from "../src/migrations/index.ts";
 import { logger } from "../src/core/logger.ts";
+import type { Client } from "@db/postgres";
 
 const command = Deno.args[0] || "up";
+let db: Client | undefined;
 
 try {
-  const db = await connectDb();
+  db = await connectMigrationDb();
   const migrator = new Migrator(db);
 
   switch (command) {
@@ -58,5 +60,7 @@ try {
   logger.error(`Migration failed: ${(error as Error).message}`);
   Deno.exit(1);
 } finally {
-  await closeDb();
+  if (db) {
+    await db.end();
+  }
 }

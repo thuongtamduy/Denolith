@@ -10,6 +10,7 @@ services:
       - DENO_ENV=production
       # Supavisor Pooler: postgres://<user>.<tenant-id>:<password>@<host>:<port>/<db>?schema=<schema>
       - DATABASE_URL=${DATABASE_URL}
+      - DIRECT_URL=${DIRECT_URL:-}
       - REDIS_URL=redis://redis:6379
       # Tạo: openssl rand -hex 32
       - JWT_SECRET=${JWT_SECRET}

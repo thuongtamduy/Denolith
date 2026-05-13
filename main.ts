@@ -13,7 +13,7 @@ import { Migrator } from "./src/core/migrator.ts";
 import { allMigrations } from "./src/migrations/index.ts";
 import { logger } from "./src/core/logger.ts";
 import { config } from "./src/core/config.ts";
-import { closeDb } from "./src/core/database.ts";
+import { closeDb, connectMigrationDb } from "./src/core/database.ts";
 import { closeRedis, redisClient } from "./src/core/redis.ts";
 import { initWorkers } from "./src/workers/index.ts";
 import { Queue } from "./src/core/queue.ts";
@@ -28,8 +28,9 @@ import { createRoleRoutes } from "./src/modules/role/role.routes.ts";
 // 1. Boot Container
 await container.init();
 
-// 2. Tự động kiểm tra Migration khi khởi động
-const migrator = new Migrator(container.db);
+// 2. Tự động kiểm tra Migration khi khởi động (Dùng DIRECT connection)
+const migrationDb = await connectMigrationDb();
+const migrator = new Migrator(migrationDb);
 const migrationResult = await migrator.migrate(allMigrations);
 if (migrationResult.applied.length > 0) {
   logger.info(
@@ -38,6 +39,7 @@ if (migrationResult.applied.length > 0) {
 } else {
   logger.debug("Database schema is up to date.");
 }
+await migrationDb.end(); // Đóng kết nối migration sau khi chạy xong
 
 // 2.5 Khởi động Background Workers
 initWorkers();

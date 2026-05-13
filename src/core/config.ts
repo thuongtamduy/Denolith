@@ -4,6 +4,7 @@ import { logger } from "./logger.ts";
 const EnvSchema = v.object({
   PORT: v.optional(v.string(), "3000"),
   DATABASE_URL: v.pipe(v.string(), v.minLength(1, "DATABASE_URL is required")),
+  DIRECT_URL: v.optional(v.string()), // Dành cho kết nối trực tiếp (Migration)
   REDIS_URL: v.optional(v.string()),
   JWT_SECRET: v.pipe(
     v.string(),
@@ -47,6 +48,7 @@ function loadConfig() {
   const envVars = {
     PORT: Deno.env.get("PORT"),
     DATABASE_URL: Deno.env.get("DATABASE_URL"),
+    DIRECT_URL: Deno.env.get("DIRECT_URL"),
     REDIS_URL: Deno.env.get("REDIS_URL"),
     JWT_SECRET: Deno.env.get("JWT_SECRET"),
     FRONTEND_URL: Deno.env.get("FRONTEND_URL"),
@@ -71,6 +73,7 @@ function loadConfig() {
     return {
       port: Number(parsed.PORT),
       databaseUrl: parsed.DATABASE_URL,
+      directUrl: parsed.DIRECT_URL || parsed.DATABASE_URL,
       redisUrl: parsed.REDIS_URL,
       jwtSecret: parsed.JWT_SECRET,
       frontendUrl: parsed.FRONTEND_URL,

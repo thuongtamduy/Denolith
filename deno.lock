@@ -3,7 +3,6 @@
   "specifiers": {
     "jsr:@db/postgres@0.19.5": "0.19.5",
     "jsr:@db/redis@0.41.1": "0.41.1",
-    "jsr:@hono/hono@*": "4.12.17",
     "jsr:@hono/hono@4.12.17": "4.12.17",
     "jsr:@hono/hono@^4.8.3": "4.12.17",
     "jsr:@hono/valibot-validator@0.6.1": "0.6.1",
@@ -22,8 +21,7 @@
     "jsr:@std/random@0.1.0": "0.1.0",
     "jsr:@valibot/valibot@1.4.0": "1.4.0",
     "jsr:@valibot/valibot@^1.1.0": "1.4.0",
-    "npm:cluster-key-slot@1.1.0": "1.1.0",
-    "npm:postgres@*": "3.4.9"
+    "npm:cluster-key-slot@1.1.0": "1.1.0"
   },
   "jsr": {
     "@db/postgres@0.19.5": {
@@ -106,9 +104,6 @@
   "npm": {
     "cluster-key-slot@1.1.0": {
       "integrity": "sha512-2Nii8p3RwAPiFwsnZvukotvow2rIHM+yQ6ZcBXGHdniadkYGZYiGmkHJIbZPIV9nfv7m/U1IPMVVcAhoWFeklw=="
-    },
-    "postgres@3.4.9": {
-      "integrity": "sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw=="
     }
   },
   "workspace": {
