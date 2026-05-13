@@ -8,7 +8,7 @@ import type { ApiResponse, PaginationMeta } from "../types/index.ts";
 export const sendSuccess = <T>(
   c: Context,
   data: T,
-  meta?: Record<string, unknown> & { pagination?: PaginationMeta },
+  meta?: Record<string, unknown> & { pagination?: PaginationMeta; requestId?: string },
   status: ContentfulStatusCode = 200,
 ) => {
   const requestId = c.get("requestId") as string | undefined;
