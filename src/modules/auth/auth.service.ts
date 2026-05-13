@@ -6,6 +6,7 @@ import { AppError } from "../../shared/errors/AppError.ts";
 import { config } from "../../core/config.ts";
 import { Queue } from "../../core/queue.ts";
 import { AuditService } from "../../core/audit.ts";
+import { getDevice } from "../../shared/utils/device.ts";
 
 // Mã băm giả lập để chống Timing Attack (Có độ dài bằng chính xác Hash thật)
 const DUMMY_HASH =
@@ -75,7 +76,7 @@ export class AuthService {
     return { user, accessToken, refreshToken };
   }
 
-  async login(data: LoginData, ip: string | null = null) {
+  async login(data: LoginData, ip: string | null = null, userAgent: string | null = null) {
     // Dùng findByEmailWithPassword vì đây là nơi DUY NHẤT cần password để xác thực
     const user = await this.userRepo.findByEmailWithPassword(data.email);
 
@@ -88,6 +89,7 @@ export class AuthService {
       // Ghi audit TRƯỚC khi throw — đảm bảo không bị skip
       await AuditService.log({
         action: "auth.login_failed",
+        ...getDevice(userAgent),
         metadata: { email: data.email },
       });
       throw AppError.unauthorized("Invalid email or password");
@@ -126,6 +128,7 @@ export class AuthService {
       action: "auth.login",
       targetType: "user",
       targetId: user.id,
+      ...getDevice(userAgent),
     });
 
     return { user, accessToken, refreshToken };

@@ -62,7 +62,8 @@ export const createPublicAuthRoutes = (service: AuthService) => {
     async (c) => {
       const body = c.req.valid("json") as LoginInput;
       const ip = c.req.header("x-forwarded-for") || "unknown";
-      const result = await service.login(body, ip);
+      const userAgent = c.req.header("user-agent") || null;
+      const result = await service.login(body, ip, userAgent);
 
       setCookie(c, "refresh_token", result.refreshToken, {
         httpOnly: true,

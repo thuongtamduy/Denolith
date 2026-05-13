@@ -33,13 +33,15 @@ export const initWorkers = () => {
     }
     try {
       await container.db.queryObject(
-        `INSERT INTO audit_logs (actor_id, action, target_type, target_id, metadata)
-         VALUES ($1, $2, $3, $4, $5)`,
+        `INSERT INTO audit_logs (actor_id, action, target_type, target_id, device, os, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           (entry as { actorId?: string }).actorId ?? null,
           entry.action,
           (entry as { targetType?: string }).targetType ?? null,
           (entry as { targetId?: string }).targetId ?? null,
+          (entry as { device?: string }).device ?? null,
+          (entry as { os?: string }).os ?? null,
           JSON.stringify((entry as { metadata?: unknown }).metadata ?? {}),
         ],
       );

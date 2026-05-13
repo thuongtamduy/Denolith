@@ -34,7 +34,7 @@ export const updateUserSchema = v.partial(
     last_name: v.union([v.string(), v.null_()]),
     display_name: v.union([v.string(), v.null_()]),
     avatar: v.union([v.pipe(v.string(), v.url()), v.null_()]),
-    date_of_birth: v.union([v.string(), v.null_()]),
+    date_of_birth: v.union([v.pipe(v.string(), v.transform((val) => new Date(val))), v.null_()]),
     gender: v.union([
       v.union([v.literal("male"), v.literal("female"), v.literal("other")]),
       v.null_(),

@@ -93,6 +93,8 @@ export const migration: Migration = {
       action      VARCHAR     NOT NULL,
       target_type VARCHAR     DEFAULT NULL,
       target_id   VARCHAR     DEFAULT NULL,
+      device      VARCHAR     DEFAULT NULL,
+      os          VARCHAR     DEFAULT NULL,
       metadata    JSONB       DEFAULT '{}',
       created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );`,
