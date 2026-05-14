@@ -7,130 +7,354 @@ Base URL: `http://localhost:9999`
 
 ---
 
-## 🔐 Access Control Overview
+## 🔐 1. Access Control Overview & Architecture
 
-Denolith uses a **3-tier Role System** combined with fine-grained Permission
-Profiles.
+Denolith uses an enterprise-grade **Hybrid Access Control System** combining
+**Role-Based Access Control (RBAC)** and **Attribute-Based Access Control (ABAC
+Overrides)**.
 
 ```
-OWNER  → Bypasses all permission checks. Can do everything.
+OWNER  → Bypasses all permission checks. Absolute control.
 ADMIN  → Access to admin-level routes. Specific actions require explicit permissions.
-USER   → Access to public routes only. Promoted by ADMIN.
+USER   → Access to regular routes. Promoted by ADMIN.
 ```
 
-### How Permissions Are Resolved (Per Request)
+### 1.1. How Permissions Are Resolved (Precedence Engine)
 
 ```
-Request → Auth Middleware (JWT verify + blacklist check)
+Request → Auth Middleware (JWT verify + Redis status check)
   ↓
 Role Middleware (requireRole) → checks tier (owner / admin / user)
   ↓
 Permission Middleware (requirePermission) → checks specific permission codes
   - OWNER: auto-pass
-  - Others: load from PermissionProfiles + individual Overrides → AND check
+  - Others: Precedence Engine resolves Profile Permissions (RBAC) + Individual Overrides (ABAC)
 ```
 
-**Key permission codes used in this guide:**
+**Precedence Engine Rule:** Individual Overrides (ABAC) have absolute priority
+over Profile Permissions (RBAC). If an override grants a permission
+(`granted: true`), it is completely removed from the `denied` list and added to
+`granted`.
 
-- `permissions.manage` — Required to manage roles, permission profiles, and user
-  overrides.
+### 1.2. Record-level Provenance (7 Standard Tracking Fields)
+
+Every core model (`User`, `Role`, `Permission`, `PermissionProfile`)
+automatically tracks 7 provenance fields at the database level:
+
+- `createdAt`: Timestamp of creation.
+- `createdBy`: UUID of the actor who created the record (injected automatically
+  via AsyncLocalStorage).
+- `updatedAt`: Timestamp of last update.
+- `updatedBy`: UUID of the actor who updated the record.
+- `deleted`: Soft-delete status flag.
+- `deletedAt`: Timestamp of deletion.
+- `deletedBy`: UUID of the actor who deleted the record.
 
 ---
 
-## 👤 Users
+## 🛡️ 2. Authentication & Revocation Trap (Token Security)
 
-### Admin Routes — `/api/users` _(requires: `admin` tier)_
+Denolith implements **Refresh Token Rotation** with an advanced **Revocation
+Trap (Token Family Invalidation)** to protect against Replay Attacks and token
+theft.
 
-#### `GET /api/users`
+### Endpoints
 
-List all active users (paginated). Response is cached for 60s.
+- `POST /api/auth/login`: Returns `accessToken` and `refreshToken` in JSON body
+  and `Set-Cookie` (path: `/`).
+- `POST /api/v1/auth/refresh`: Consumes old refresh token (marks as
+  `revokedAt = now()`) and issues a new token pair. Supports reading token from
+  cookie or JSON body (`{ "refreshToken": "..." }`).
+- `POST /api/v1/auth/logout`: Revokes current sessions.
 
-**Query Params:** `page` (default: 1), `limit` (default: 20)
+### 🚨 Revocation Trap Mechanism
+
+If an attacker steals a consumed/revoked `refreshToken` and attempts to use it,
+the system detects token reuse immediately. The **Kill Switch** activates:
+
+1. Entire token family is purged (`deleteMany` active sessions for that user).
+2. Security breach audit log (`auth.security_compromised`) is recorded.
+3. Returns `401 Unauthorized` alerting the user to log in again.
+
+---
+
+## 👤 3. Users API
+
+### 🌟 3.1. Current User Breakdown — `/api/v1/users/me`
+
+Returns the currently logged-in user profile along with their **complete
+permission resolution picture**. Frontend only needs to check the
+`permissions.granted` list to dynamically show/hide UI components.
 
 **Response `200 OK`**
 
 ```json
 {
   "success": true,
-  "data": [{ "id": "uuid", "username": "john", "roleCode": "user", ... }],
-  "meta": { "page": 1, "limit": 20, "total": 50, "totalPages": 3 }
+  "data": {
+    "user": {
+      "id": "dd6c797d-f03c-49ec-8545-971ae552dc51",
+      "username": "user1",
+      "email": "user1@denolith.dev",
+      "roleCode": "user",
+      "active": true,
+      "displayName": "User One",
+      "avatar": null,
+      "dateOfBirth": null,
+      "gender": "male",
+      "bio": null,
+      "phone": null,
+      "phoneVerified": false,
+      "emailVerified": true,
+      "address": null,
+      "city": null,
+      "country": null,
+      "lastLoginAt": "2026-05-14T14:16:16.159Z",
+      "lastLoginIp": "unknown",
+      "createdAt": "2026-05-14T13:55:02.522Z",
+      "createdBy": null,
+      "updatedAt": "2026-05-14T14:16:16.159Z",
+      "updatedBy": null,
+      "deleted": false,
+      "deletedAt": null,
+      "deletedBy": null,
+      "role": {
+        "tier": "user"
+      }
+    },
+    "permissions": {
+      "granted": [
+        "users.read",
+        "reports.view"
+      ],
+      "denied": [
+        "reports.export"
+      ],
+      "details": {
+        "tier": "user",
+        "role": "user",
+        "profiles": [
+          {
+            "id": "b71e16f8-4e8d-4f0e-8d8a-7e1273932cb5",
+            "name": "Sales Representative"
+          }
+        ],
+        "overrides": [
+          {
+            "permissionCode": "reports.export",
+            "granted": false
+          }
+        ]
+      }
+    }
+  }
 }
 ```
 
 ---
 
-#### `GET /api/users/:id`
+### 3.2. Admin Management Routes — `/api/v1/users` _(requires: `admin` tier)_
 
-Get details of a single user.
+#### `GET /api/v1/users`
+
+List active users (paginated). **Query Params:** `page` (default: 1), `limit`
+(default: 20)
 
 **Response `200 OK`**
 
 ```json
-{ "success": true, "data": { "id": "uuid", "username": "john", ... } }
+{
+  "success": true,
+  "data": [
+    {
+      "id": "dd6c797d-f03c-49ec-8545-971ae552dc51",
+      "username": "user1",
+      "email": "user1@denolith.dev",
+      "roleCode": "user",
+      "active": true,
+      "displayName": "User One",
+      "gender": "male",
+      "createdAt": "2026-05-14T13:55:02.522Z",
+      "updatedAt": "2026-05-14T14:16:16.159Z",
+      "role": {
+        "tier": "user"
+      }
+    }
+  ],
+  "meta": {
+    "total": 5,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 1
+  }
+}
 ```
 
 ---
 
-#### `POST /api/users`
+#### `GET /api/v1/users/:id`
 
-Create a new user (admin action).
+Get single user details.
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "dd6c797d-f03c-49ec-8545-971ae552dc51",
+    "username": "user1",
+    "email": "user1@denolith.dev",
+    "roleCode": "user",
+    "active": true,
+    "firstName": "Nguyễn",
+    "lastName": "Văn A",
+    "displayName": "User One",
+    "gender": "male",
+    "phone": "0623731065",
+    "phoneVerified": false,
+    "emailVerified": true,
+    "createdAt": "2026-05-14T13:55:02.522Z",
+    "createdBy": null,
+    "updatedAt": "2026-05-14T14:16:16.159Z",
+    "updatedBy": "37361be2-2510-4a7a-8b0c-8f35e8b338e5",
+    "deleted": false,
+    "deletedAt": null,
+    "deletedBy": null,
+    "role": {
+      "tier": "user"
+    }
+  }
+}
+```
+
+---
+
+#### `POST /api/v1/users`
+
+Create new user.
 
 **Request Body**
 
 ```json
 {
-  "username": "john_doe",
-  "email": "john@example.com",
-  "password": "Secret123",
+  "username": "datnguyen",
+  "email": "dat@example.com",
+  "password": "Password123",
+  "phone": "0623731065",
   "roleCode": "user",
-  "firstName": "John",
-  "lastName": "Doe",
-  "displayName": "John",
-  "gender": "male"
+  "firstName": "Dat",
+  "lastName": "Nguyen",
+  "displayName": "Dat Nguyen",
+  "gender": "male",
+  "bio": "Software Engineer"
 }
 ```
 
 **Response `201 Created`**
 
 ```json
-{ "success": true, "data": { "id": "uuid", "username": "john_doe", ... } }
-```
-
----
-
-#### `PATCH /api/users/:id`
-
-Partially update a user's profile info.
-
-**Request Body** (all fields optional)
-
-```json
 {
-  "firstName": "Jane",
-  "bio": "Updated bio",
-  "active": false
+  "success": true,
+  "data": {
+    "id": "e4b2d398-356a-493e-9f32-72123ab491a1",
+    "username": "datnguyen",
+    "email": "dat@example.com",
+    "roleCode": "user",
+    "active": true,
+    "firstName": "Dat",
+    "lastName": "Nguyen",
+    "displayName": "Dat Nguyen",
+    "gender": "male",
+    "phone": "0623731065",
+    "createdAt": "2026-05-14T14:30:00.000Z",
+    "createdBy": "37361be2-2510-4a7a-8b0c-8f35e8b338e5",
+    "updatedAt": "2026-05-14T14:30:00.000Z",
+    "updatedBy": null,
+    "deleted": false,
+    "role": {
+      "tier": "user"
+    }
+  }
 }
 ```
 
 ---
 
-#### `PATCH /api/users/:id/role` _(requires: `permissions.manage`)_
+#### `PATCH /api/v1/users/:id`
 
-Change a user's role. Cannot change your own role.
+Partially update user info.
 
 **Request Body**
 
 ```json
-{ "role": "admin" }
+{
+  "firstName": "Dat Updated",
+  "active": false
+}
+```
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "e4b2d398-356a-493e-9f32-72123ab491a1",
+    "username": "datnguyen",
+    "email": "dat@example.com",
+    "roleCode": "user",
+    "active": false,
+    "firstName": "Dat Updated",
+    "lastName": "Nguyen",
+    "displayName": "Dat Nguyen",
+    "updatedAt": "2026-05-14T14:35:00.000Z",
+    "updatedBy": "37361be2-2510-4a7a-8b0c-8f35e8b338e5",
+    "deleted": false
+  }
+}
 ```
 
 ---
 
-#### `DELETE /api/users/:id`
+#### `PATCH /api/v1/users/:id/role` _(requires: `permissions.manage`)_
 
-Soft-delete a user (recoverable). Cannot delete yourself.
+Change user role.
+
+**Request Body**
+
+```json
+{
+  "role": "admin"
+}
+```
 
 **Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "e4b2d398-356a-493e-9f32-72123ab491a1",
+    "username": "datnguyen",
+    "email": "dat@example.com",
+    "roleCode": "admin",
+    "updatedAt": "2026-05-14T14:36:00.000Z",
+    "updatedBy": "37361be2-2510-4a7a-8b0c-8f35e8b338e5",
+    "role": {
+      "tier": "admin"
+    }
+  }
+}
+```
+
+---
+
+#### `DELETE /api/v1/users/:id`
+
+Soft-delete user (`?force=true` for hard delete).
+
+**Response `200 OK` (Soft Delete)**
 
 ```json
 {
@@ -139,61 +363,80 @@ Soft-delete a user (recoverable). Cannot delete yourself.
 }
 ```
 
-Add `?force=true` to permanently hard-delete (returns `204 No Content`).
+_(Hard delete with `?force=true` returns `204 No Content` with an empty body)._
 
 ---
 
-#### `POST /api/users/:id/restore`
+#### `POST /api/v1/users/:id/restore`
 
-Restore a soft-deleted user.
+Restore soft-deleted user.
 
 **Response `200 OK`**
 
 ```json
 {
   "success": true,
-  "message": "User 'john_doe' has been restored successfully."
+  "message": "User 'datnguyen' has been restored successfully.",
+  "data": {
+    "id": "e4b2d398-356a-493e-9f32-72123ab491a1",
+    "username": "datnguyen",
+    "deleted": false,
+    "deletedAt": null,
+    "deletedBy": null
+  }
 }
 ```
 
 ---
 
-### Public Routes — `/api/v0/users` _(no auth required)_
-
-| Method | Path                | Description                        |
-| ------ | ------------------- | ---------------------------------- |
-| `GET`  | `/api/v0/users`     | List users (paginated, cached 60s) |
-| `GET`  | `/api/v0/users/:id` | Get user details                   |
-
----
-
-## 🏷️ Roles
+## 🏷️ 4. Roles API
 
 All role endpoints require: **`permissions.manage`** permission.
 
-Base: `/api/roles`
+Base: `/api/v1/roles`
 
-#### `GET /api/roles`
+#### `GET /api/v1/roles`
 
-List all roles (paginated).
+List all roles. Response includes provenance tracking fields.
 
-**Response**
+**Response `200 OK`**
 
 ```json
 {
   "success": true,
-  "data": [{ "code": "admin", "name": "Administrator", "tier": "admin", "system": true }],
-  "meta": { ... }
+  "data": [
+    {
+      "code": "admin",
+      "tier": "admin",
+      "name": "Administrator",
+      "description": "System administrator with full management access",
+      "icon": "shield",
+      "sortOrder": 1,
+      "system": true,
+      "active": true,
+      "createdAt": "2026-05-14T13:55:00.000Z",
+      "createdBy": null,
+      "updatedAt": "2026-05-14T13:55:00.000Z",
+      "updatedBy": null,
+      "deleted": false,
+      "deletedAt": null,
+      "deletedBy": null
+    }
+  ],
+  "meta": {
+    "total": 3,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 1
+  }
 }
 ```
 
-#### `GET /api/roles/:code`
+---
 
-Get a single role by its code (e.g. `admin`, `user`).
+#### `POST /api/v1/roles`
 
-#### `POST /api/roles`
-
-Create a custom role.
+Create custom role.
 
 **Request Body**
 
@@ -206,170 +449,436 @@ Create a custom role.
 }
 ```
 
-#### `PATCH /api/roles/:code`
-
-Update a role's `name`, `description`, or `active` status. Cannot modify `code`,
-`tier`, or `system` flag.
-
-#### `DELETE /api/roles/:code`
-
-Delete a custom role. System roles (`owner`, `admin`, `user`) cannot be deleted.
-
----
-
-## 🔑 Permissions
-
-All permission endpoints require: **`permissions.manage`** permission.
-
-Base: `/api/permissions`
-
-### Permission Codes
-
-#### `GET /api/permissions`
-
-List all available atomic permission codes in the system (developer-seeded,
-read-only).
-
-**Response**
+**Response `201 Created`**
 
 ```json
 {
   "success": true,
-  "data": [{ "code": "permissions.manage", "description": "..." }]
+  "data": {
+    "code": "moderator",
+    "tier": "user",
+    "name": "Moderator",
+    "description": "Can moderate content",
+    "system": false,
+    "active": true,
+    "createdAt": "2026-05-14T14:40:00.000Z",
+    "createdBy": "37361be2-2510-4a7a-8b0c-8f35e8b338e5",
+    "updatedAt": "2026-05-14T14:40:00.000Z",
+    "updatedBy": null,
+    "deleted": false
+  }
 }
 ```
 
 ---
 
-### Permission Profiles
+#### `PATCH /api/v1/roles/:code`
 
-A **Permission Profile** is a reusable bundle of permission codes that can be
-assigned to multiple users.
+Update role info (`name`, `description`, `active`).
 
-#### `GET /api/permissions/profiles`
+**Request Body**
 
-List all profiles (paginated). Filter by tier with `?tier=admin` or
-`?tier=user`.
+```json
+{
+  "name": "Community Moderator",
+  "active": true
+}
+```
 
-#### `POST /api/permissions/profiles`
+**Response `200 OK`**
 
-Create a new profile.
+```json
+{
+  "success": true,
+  "data": {
+    "code": "moderator",
+    "name": "Community Moderator",
+    "description": "Can moderate content",
+    "system": false,
+    "active": true,
+    "updatedAt": "2026-05-14T14:45:00.000Z",
+    "updatedBy": "37361be2-2510-4a7a-8b0c-8f35e8b338e5"
+  }
+}
+```
+
+---
+
+#### `DELETE /api/v1/roles/:code`
+
+Delete custom role.
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "message": "Role 'moderator' deleted successfully."
+}
+```
+
+---
+
+## 🔑 5. Permissions API
+
+All permission endpoints require: **`permissions.manage`** permission.
+
+Base: `/api/v1/permissions`
+
+### 5.1. Atomic Permissions
+
+#### `GET /api/v1/permissions`
+
+List all available atomic permission codes in the system.
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "f5123d1a-493e-456b-a123-83214560a911",
+      "code": "users.read",
+      "module": "users",
+      "description": "View user profiles",
+      "active": true,
+      "createdAt": "2026-05-14T13:55:00.000Z",
+      "createdBy": null,
+      "updatedAt": "2026-05-14T13:55:00.000Z",
+      "updatedBy": null
+    }
+  ]
+}
+```
+
+---
+
+### 5.2. Permission Profiles (RBAC)
+
+A **Permission Profile** is a reusable bundle of permissions assigned to users.
+
+#### `GET /api/v1/permissions/profiles`
+
+List profiles (filter with `?tier=admin` or `?tier=user`). Includes provenance
+fields.
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "b71e16f8-4e8d-4f0e-8d8a-7e1273932cb5",
+      "name": "Sales Representative",
+      "tier": "user",
+      "description": "Standard access for sales team",
+      "active": true,
+      "createdAt": "2026-05-14T13:55:00.000Z",
+      "createdBy": null,
+      "updatedAt": "2026-05-14T13:55:00.000Z",
+      "updatedBy": null
+    }
+  ],
+  "meta": {
+    "total": 2,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 1
+  }
+}
+```
+
+---
+
+#### `POST /api/v1/permissions/profiles`
+
+Create profile.
 
 **Request Body**
 
 ```json
 {
   "name": "Content Editor",
-  "description": "Can create and edit content",
-  "tier": "user"
+  "tier": "user",
+  "description": "Can create and edit content"
 }
 ```
 
-#### `GET /api/permissions/profiles/:id`
-
-Get a profile + its list of permission codes.
-
-**Response**
+**Response `201 Created`**
 
 ```json
 {
   "success": true,
   "data": {
-    "id": "uuid",
+    "id": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
     "name": "Content Editor",
-    "permissions": [{ "code": "content.write", "granted": true }]
+    "tier": "user",
+    "description": "Can create and edit content",
+    "active": true,
+    "createdAt": "2026-05-14T14:50:00.000Z",
+    "createdBy": "37361be2-2510-4a7a-8b0c-8f35e8b338e5",
+    "updatedAt": "2026-05-14T14:50:00.000Z",
+    "updatedBy": null
   }
 }
 ```
 
-#### `PATCH /api/permissions/profiles/:id`
-
-Update a profile's `name`, `description`, or `active` status.
-
-#### `DELETE /api/permissions/profiles/:id`
-
-Delete a profile. All user assignments to this profile are cascade-removed.
-
 ---
 
-### Profile ↔ Permission Codes
+#### `GET /api/v1/permissions/profiles/:id`
 
-#### `PUT /api/permissions/profiles/:id/codes/:code`
+Get profile + assigned permission codes.
 
-Add or update a permission code in a profile.
-
-**Request Body**
-
-```json
-{ "granted": true }
-```
-
-#### `DELETE /api/permissions/profiles/:id/codes/:code`
-
-Remove a permission code from a profile.
-
----
-
-### User ↔ Profiles
-
-#### `GET /api/permissions/users/:userId/profiles`
-
-List all profiles currently assigned to a user.
-
-#### `POST /api/permissions/users/:userId/profiles`
-
-Assign a profile to a user.
-
-**Request Body**
-
-```json
-{ "profileId": "uuid" }
-```
-
-#### `DELETE /api/permissions/users/:userId/profiles/:profileId`
-
-Revoke a profile from a user.
-
----
-
-### User Individual Overrides
-
-An **Override** is a single permission code applied directly to one user —
-overrides what their profiles say.
-
-#### `GET /api/permissions/users/:userId/overrides`
-
-List a user's individual permission overrides.
-
-**Response**
+**Response `200 OK`**
 
 ```json
 {
   "success": true,
-  "data": [{ "code": "content.delete", "granted": false }]
+  "data": {
+    "id": "b71e16f8-4e8d-4f0e-8d8a-7e1273932cb5",
+    "name": "Sales Representative",
+    "tier": "user",
+    "description": "Standard access for sales team",
+    "active": true,
+    "createdAt": "2026-05-14T13:55:00.000Z",
+    "updatedAt": "2026-05-14T13:55:00.000Z",
+    "permissions": [
+      {
+        "permissionCode": "reports.view",
+        "granted": true
+      }
+    ]
+  }
 }
 ```
 
-#### `PUT /api/permissions/users/:userId/overrides/:code`
+---
 
-Set an individual override for a user.
+#### `PATCH /api/v1/permissions/profiles/:id`
+
+Update profile info.
 
 **Request Body**
 
 ```json
-{ "granted": false }
+{
+  "name": "Senior Sales Rep",
+  "active": true
+}
 ```
 
-> Setting `granted: false` explicitly **denies** a permission, even if the
-> user's profile allows it.
+**Response `200 OK`**
 
-#### `DELETE /api/permissions/users/:userId/overrides/:code`
-
-Remove an override. The user falls back to their profile-based permissions.
+```json
+{
+  "success": true,
+  "data": {
+    "id": "b71e16f8-4e8d-4f0e-8d8a-7e1273932cb5",
+    "name": "Senior Sales Rep",
+    "tier": "user",
+    "active": true,
+    "updatedAt": "2026-05-14T14:55:00.000Z",
+    "updatedBy": "37361be2-2510-4a7a-8b0c-8f35e8b338e5"
+  }
+}
+```
 
 ---
 
-## ⚠️ Error Responses
+#### `DELETE /api/v1/permissions/profiles/:id`
+
+Delete profile.
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "message": "Permission profile deleted successfully."
+}
+```
+
+---
+
+### 5.3. Profile ↔ Permission Assignments
+
+#### `PUT /api/v1/permissions/profiles/:id/codes/:code`
+
+Grant or update permission in profile.
+
+**Request Body**
+
+```json
+{
+  "granted": true
+}
+```
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "message": "Permission 'reports.export' updated for profile."
+}
+```
+
+---
+
+#### `DELETE /api/v1/permissions/profiles/:id/codes/:code`
+
+Remove permission from profile.
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "message": "Permission 'reports.export' removed from profile."
+}
+```
+
+---
+
+### 5.4. User ↔ Profile Assignments
+
+#### `GET /api/v1/permissions/users/:userId/profiles`
+
+List profiles assigned to user.
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "userId": "dd6c797d-f03c-49ec-8545-971ae552dc51",
+      "profileId": "b71e16f8-4e8d-4f0e-8d8a-7e1273932cb5",
+      "assignedAt": "2026-05-14T13:55:00.000Z",
+      "assignedBy": "37361be2-2510-4a7a-8b0c-8f35e8b338e5",
+      "profile": {
+        "name": "Sales Representative",
+        "tier": "user"
+      }
+    }
+  ]
+}
+```
+
+---
+
+#### `POST /api/v1/permissions/users/:userId/profiles`
+
+Assign profile to user.
+
+**Request Body**
+
+```json
+{
+  "profileId": "b71e16f8-4e8d-4f0e-8d8a-7e1273932cb5"
+}
+```
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "message": "Profile assigned successfully."
+}
+```
+
+---
+
+#### `DELETE /api/v1/permissions/users/:userId/profiles/:profileId`
+
+Revoke profile from user.
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "message": "Profile revoked successfully."
+}
+```
+
+---
+
+### 5.5. User Individual Overrides (ABAC Overrides)
+
+An **Override** applies directly to a user, overriding their profile
+permissions.
+
+#### `GET /api/v1/permissions/users/:userId/overrides`
+
+List user individual overrides.
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "userId": "dd6c797d-f03c-49ec-8545-971ae552dc51",
+      "permissionCode": "reports.export",
+      "granted": false,
+      "assignedAt": "2026-05-14T13:55:00.000Z",
+      "assignedBy": "37361be2-2510-4a7a-8b0c-8f35e8b338e5",
+      "permission": {
+        "description": "Export reports data",
+        "module": "reports"
+      }
+    }
+  ]
+}
+```
+
+---
+
+#### `PUT /api/v1/permissions/users/:userId/overrides/:code`
+
+Set individual override.
+
+**Request Body**
+
+```json
+{
+  "granted": false
+}
+```
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "message": "Override for 'reports.export' set successfully."
+}
+```
+
+---
+
+#### `DELETE /api/v1/permissions/users/:userId/overrides/:code`
+
+Remove override (falls back to profile permissions).
+
+**Response `200 OK`**
+
+```json
+{
+  "success": true,
+  "message": "Override removed successfully."
+}
+```
+
+---
+
+## ⚠️ 6. Error Responses
 
 ```json
 {
@@ -381,7 +890,7 @@ Remove an override. The user falls back to their profile-based permissions.
 | HTTP Status | Meaning                                       |
 | ----------- | --------------------------------------------- |
 | `400`       | Validation error                              |
-| `401`       | Missing or expired token                      |
+| `401`       | Missing, expired, or revoked token            |
 | `403`       | Token valid but insufficient role/permissions |
 | `404`       | Resource not found                            |
-| `500`       | Server error                                  |
+| `500`       | Internal server error                         |

@@ -29,7 +29,7 @@ export interface AuthTokens {
 }
 
 export class AuthService {
-  constructor(private prisma: PrismaClient) { }
+  constructor(private prisma: PrismaClient) {}
 
   async register(data: RegisterData) {
     // Check existing before transaction to fail fast
