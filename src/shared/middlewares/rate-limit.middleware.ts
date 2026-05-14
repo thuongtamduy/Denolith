@@ -73,13 +73,16 @@ export const rateLimiter = (options: RateLimitOptions) => {
           return current
         `;
 
-        const result = await redisClient.eval(luaScript, [key], [
-          options.windowMs.toString(),
-        ]);
-        count = Number(result);
+        // Excute Lua script inside Redis (Atomic operation)
+        count = Number(
+          await redisClient.eval(luaScript, {
+            keys: [key],
+            arguments: [options.windowMs.toString()],
+          }),
+        );
 
-        // Lấy TTL để set header cho chuẩn
-        const ttl = await redisClient.pttl(key);
+        // Lấy thời gian tồn tại còn lại của key
+        const ttl = await redisClient.pTTL(key);
         if (ttl > 0) resetTime = now + ttl;
       } catch {
         logger.warn(

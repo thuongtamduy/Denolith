@@ -1,10 +1,9 @@
-import { connect, parseURL } from "@db/redis";
-import type { Redis } from "@db/redis";
+import { createClient, type RedisClientType } from "@db/redis";
 import { config } from "./config.ts";
 import { logger } from "./logger.ts";
 
-export let redisClient: Redis | null = null;
-export let redisQueueClient: Redis | null = null; // Connection riêng biệt cho Queue BRPOP
+export let redisClient: RedisClientType | null = null;
+export let redisQueueClient: RedisClientType | null = null; // Connection riêng biệt cho Queue BRPOP
 
 export async function initRedis() {
   if (!config.redisUrl) {
@@ -16,13 +15,24 @@ export async function initRedis() {
     const url = new URL(config.redisUrl);
     // Workaround for Deno 2 / Alpine Linux IPv6 DNS timeout bug with @db/redis:
     // Explicitly resolve the hostname to its IPv4 address to avoid 5-second IPv6 connection timeout.
-    const ips = await Deno.resolveDns(url.hostname, "A");
-    if (ips.length > 0) {
-      url.hostname = ips[0];
+    const isIpV4 = /^(\d{1,3}\.){3}\d{1,3}$/.test(url.hostname);
+    if (!isIpV4) {
+      try {
+        const ips = await Deno.resolveDns(url.hostname, "A");
+        if (ips.length > 0) {
+          url.hostname = ips[0];
+        }
+      } catch (dnsErr) {
+        logger.warn(`DNS resolution failed for ${url.hostname}: ${dnsErr}`);
+      }
     }
 
-    redisClient = await connect(parseURL(url.toString()));
-    redisQueueClient = await connect(parseURL(url.toString()));
+    redisClient = createClient({ url: url.toString() });
+    redisQueueClient = createClient({ url: url.toString() });
+
+    await redisClient.connect();
+    await redisQueueClient.connect();
+
     logger.info("✅ Redis connected.");
   } catch (err) {
     logger.warn(`⚠️ Redis connection failed. Falling back to Memory. ${err}`);
@@ -31,12 +41,12 @@ export async function initRedis() {
   }
 }
 
-export function closeRedis() {
+export async function closeRedis() {
   if (redisClient) {
-    redisClient.close();
+    await redisClient.quit();
   }
   if (redisQueueClient) {
-    redisQueueClient.close();
+    await redisQueueClient.quit();
   }
   logger.info("🛑 Redis connections closed.");
 }

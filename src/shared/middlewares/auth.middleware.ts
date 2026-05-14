@@ -90,7 +90,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
         await redisClient.set(
           userStatusKey(userId),
           JSON.stringify(userStatus),
-          { ex: USER_STATUS_TTL },
+          { EX: USER_STATUS_TTL }, // Cache theo TTL
         );
       } catch {
         // Ignore cache write failure

@@ -60,7 +60,7 @@ export const Queue = {
 
     if (redisClient) {
       try {
-        await redisClient.lpush(queueName, JSON.stringify(job));
+        await redisClient.lPush(queueName, JSON.stringify(job));
         return;
       } catch {
         logger.warn("⚠️ Redis Queue failed, pushing to Memory Queue");
@@ -112,9 +112,9 @@ export const Queue = {
       try {
         // BRPOP (Blocking Pop) - tự động chặn luồng 5s chờ job, phản hồi 0ms, không tốn CPU
         // DÙNG CONNECTION RIÊNG ĐỂ KHÔNG BLOCK CÁC LỆNH KHÁC
-        const result = await redisQueueClient.brpop(5, queueName);
-        if (result && result.length === 2) {
-          const job: JobData = JSON.parse(result[1]);
+        const result = await redisQueueClient.brPop(queueName, 5);
+        if (result && result.element) {
+          const job: JobData = JSON.parse(result.element);
           const handler = handlers.get(job.type);
           if (handler) {
             const jobPromise = handler(job.payload);

@@ -217,7 +217,7 @@ export class AuthService {
       const ttl = exp - Math.floor(Date.now() / 1000);
       if (ttl > 0) {
         try {
-          await redisClient.set(`blacklist:${accessToken}`, "1", { ex: ttl });
+          await redisClient.set(`blacklist:${accessToken}`, "1", { EX: ttl });
         } catch {
           // Redis failure is non-critical — token will expire naturally
         }

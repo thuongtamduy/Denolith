@@ -90,7 +90,7 @@ export class PermissionService {
             granted: Array.from(granted),
             denied: Array.from(denied),
           }),
-          { ex: CACHE_TTL_SECONDS },
+          { EX: CACHE_TTL_SECONDS },
         );
       } catch {
         // Ignore

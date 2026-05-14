@@ -46,7 +46,7 @@ app.use(
 app.use("*", rateLimiter({ windowMs: 60 * 1000, max: 100 }));
 
 // Advanced Health Check (Chủ động Ping DB & Redis)
-app.get("/health", async (c) => {
+app.get("/", async (c) => {
   try {
     await prisma.$queryRaw`SELECT 1`; // Ping Database
 
@@ -86,16 +86,6 @@ app.get(
         version: "1.0.0",
         description: "API for Denolith",
       },
-      servers: [
-        {
-          url: `http://localhost:${config.port}`,
-          description: "Local environment",
-        },
-        {
-          url: `https://api.denolith.com`,
-          description: "Production environment",
-        },
-      ],
       components: {
         securitySchemes: {
           BearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },

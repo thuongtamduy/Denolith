@@ -80,7 +80,7 @@ export const cacheResponse = (ttlSeconds: number) => {
       let savedToRedis = false;
       if (redisClient) {
         try {
-          await redisClient.setex(key, ttlSeconds, bodyStr);
+          await redisClient.setEx(key, ttlSeconds, bodyStr);
           savedToRedis = true;
         } catch { /* Ignore Redis error */ }
       }
