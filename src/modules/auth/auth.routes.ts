@@ -21,11 +21,12 @@ export const createAuthRoutes = (service: AuthService) => {
   const router = new Hono();
 
   router.post(
-    "/clear-all-data",
+    "/clear-cache",
     describeRoute({
-      tags: ["A. Clear Redis Data"],
-      summary: "Clear All Data",
+      tags: ["Auth"],
+      summary: "Clear Cache Data",
       description: "Xoá toàn bộ dữ liệu Redis (bao gồm Rate Limit).",
+      security: [],
       responses: {
         200: { description: "Data cleared successfully" },
       },
@@ -36,6 +37,52 @@ export const createAuthRoutes = (service: AuthService) => {
         await redisClient.flushAll();
       }
       return c.json({ success: true, message: "Data cleared successfully" });
+    }
+  );
+
+  router.get(
+    "/cache",
+    describeRoute({
+      tags: ["Auth"],
+      summary: "Get Cache Data",
+      description: "Xem dữ liệu đang có trong Redis (hiển thị tối đa 100 keys).",
+      security: [],
+      responses: {
+        200: { description: "Data retrieved successfully" },
+      },
+    }),
+    async (c) => {
+      const { redisClient } = await import("../../core/redis.ts");
+      if (!redisClient) {
+        return c.json({ success: false, message: "Redis is not connected" }, 500);
+      }
+      
+      const keys = await redisClient.keys("*");
+      const data: Record<string, any> = {};
+
+      const limitedKeys = keys.slice(0, 100);
+
+      for (const key of limitedKeys) {
+        const type = await redisClient.type(key);
+        if (type === "string") {
+          data[key] = await redisClient.get(key);
+        } else if (type === "hash") {
+          data[key] = await redisClient.hGetAll(key);
+        } else if (type === "list") {
+          data[key] = await redisClient.lRange(key, 0, -1);
+        } else if (type === "set") {
+          data[key] = await redisClient.sMembers(key);
+        } else {
+          data[key] = `[Unsupported type: ${type}]`;
+        }
+      }
+
+      return c.json({ 
+        success: true, 
+        totalKeys: keys.length,
+        showing: limitedKeys.length,
+        data 
+      });
     }
   );
 
