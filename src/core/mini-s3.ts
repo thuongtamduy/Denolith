@@ -157,7 +157,7 @@ export class MiniS3Client {
     const res = await fetch(url.toString(), {
       method: "PUT",
       headers: signedHeaders,
-      body: body,
+      body: body as unknown as BodyInit,
     });
 
     if (!res.ok) {

@@ -1,6 +1,6 @@
 import type { Context } from "@hono/core";
 import type { PaginationMeta } from "./pagination.ts";
-import type { StatusCode } from "hono/utils/http-status";
+import type { StatusCode } from "@hono/http-status";
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
@@ -24,7 +24,7 @@ export const ApiResponse = {
         message,
         data,
       } satisfies ApiResponse<T>,
-      status,
+      status as any,
     );
   },
 
@@ -85,7 +85,7 @@ export const ApiResponse = {
         message,
         errors,
       } satisfies ApiResponse<null>,
-      status,
+      status as any,
     );
   },
 };

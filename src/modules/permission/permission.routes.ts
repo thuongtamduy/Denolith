@@ -155,7 +155,34 @@ export const createPermissionRoutes = (service: PermissionService) => {
     "/profiles/:id",
     describeRoute({
       tags: ["Permissions"],
-      summary: "Update Permission Profile",
+      summary: "Update Permission Profile (Partial)",
+      responses: {
+        200: { description: "Permission profile updated successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
+      },
+    }),
+    validateUUID("id"),
+    validateJson(updateProfileSchema),
+    async (c) => {
+      const id = c.req.param("id")!;
+      const body = c.req.valid("json") as UpdateProfileInput;
+      const actorId = c.get("jwtPayload").id;
+      const profile = await service.updateProfile(id, body, actorId);
+      return c.json({ success: true, data: profile });
+    },
+  );
+
+  /**
+   * PUT /api/permissions/profiles/:id
+   * Cập nhật permission profile (Full/Alias).
+   */
+  router.put(
+    "/profiles/:id",
+    describeRoute({
+      tags: ["Permissions"],
+      summary: "Update Permission Profile (Full/Alias)",
       responses: {
         200: { description: "Permission profile updated successfully" },
         400: { description: "Bad request or validation error" },
