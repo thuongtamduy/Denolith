@@ -4,6 +4,7 @@ import { config } from "../../core/config.ts";
 import { redisClient } from "../../core/redis.ts";
 import { prisma } from "../../core/database.ts";
 import { AppError } from "../errors/AppError.ts";
+import { requestContextStore } from "../../core/context.ts";
 
 const USER_STATUS_TTL = 30; // Cache user active/deleted status for 30 seconds
 const userStatusKey = (id: string) => `user_status:${id}`;
@@ -105,5 +106,7 @@ export const authMiddleware = async (c: Context, next: Next) => {
   // Bước 4: Gán payload vào context để RBAC middleware và handler dùng
   c.set("jwtPayload", payload);
 
-  await next();
+  await requestContextStore.run({ actorId: userId }, async () => {
+    await next();
+  });
 };

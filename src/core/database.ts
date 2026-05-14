@@ -22,11 +22,67 @@ try {
 // Ensure Prisma adapter uses the correct schema dynamically
 const adapter = new PrismaPg(pool, { schema });
 
+import { requestContextStore } from "./context.ts";
+
 // Khởi tạo một singleton instance của PrismaClient
-export const prisma = new PrismaClient({
+const basePrisma = new PrismaClient({
   adapter,
   log: isProduction ? ["warn", "error"] : ["query", "info", "warn", "error"],
 });
+
+export const prisma = basePrisma.$extends({
+  query: {
+    $allModels: {
+      create({ model, args, query }) {
+        const skipModels = [
+          "RefreshToken",
+          "AuditLog",
+          "UserProfile",
+          "UserPermission",
+          "ProfilePermission",
+        ];
+        if (skipModels.includes(model)) {
+          return query(args);
+        }
+
+        const actorId = requestContextStore.getStore()?.actorId;
+        if (
+          actorId && args.data && typeof args.data === "object" &&
+          !("createdBy" in args.data)
+        ) {
+          // deno-lint-ignore no-explicit-any
+          (args.data as any).createdBy = actorId;
+        }
+        return query(args);
+      },
+      update({ model, args, query }) {
+        const skipModels = [
+          "RefreshToken",
+          "AuditLog",
+          "UserProfile",
+          "UserPermission",
+          "ProfilePermission",
+        ];
+        if (skipModels.includes(model)) {
+          return query(args);
+        }
+
+        const actorId = requestContextStore.getStore()?.actorId;
+        if (args.data && typeof args.data === "object") {
+          if (actorId && !("updatedBy" in args.data)) {
+            // deno-lint-ignore no-explicit-any
+            (args.data as any).updatedBy = actorId;
+          }
+          if (!("updatedAt" in args.data)) {
+            // deno-lint-ignore no-explicit-any
+            (args.data as any).updatedAt = new Date();
+          }
+        }
+        return query(args);
+      },
+    },
+  },
+}) as unknown as PrismaClientType;
 
 /**
  * Connect to PostgreSQL via Prisma

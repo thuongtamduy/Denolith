@@ -13,7 +13,7 @@ export const clientContextMiddleware: MiddlewareHandler<AppEnv> = async (
   const lang = c.req.header("x-lang") ?? "vi";
   const apiKey = c.req.header("x-api-key");
 
-  let storeId: string | undefined = undefined;
+  const storeId: string | undefined = undefined;
 
   if (apiKey) {
     // TODO: Truy vấn cache hoặc DB để lấy storeId tương ứng với apiKey nếu cần

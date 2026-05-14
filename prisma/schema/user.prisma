@@ -1,15 +1,20 @@
 model Role {
-  code        String   @id
+  code        String    @id
   tier        String // CHECK (tier IN ('owner', 'admin', 'user'))
   name        String
   description String?
   color       String? // Màu badge hiển thị trên UI (hex: #EF4444)
   icon        String? // Icon name cho UI (shield, crown, user)
-  sortOrder   Int      @default(0) @map("sort_order")
-  system      Boolean  @default(false)
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  sortOrder   Int       @default(0) @map("sort_order")
+  system      Boolean   @default(false)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  createdBy   String?   @map("created_by") @db.Uuid
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy   String?   @map("updated_by") @db.Uuid
+  deleted     Boolean   @default(false)
+  deletedAt   DateTime? @map("deleted_at")
+  deletedBy   String?   @map("deleted_by") @db.Uuid
 
   users User[]
 
@@ -53,9 +58,12 @@ model User {
 
   // --- Timestamps & Soft delete ---
   createdAt DateTime  @default(now()) @map("created_at")
+  createdBy String?   @map("created_by") @db.Uuid
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy String?   @map("updated_by") @db.Uuid
   deleted   Boolean   @default(false)
   deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") @db.Uuid
 
   // --- Relations ---
   refreshTokens   RefreshToken[]

@@ -10,9 +10,12 @@ model Store {
   status       String                   @default("pending") // CHECK (status IN ('active', 'inactive', 'pending'))
 
   createdAt DateTime  @default(now()) @map("created_at")
+  createdBy String?   @map("created_by") @db.Uuid
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy String?   @map("updated_by") @db.Uuid
   deleted   Boolean   @default(false)
   deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") @db.Uuid
 
   @@index([code])
   @@map("stores")

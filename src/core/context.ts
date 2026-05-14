@@ -37,6 +37,14 @@ export interface ClientContext {
   storeId?: string; // Resolved from x-api-key or token
 }
 
+import { AsyncLocalStorage } from "node:async_hooks";
+
+export interface RequestContextStore {
+  actorId?: string;
+}
+
+export const requestContextStore = new AsyncLocalStorage<RequestContextStore>();
+
 export type AppEnv = {
   Variables: {
     // Được set bởi authMiddleware sau khi xác thực token thành công

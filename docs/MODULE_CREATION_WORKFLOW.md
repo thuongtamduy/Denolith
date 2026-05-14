@@ -15,9 +15,20 @@ Tạo file `.prisma` mới trong thư mục `prisma/schema/`.
    - Sử dụng UUID mặc định:
      `id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid`
    - Đặt tên bảng dạng số nhiều: `@@map("table_names")`
-   - Bắt buộc có Timestamps: `createdAt` và `updatedAt`.
-   - Bắt buộc có Soft Delete (nếu cần): `deleted Boolean @default(false)` và
-     `deletedAt DateTime?`.
+   - **Bắt buộc áp dụng 7 fields chuẩn hóa Record-level Provenance (Truy xuất
+     nguồn gốc)**:
+     ```prisma
+     createdAt DateTime  @default(now()) @map("created_at")
+     createdBy String?   @map("created_by") @db.Uuid
+     updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+     updatedBy String?   @map("updated_by") @db.Uuid
+     deleted   Boolean   @default(false)
+     deletedAt DateTime? @map("deleted_at")
+     deletedBy String?   @map("deleted_by") @db.Uuid
+     ```
+     _(Lưu ý: Các field `createdBy`, `updatedBy`, `deletedBy` sẽ được tự động
+     gán ngầm bởi Prisma Extension thông qua `requestContextStore`, không cần
+     gán thủ công ở Service)._
    - Đánh Index cho các cột hay được tìm kiếm hoặc filter.
 
 ## Bước 2: Format & Tạo Migration
@@ -28,7 +39,14 @@ Chạy các lệnh Prisma để đồng bộ database.
 # 1. Format lại schema
 deno task prisma:format
 
-# 2. Tạo migration mới và áp dụng vào DB (Thay tên tương ứng)
+# 2. Tạo migration mới và áp dụng vào DB (Tuân thủ Quy tắc Đặt tên)
+# --- QUY TẮC ĐẶT TÊN MIGRATION CHUẨN MỰC ---
+# Tạo bảng mới:          add_<table_name>_table            (VD: add_products_table)
+# Thêm cột mới:          add_<field_name>_to_<table_name>  (VD: add_status_to_users)
+# Sửa cấu trúc/kiểu cột: alter_<field_name>_in_<table_name> (VD: alter_phone_in_users)
+# Xóa cột (Drop field):  drop_<field_name>_from_<table_name> (VD: drop_age_from_users)
+# Xóa bảng (Drop table): drop_<table_name>_table           (VD: drop_old_logs_table)
+# Thêm Index/Constraint: add_index_to_<table_name>_<field> (VD: add_index_to_users_email)
 deno task migrate:dev --name add_<module_name>_table
 
 # 3. Generate lại Prisma Client
@@ -75,8 +93,12 @@ Chịu trách nhiệm tương tác với Database (Prisma) và Xử lý Business
    - Dùng `$transaction` kết hợp `Promise.all` để lấy list data và `count` total
      cùng lúc.
    - Hỗ trợ `OR` condition cho param `search`.
-3. **Audit Logging**: Mọi hành động Create/Update/Delete đều phải ghi log qua
-   `AuditService.log()`.
+3. **Audit Logging & Provenance**:
+   - Mọi hành động Create/Update/Delete đều phải ghi log qua
+     `AuditService.log()`.
+   - Các trường theo dõi `createdBy`, `updatedBy`, `updatedAt`, `deletedBy`,
+     `deletedAt` được tự động xử lý ngầm ở tầng Prisma Extension, Service không
+     cần gán thủ công.
 4. **Soft/Hard Delete**: Tách biệt logic xóa tạm (`softDelete`) và xóa vĩnh viễn
    (`hardDelete`). Kèm chức năng `restore`.
 

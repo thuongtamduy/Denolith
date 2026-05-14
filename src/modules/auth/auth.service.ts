@@ -164,14 +164,18 @@ export class AuthService {
   }
 
   async refreshToken(oldToken: string): Promise<AuthTokens> {
-    // Atomic delete and return
-    const session = await this.prisma.refreshToken.delete({
+    const session = await this.prisma.refreshToken.findUnique({
       where: { token: oldToken },
-    }).catch(() => null);
+    });
 
     if (!session) {
       throw AppError.unauthorized("Invalid or already consumed refresh token");
     }
+
+    // Xóa token cũ để đảm bảo token chỉ được sử dụng 1 lần (Rotated)
+    await this.prisma.refreshToken.delete({
+      where: { token: oldToken },
+    }).catch(() => null);
 
     if (new Date() > new Date(session.expiresAt)) {
       throw AppError.unauthorized("Refresh token expired");

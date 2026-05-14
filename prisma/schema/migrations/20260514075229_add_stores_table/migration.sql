@@ -10,9 +10,12 @@ CREATE TABLE "stores" (
     "working_hours" JSONB,
     "status" TEXT NOT NULL DEFAULT 'pending',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "created_by" UUID,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_by" UUID,
     "deleted" BOOLEAN NOT NULL DEFAULT false,
     "deleted_at" TIMESTAMP(3),
+    "deleted_by" UUID,
 
     CONSTRAINT "stores_pkey" PRIMARY KEY ("id")
 );

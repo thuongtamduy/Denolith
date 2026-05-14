@@ -131,7 +131,6 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
     },
   );
 
-
   /**
    * PATCH /api/v1/app-menus/:idOrCode
    * Cập nhật menu (lang, name, data, storeId, active).

@@ -1,10 +1,16 @@
 model Permission {
-  id          String   @id @default(uuid()) @db.Uuid
-  code        String   @unique
+  id          String    @id @default(uuid()) @db.Uuid
+  code        String    @unique
   module      String? // Nhóm permission: users, reports, permissions...
   description String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  createdBy   String?   @map("created_by") @db.Uuid
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy   String?   @map("updated_by") @db.Uuid
+  deleted     Boolean   @default(false)
+  deletedAt   DateTime? @map("deleted_at")
+  deletedBy   String?   @map("deleted_by") @db.Uuid
 
   profilePermissions ProfilePermission[]
   userPermissions    UserPermission[]
@@ -16,13 +22,18 @@ model Permission {
 }
 
 model PermissionProfile {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
   name        String
   tier        String // CHECK (tier IN ('admin', 'user'))
   description String?
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  createdBy   String?   @map("created_by") @db.Uuid
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy   String?   @map("updated_by") @db.Uuid
+  deleted     Boolean   @default(false)
+  deletedAt   DateTime? @map("deleted_at")
+  deletedBy   String?   @map("deleted_by") @db.Uuid
 
   profilePermissions ProfilePermission[]
   userProfiles       UserProfile[]

@@ -23,6 +23,12 @@ CREATE TABLE "permissions" (
     "description" TEXT,
     "active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "created_by" UUID,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_by" UUID,
+    "deleted" BOOLEAN NOT NULL DEFAULT false,
+    "deleted_at" TIMESTAMP(3),
+    "deleted_by" UUID,
 
     CONSTRAINT "permissions_pkey" PRIMARY KEY ("id")
 );
@@ -35,7 +41,12 @@ CREATE TABLE "permission_profiles" (
     "description" TEXT,
     "active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "created_by" UUID,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_by" UUID,
+    "deleted" BOOLEAN NOT NULL DEFAULT false,
+    "deleted_at" TIMESTAMP(3),
+    "deleted_by" UUID,
 
     CONSTRAINT "permission_profiles_pkey" PRIMARY KEY ("id")
 );
@@ -82,7 +93,12 @@ CREATE TABLE "roles" (
     "system" BOOLEAN NOT NULL DEFAULT false,
     "active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "created_by" UUID,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_by" UUID,
+    "deleted" BOOLEAN NOT NULL DEFAULT false,
+    "deleted_at" TIMESTAMP(3),
+    "deleted_by" UUID,
 
     CONSTRAINT "roles_pkey" PRIMARY KEY ("code")
 );
@@ -111,12 +127,16 @@ CREATE TABLE "users" (
     "last_login_at" TIMESTAMP(3),
     "last_login_ip" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "created_by" UUID,
     "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_by" UUID,
     "deleted" BOOLEAN NOT NULL DEFAULT false,
     "deleted_at" TIMESTAMP(3),
+    "deleted_by" UUID,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
+
 
 -- CreateTable
 CREATE TABLE "refresh_tokens" (

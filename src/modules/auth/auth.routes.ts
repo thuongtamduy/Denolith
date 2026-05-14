@@ -51,7 +51,7 @@ export const createPublicAuthRoutes = (service: AuthService) => {
         secure: config.env === "production", // Yêu cầu HTTPS (khi Production)
         sameSite: config.env === "production" ? "None" : "Lax",
         maxAge: 7 * 24 * 60 * 60,
-        path: "/api/auth",
+        path: "/",
       });
 
       c.header("Location", `/api/users/${result.user.id}`);
@@ -60,6 +60,7 @@ export const createPublicAuthRoutes = (service: AuthService) => {
         data: {
           user: sanitizeUser(result.user),
           accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
         },
       }, 201);
     },
@@ -100,7 +101,7 @@ export const createPublicAuthRoutes = (service: AuthService) => {
         secure: config.env === "production",
         sameSite: config.env === "production" ? "None" : "Lax",
         maxAge: 7 * 24 * 60 * 60,
-        path: "/api/auth",
+        path: "/",
       });
 
       return c.json({
@@ -108,6 +109,7 @@ export const createPublicAuthRoutes = (service: AuthService) => {
         data: {
           user: sanitizeUser(result.user),
           accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
         },
       });
     },
@@ -193,15 +195,32 @@ export const createAuthRoutes = (service: AuthService) => {
     describeRoute({
       tags: ["Auth"],
       summary: "Refresh Token",
+      requestBody: {
+        content: {
+          "application/json": {
+            example: {
+              refreshToken: "123e4567-e89b-12d3-a456-426614174000",
+            },
+          },
+        },
+      },
       responses: {
         200: { description: "Token refreshed successfully" },
         401: { description: "No refresh token found" },
       },
     }),
     async (c) => {
-      const token = getCookie(c, "refresh_token");
+      let token = getCookie(c, "refresh_token");
       if (!token) {
-        throw AppError.unauthorized("No refresh token found");
+        try {
+          const body = await c.req.json();
+          token = body?.refreshToken;
+        } catch {
+          // No json body
+        }
+      }
+      if (!token) {
+        throw AppError.unauthorized("No refresh token found (cookie or body)");
       }
       const result = await service.refreshToken(token);
 
@@ -210,12 +229,15 @@ export const createAuthRoutes = (service: AuthService) => {
         secure: config.env === "production",
         sameSite: config.env === "production" ? "None" : "Lax",
         maxAge: 7 * 24 * 60 * 60,
-        path: "/api/auth",
+        path: "/",
       });
 
       return c.json({
         success: true,
-        data: { accessToken: result.accessToken },
+        data: {
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+        },
       });
     },
   );
@@ -225,6 +247,15 @@ export const createAuthRoutes = (service: AuthService) => {
     describeRoute({
       tags: ["Auth"],
       summary: "User Logout",
+      requestBody: {
+        content: {
+          "application/json": {
+            example: {
+              refreshToken: "123e4567-e89b-12d3-a456-426614174000",
+            },
+          },
+        },
+      },
       responses: {
         200: { description: "Logged out successfully" },
         400: { description: "Bad request or validation error" },
@@ -233,7 +264,15 @@ export const createAuthRoutes = (service: AuthService) => {
       },
     }),
     async (c) => {
-      const refreshToken = getCookie(c, "refresh_token");
+      let refreshToken = getCookie(c, "refresh_token");
+      if (!refreshToken) {
+        try {
+          const body = await c.req.json();
+          refreshToken = body?.refreshToken;
+        } catch {
+          // No json body
+        }
+      }
 
       // Lấy Access Token từ Authorization header để blacklist
       const authHeader = c.req.header("Authorization") ?? "";
@@ -256,7 +295,7 @@ export const createAuthRoutes = (service: AuthService) => {
       if (refreshToken) {
         await service.logout(refreshToken, accessToken, exp);
         deleteCookie(c, "refresh_token", {
-          path: "/api/auth",
+          path: "/",
           secure: config.env === "production",
           sameSite: config.env === "production" ? "None" : "Lax",
         });

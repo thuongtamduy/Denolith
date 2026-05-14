@@ -24,6 +24,7 @@ export const ApiResponse = {
         message,
         data,
       } satisfies ApiResponse<T>,
+      // deno-lint-ignore no-explicit-any
       status as any,
     );
   },
@@ -85,6 +86,7 @@ export const ApiResponse = {
         message,
         errors,
       } satisfies ApiResponse<null>,
+      // deno-lint-ignore no-explicit-any
       status as any,
     );
   },
