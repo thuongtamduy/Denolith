@@ -13,9 +13,13 @@ import { createPermissionRoutes } from "./modules/permission/permission.routes.t
 import { createRoleRoutes } from "./modules/role/role.routes.ts";
 import { createAppMenuRoutes } from "./modules/app-menu/app-menu.routes.ts";
 import { createStoreRoutes } from "./modules/store/store.routes.ts";
+import { clientContextMiddleware } from "./shared/middlewares/client-context.middleware.ts";
 
 export const createApiRouter = () => {
   const router = new Hono<AppEnv>();
+
+  // Áp dụng middleware trích xuất client context từ header (x-lang, x-api-key)
+  router.use("*", clientContextMiddleware);
 
   // Đăng ký các Route modules
   router.route("/auth", createAuthRoutes(container.authService));
@@ -33,6 +37,10 @@ export const createApiRouter = () => {
 
 export const createNormalRouter = () => {
   const router = new Hono<AppEnv>();
+
+  // Áp dụng middleware trích xuất client context từ header
+  router.use("*", clientContextMiddleware);
+
   // Sử dụng router công cộng (chỉ có API đọc)
   router.route("/auth", createPublicAuthRoutes(container.authService));
   router.route("/users", createPublicUserRoutes(container.userService));

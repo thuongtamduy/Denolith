@@ -44,7 +44,7 @@ export const createUserRoutes = (service: UserService) => {
       },
     }),
     validateQuery(paginationQuerySchema),
-    cacheResponse(60),
+    // cacheResponse(60),
     async (c) => {
       const params = extractPagination(c.req.query());
       const result = await service.findMany(params);

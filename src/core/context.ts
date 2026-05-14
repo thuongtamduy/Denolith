@@ -31,6 +31,12 @@ export interface JwtPayload {
   iat?: number; // Unix timestamp phát hành (tự inject bởi @hono/jwt)
 }
 
+export interface ClientContext {
+  lang: string; // "vi" | "en", default: "vi"
+  apiKey?: string;
+  storeId?: string; // Resolved from x-api-key or token
+}
+
 export type AppEnv = {
   Variables: {
     // Được set bởi authMiddleware sau khi xác thực token thành công
@@ -38,5 +44,7 @@ export type AppEnv = {
     // Được set bởi requirePermission() sau khi resolve permissions từ cache/DB
     // undefined = chưa load (OWNER không cần load)
     resolvedPermissions?: ResolvedPermissions;
+    // Được set bởi clientContextMiddleware từ header (x-lang, x-api-key)
+    clientContext: ClientContext;
   };
 };

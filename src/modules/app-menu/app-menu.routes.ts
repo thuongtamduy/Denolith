@@ -52,11 +52,12 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
       }),
     ),
     async (c) => {
+      const clientCtx = c.get("clientContext");
       const query = c.req.query();
       const params = {
         ...extractPagination(query),
-        storeId: query.storeId,
-        lang: query.lang,
+        storeId: query.storeId ?? clientCtx.storeId,
+        lang: query.lang ?? clientCtx.lang,
       };
       const result = await service.findMany(params);
       return c.json({ success: true, ...result });
@@ -114,12 +115,22 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
     async (c) => {
       const body = c.req.valid("json") as CreateAppMenuInput;
       const actorId = c.get("jwtPayload").id;
-      const menu = await service.create(body, actorId);
+      const clientCtx = c.get("clientContext");
+
+      // Bổ sung lang/storeId từ header nếu client không gửi trong body
+      const inputData = {
+        ...body,
+        lang: body.lang ?? clientCtx.lang,
+        storeId: body.storeId ?? clientCtx.storeId,
+      };
+
+      const menu = await service.create(inputData, actorId);
 
       c.header("Location", `/api/v1/app-menus/${menu.code}`);
       return c.json({ success: true, data: menu }, 201);
     },
   );
+
 
   /**
    * PATCH /api/v1/app-menus/:idOrCode
