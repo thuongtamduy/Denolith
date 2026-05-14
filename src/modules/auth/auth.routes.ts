@@ -37,7 +37,7 @@ export const createAuthRoutes = (service: AuthService) => {
         await redisClient.flushAll();
       }
       return c.json({ success: true, message: "Data cleared successfully" });
-    }
+    },
   );
 
   router.get(
@@ -45,7 +45,8 @@ export const createAuthRoutes = (service: AuthService) => {
     describeRoute({
       tags: ["Auth"],
       summary: "Get Cache Data",
-      description: "Xem dữ liệu đang có trong Redis (hiển thị tối đa 100 keys).",
+      description:
+        "Xem dữ liệu đang có trong Redis (hiển thị tối đa 100 keys).",
       security: [],
       responses: {
         200: { description: "Data retrieved successfully" },
@@ -54,11 +55,14 @@ export const createAuthRoutes = (service: AuthService) => {
     async (c) => {
       const { redisClient } = await import("../../core/redis.ts");
       if (!redisClient) {
-        return c.json({ success: false, message: "Redis is not connected" }, 500);
+        return c.json(
+          { success: false, message: "Redis is not connected" },
+          500,
+        );
       }
-      
+
       const keys = await redisClient.keys("*");
-      const data: Record<string, any> = {};
+      const data: Record<string, unknown> = {};
 
       const limitedKeys = keys.slice(0, 100);
 
@@ -77,20 +81,21 @@ export const createAuthRoutes = (service: AuthService) => {
         }
       }
 
-      return c.json({ 
-        success: true, 
+      return c.json({
+        success: true,
         totalKeys: keys.length,
         showing: limitedKeys.length,
-        data 
+        data,
       });
-    }
+    },
   );
 
   // Chống Brute force: tối đa 10 lần thử đăng ký / đăng nhập mỗi 5 phút
   const strictRateLimit = rateLimiter({
     windowMs: RATE_LIMIT_WINDOW * 60 * 1000,
     max: RATE_LIMIT_MAX,
-    message: `Too many attempts. Please try again in ${RATE_LIMIT_WINDOW} minutes.`,
+    message:
+      `Too many attempts. Please try again in ${RATE_LIMIT_WINDOW} minutes.`,
     keyPrefix: "auth", // Tách biệt rate limit của Auth khỏi Global Rate Limit
   });
 

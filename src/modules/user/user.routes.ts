@@ -34,7 +34,7 @@ export const createUserRoutes = (service: UserService) => {
   router.get(
     "/",
     describeRoute({
-      tags: ["Admin Users"],
+      tags: ["Users"],
       summary: "Get list of users",
       responses: {
         200: { description: "Successful response" },
@@ -60,7 +60,7 @@ export const createUserRoutes = (service: UserService) => {
   router.get(
     "/:id",
     describeRoute({
-      tags: ["Admin Users"],
+      tags: ["Users"],
       summary: "Get user details",
       responses: {
         200: { description: "Successful response" },
@@ -79,7 +79,7 @@ export const createUserRoutes = (service: UserService) => {
   router.post(
     "/",
     describeRoute({
-      tags: ["Admin Users"],
+      tags: ["Users"],
       summary: "Create a new user",
       requestBody: {
         content: {
@@ -119,7 +119,7 @@ export const createUserRoutes = (service: UserService) => {
   router.patch(
     "/:id",
     describeRoute({
-      tags: ["Admin Users"],
+      tags: ["Users"],
       summary: "Update user details",
       requestBody: {
         content: {
@@ -155,7 +155,7 @@ export const createUserRoutes = (service: UserService) => {
   router.patch(
     "/:id/role",
     describeRoute({
-      tags: ["Admin Users"],
+      tags: ["Users"],
       summary: "Update user role",
       requestBody: {
         content: {
@@ -190,7 +190,7 @@ export const createUserRoutes = (service: UserService) => {
   router.delete(
     "/:id",
     describeRoute({
-      tags: ["Admin Users"],
+      tags: ["Users"],
       summary: "Delete user",
       responses: {
         200: { description: "User soft-deleted successfully" },
@@ -247,7 +247,7 @@ export const createUserRoutes = (service: UserService) => {
   router.post(
     "/:id/restore",
     describeRoute({
-      tags: ["Admin Users"],
+      tags: ["Users"],
       summary: "Restore soft-deleted user",
       responses: {
         200: { description: "User restored successfully" },

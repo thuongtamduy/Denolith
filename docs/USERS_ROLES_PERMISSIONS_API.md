@@ -2,13 +2,15 @@
 
 Base URL: `http://localhost:9999`
 
-> **Auth Required:** All endpoints in this guide require a valid `accessToken` in the `Authorization: Bearer <token>` header, unless noted otherwise.
+> **Auth Required:** All endpoints in this guide require a valid `accessToken`
+> in the `Authorization: Bearer <token>` header, unless noted otherwise.
 
 ---
 
 ## 🔐 Access Control Overview
 
-Denolith uses a **3-tier Role System** combined with fine-grained Permission Profiles.
+Denolith uses a **3-tier Role System** combined with fine-grained Permission
+Profiles.
 
 ```
 OWNER  → Bypasses all permission checks. Can do everything.
@@ -29,20 +31,24 @@ Permission Middleware (requirePermission) → checks specific permission codes
 ```
 
 **Key permission codes used in this guide:**
-- `permissions.manage` — Required to manage roles, permission profiles, and user overrides.
+
+- `permissions.manage` — Required to manage roles, permission profiles, and user
+  overrides.
 
 ---
 
 ## 👤 Users
 
-### Admin Routes — `/api/users` *(requires: `admin` tier)*
+### Admin Routes — `/api/users` _(requires: `admin` tier)_
 
 #### `GET /api/users`
+
 List all active users (paginated). Response is cached for 60s.
 
 **Query Params:** `page` (default: 1), `limit` (default: 20)
 
 **Response `200 OK`**
+
 ```json
 {
   "success": true,
@@ -54,9 +60,11 @@ List all active users (paginated). Response is cached for 60s.
 ---
 
 #### `GET /api/users/:id`
+
 Get details of a single user.
 
 **Response `200 OK`**
+
 ```json
 { "success": true, "data": { "id": "uuid", "username": "john", ... } }
 ```
@@ -64,9 +72,11 @@ Get details of a single user.
 ---
 
 #### `POST /api/users`
+
 Create a new user (admin action).
 
 **Request Body**
+
 ```json
 {
   "username": "john_doe",
@@ -81,6 +91,7 @@ Create a new user (admin action).
 ```
 
 **Response `201 Created`**
+
 ```json
 { "success": true, "data": { "id": "uuid", "username": "john_doe", ... } }
 ```
@@ -88,9 +99,11 @@ Create a new user (admin action).
 ---
 
 #### `PATCH /api/users/:id`
+
 Partially update a user's profile info.
 
 **Request Body** (all fields optional)
+
 ```json
 {
   "firstName": "Jane",
@@ -101,10 +114,12 @@ Partially update a user's profile info.
 
 ---
 
-#### `PATCH /api/users/:id/role` *(requires: `permissions.manage`)*
+#### `PATCH /api/users/:id/role` _(requires: `permissions.manage`)_
+
 Change a user's role. Cannot change your own role.
 
 **Request Body**
+
 ```json
 { "role": "admin" }
 ```
@@ -112,11 +127,16 @@ Change a user's role. Cannot change your own role.
 ---
 
 #### `DELETE /api/users/:id`
+
 Soft-delete a user (recoverable). Cannot delete yourself.
 
 **Response `200 OK`**
+
 ```json
-{ "success": true, "message": "User has been soft-deleted and can be restored." }
+{
+  "success": true,
+  "message": "User has been soft-deleted and can be restored."
+}
 ```
 
 Add `?force=true` to permanently hard-delete (returns `204 No Content`).
@@ -124,21 +144,26 @@ Add `?force=true` to permanently hard-delete (returns `204 No Content`).
 ---
 
 #### `POST /api/users/:id/restore`
+
 Restore a soft-deleted user.
 
 **Response `200 OK`**
+
 ```json
-{ "success": true, "message": "User 'john_doe' has been restored successfully." }
+{
+  "success": true,
+  "message": "User 'john_doe' has been restored successfully."
+}
 ```
 
 ---
 
-### Public Routes — `/api/v0/users` *(no auth required)*
+### Public Routes — `/api/v0/users` _(no auth required)_
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/v0/users` | List users (paginated, cached 60s) |
-| `GET` | `/api/v0/users/:id` | Get user details |
+| Method | Path                | Description                        |
+| ------ | ------------------- | ---------------------------------- |
+| `GET`  | `/api/v0/users`     | List users (paginated, cached 60s) |
+| `GET`  | `/api/v0/users/:id` | Get user details                   |
 
 ---
 
@@ -149,9 +174,11 @@ All role endpoints require: **`permissions.manage`** permission.
 Base: `/api/roles`
 
 #### `GET /api/roles`
+
 List all roles (paginated).
 
 **Response**
+
 ```json
 {
   "success": true,
@@ -161,12 +188,15 @@ List all roles (paginated).
 ```
 
 #### `GET /api/roles/:code`
+
 Get a single role by its code (e.g. `admin`, `user`).
 
 #### `POST /api/roles`
+
 Create a custom role.
 
 **Request Body**
+
 ```json
 {
   "code": "moderator",
@@ -177,9 +207,12 @@ Create a custom role.
 ```
 
 #### `PATCH /api/roles/:code`
-Update a role's `name`, `description`, or `active` status. Cannot modify `code`, `tier`, or `system` flag.
+
+Update a role's `name`, `description`, or `active` status. Cannot modify `code`,
+`tier`, or `system` flag.
 
 #### `DELETE /api/roles/:code`
+
 Delete a custom role. System roles (`owner`, `admin`, `user`) cannot be deleted.
 
 ---
@@ -193,9 +226,12 @@ Base: `/api/permissions`
 ### Permission Codes
 
 #### `GET /api/permissions`
-List all available atomic permission codes in the system (developer-seeded, read-only).
+
+List all available atomic permission codes in the system (developer-seeded,
+read-only).
 
 **Response**
+
 ```json
 {
   "success": true,
@@ -207,15 +243,20 @@ List all available atomic permission codes in the system (developer-seeded, read
 
 ### Permission Profiles
 
-A **Permission Profile** is a reusable bundle of permission codes that can be assigned to multiple users.
+A **Permission Profile** is a reusable bundle of permission codes that can be
+assigned to multiple users.
 
 #### `GET /api/permissions/profiles`
-List all profiles (paginated). Filter by tier with `?tier=admin` or `?tier=user`.
+
+List all profiles (paginated). Filter by tier with `?tier=admin` or
+`?tier=user`.
 
 #### `POST /api/permissions/profiles`
+
 Create a new profile.
 
 **Request Body**
+
 ```json
 {
   "name": "Content Editor",
@@ -225,9 +266,11 @@ Create a new profile.
 ```
 
 #### `GET /api/permissions/profiles/:id`
+
 Get a profile + its list of permission codes.
 
 **Response**
+
 ```json
 {
   "success": true,
@@ -240,9 +283,11 @@ Get a profile + its list of permission codes.
 ```
 
 #### `PATCH /api/permissions/profiles/:id`
+
 Update a profile's `name`, `description`, or `active` status.
 
 #### `DELETE /api/permissions/profiles/:id`
+
 Delete a profile. All user assignments to this profile are cascade-removed.
 
 ---
@@ -250,14 +295,17 @@ Delete a profile. All user assignments to this profile are cascade-removed.
 ### Profile ↔ Permission Codes
 
 #### `PUT /api/permissions/profiles/:id/codes/:code`
+
 Add or update a permission code in a profile.
 
 **Request Body**
+
 ```json
 { "granted": true }
 ```
 
 #### `DELETE /api/permissions/profiles/:id/codes/:code`
+
 Remove a permission code from a profile.
 
 ---
@@ -265,29 +313,36 @@ Remove a permission code from a profile.
 ### User ↔ Profiles
 
 #### `GET /api/permissions/users/:userId/profiles`
+
 List all profiles currently assigned to a user.
 
 #### `POST /api/permissions/users/:userId/profiles`
+
 Assign a profile to a user.
 
 **Request Body**
+
 ```json
 { "profileId": "uuid" }
 ```
 
 #### `DELETE /api/permissions/users/:userId/profiles/:profileId`
+
 Revoke a profile from a user.
 
 ---
 
 ### User Individual Overrides
 
-An **Override** is a single permission code applied directly to one user — overrides what their profiles say.
+An **Override** is a single permission code applied directly to one user —
+overrides what their profiles say.
 
 #### `GET /api/permissions/users/:userId/overrides`
+
 List a user's individual permission overrides.
 
 **Response**
+
 ```json
 {
   "success": true,
@@ -296,16 +351,20 @@ List a user's individual permission overrides.
 ```
 
 #### `PUT /api/permissions/users/:userId/overrides/:code`
+
 Set an individual override for a user.
 
 **Request Body**
+
 ```json
 { "granted": false }
 ```
 
-> Setting `granted: false` explicitly **denies** a permission, even if the user's profile allows it.
+> Setting `granted: false` explicitly **denies** a permission, even if the
+> user's profile allows it.
 
 #### `DELETE /api/permissions/users/:userId/overrides/:code`
+
 Remove an override. The user falls back to their profile-based permissions.
 
 ---
@@ -319,10 +378,10 @@ Remove an override. The user falls back to their profile-based permissions.
 }
 ```
 
-| HTTP Status | Meaning |
-|---|---|
-| `400` | Validation error |
-| `401` | Missing or expired token |
-| `403` | Token valid but insufficient role/permissions |
-| `404` | Resource not found |
-| `500` | Server error |
+| HTTP Status | Meaning                                       |
+| ----------- | --------------------------------------------- |
+| `400`       | Validation error                              |
+| `401`       | Missing or expired token                      |
+| `403`       | Token valid but insufficient role/permissions |
+| `404`       | Resource not found                            |
+| `500`       | Server error                                  |

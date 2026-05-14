@@ -2,13 +2,15 @@
 
 Base URL: `http://localhost:9999`
 
-> **Rate Limit:** All auth endpoints are capped at **5 requests / 15 minutes** per IP to prevent brute-force attacks.
+> **Rate Limit:** All auth endpoints are capped at **5 requests / 15 minutes**
+> per IP to prevent brute-force attacks.
 
 ---
 
 ## 🍪 How the `refresh_token` Cookie Works
 
-On every `login`, `register`, and `refresh` call, the server automatically sets this cookie:
+On every `login`, `register`, and `refresh` call, the server automatically sets
+this cookie:
 
 ```http
 Set-Cookie: refresh_token=<token>;
@@ -18,16 +20,18 @@ Set-Cookie: refresh_token=<token>;
   SameSite=Lax (dev) | SameSite=None; Secure (prod)
 ```
 
-| Flag | Value | Why |
-|---|---|---|
-| `HttpOnly` | Always | JavaScript **cannot** read this cookie via `document.cookie`. Prevents XSS token theft. |
-| `Secure` | Production only | Cookie is only sent over HTTPS. Off in dev so localhost works. |
-| `SameSite=Lax` | Development | Allows cross-page navigation but blocks third-party requests. |
-| `SameSite=None` | Production | Required when your frontend and API are on different domains (e.g. `app.com` → `api.com`). Must be paired with `Secure`. |
-| `Path=/api/auth` | Always | The cookie is **only sent** to `/api/auth/*` routes, not every API call — minimizes exposure. |
-| `Max-Age=604800` | 7 days | Cookie lifetime in seconds. |
+| Flag             | Value           | Why                                                                                                                      |
+| ---------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `HttpOnly`       | Always          | JavaScript **cannot** read this cookie via `document.cookie`. Prevents XSS token theft.                                  |
+| `Secure`         | Production only | Cookie is only sent over HTTPS. Off in dev so localhost works.                                                           |
+| `SameSite=Lax`   | Development     | Allows cross-page navigation but blocks third-party requests.                                                            |
+| `SameSite=None`  | Production      | Required when your frontend and API are on different domains (e.g. `app.com` → `api.com`). Must be paired with `Secure`. |
+| `Path=/api/auth` | Always          | The cookie is **only sent** to `/api/auth/*` routes, not every API call — minimizes exposure.                            |
+| `Max-Age=604800` | 7 days          | Cookie lifetime in seconds.                                                                                              |
 
-> **Summary:** You never manually read or set this cookie. Just call the API with `credentials: 'include'` and the browser handles everything automatically.
+> **Summary:** You never manually read or set this cookie. Just call the API
+> with `credentials: 'include'` and the browser handles everything
+> automatically.
 
 ---
 
@@ -35,8 +39,12 @@ Set-Cookie: refresh_token=<token>;
 
 Denolith uses a **dual-token** strategy:
 
-- **`accessToken`** — Short-lived JWT returned in the response body. Store it **in-memory** (a JavaScript variable). Send with every protected request in the `Authorization` header.
-- **`refresh_token`** — Long-lived token (7 days). Automatically stored in an `httpOnly` cookie by the server. The frontend never touches it directly — just call `/refresh` and the browser sends it automatically.
+- **`accessToken`** — Short-lived JWT returned in the response body. Store it
+  **in-memory** (a JavaScript variable). Send with every protected request in
+  the `Authorization` header.
+- **`refresh_token`** — Long-lived token (7 days). Automatically stored in an
+  `httpOnly` cookie by the server. The frontend never touches it directly — just
+  call `/refresh` and the browser sends it automatically.
 
 ```
 Login → get accessToken + refresh_token (cookie)
@@ -57,6 +65,7 @@ User logs out → call /logout → both tokens invalidated
 Register a new user account.
 
 **Request Body**
+
 ```json
 {
   "username": "john_doe",
@@ -65,13 +74,14 @@ Register a new user account.
 }
 ```
 
-| Field | Type | Rules |
-|---|---|---|
+| Field      | Type     | Rules                                   |
+| ---------- | -------- | --------------------------------------- |
 | `username` | `string` | 3–50 chars, letters/numbers/spaces only |
-| `email` | `string` | Valid email, max 255 chars |
-| `password` | `string` | 6–100 chars |
+| `email`    | `string` | Valid email, max 255 chars              |
+| `password` | `string` | 6–100 chars                             |
 
 **Response `201 Created`**
+
 ```json
 {
   "success": true,
@@ -97,6 +107,7 @@ Register a new user account.
 Authenticate and get tokens.
 
 **Request Body**
+
 ```json
 {
   "email": "john@example.com",
@@ -105,6 +116,7 @@ Authenticate and get tokens.
 ```
 
 **Response `200 OK`**
+
 ```json
 {
   "success": true,
@@ -121,11 +133,13 @@ Authenticate and get tokens.
 
 ### `POST /api/auth/refresh`
 
-Get a new `accessToken` using the `refresh_token` cookie. No request body needed.
+Get a new `accessToken` using the `refresh_token` cookie. No request body
+needed.
 
 The browser sends the cookie automatically when `credentials: 'include'` is set.
 
 **Response `200 OK`**
+
 ```json
 {
   "success": true,
@@ -141,14 +155,17 @@ The browser sends the cookie automatically when `credentials: 'include'` is set.
 
 ### `POST /api/auth/logout`
 
-Invalidates both the `accessToken` (server-side blacklist) and clears the `refresh_token` cookie.
+Invalidates both the `accessToken` (server-side blacklist) and clears the
+`refresh_token` cookie.
 
 **Request Headers**
+
 ```http
 Authorization: Bearer <accessToken>
 ```
 
 **Response `200 OK`**
+
 ```json
 {
   "success": true,
@@ -163,12 +180,12 @@ Authorization: Bearer <accessToken>
 ### Sending the Access Token
 
 ```javascript
-fetch('/api/users', {
+fetch("/api/users", {
   headers: {
-    'Authorization': `Bearer ${accessToken}`,
-    'Content-Type': 'application/json',
+    "Authorization": `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
   },
-  credentials: 'include', // Required for the refresh_token cookie
+  credentials: "include", // Required for the refresh_token cookie
 });
 ```
 
@@ -176,12 +193,12 @@ fetch('/api/users', {
 
 ```javascript
 async function apiCall(url, options) {
-  let res = await fetch(url, { ...options, credentials: 'include' });
+  let res = await fetch(url, { ...options, credentials: "include" });
 
   if (res.status === 401) {
-    const refresh = await fetch('/api/auth/refresh', {
-      method: 'POST',
-      credentials: 'include',
+    const refresh = await fetch("/api/auth/refresh", {
+      method: "POST",
+      credentials: "include",
     });
 
     if (refresh.ok) {
@@ -191,12 +208,15 @@ async function apiCall(url, options) {
       // Retry original request
       res = await fetch(url, {
         ...options,
-        credentials: 'include',
-        headers: { ...options.headers, 'Authorization': `Bearer ${accessToken}` },
+        credentials: "include",
+        headers: {
+          ...options.headers,
+          "Authorization": `Bearer ${accessToken}`,
+        },
       });
     } else {
       // refresh_token expired → force re-login
-      window.location.href = '/login';
+      window.location.href = "/login";
     }
   }
 
@@ -207,7 +227,8 @@ async function apiCall(url, options) {
 ### CORS Notes
 
 - Always use `credentials: 'include'` — required for the `refresh_token` cookie.
-- The server only accepts requests from the origin set in `FRONTEND_URL` env var.
+- The server only accepts requests from the origin set in `FRONTEND_URL` env
+  var.
 
 ---
 
@@ -223,9 +244,9 @@ async function apiCall(url, options) {
 }
 ```
 
-| HTTP Status | Meaning |
-|---|---|
-| `400` | Validation error |
-| `401` | Invalid credentials or token expired |
-| `429` | Rate limit hit — wait 15 minutes |
-| `500` | Server error |
+| HTTP Status | Meaning                              |
+| ----------- | ------------------------------------ |
+| `400`       | Validation error                     |
+| `401`       | Invalid credentials or token expired |
+| `429`       | Rate limit hit — wait 15 minutes     |
+| `500`       | Server error                         |

@@ -1,0 +1,17 @@
+model AppMenu {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  lang      String   @default("vi") // Ngôn ngữ: vi, en...
+  name      String
+  data      String   @db.Text // JSON string chứa cấu trúc menu
+  storeId   String?  @map("store_id") // ID của store (nếu multi-tenant)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([code])
+  @@index([lang])
+  @@index([storeId])
+  @@index([active])
+  @@map("app_menus")
+}
