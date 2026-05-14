@@ -1,0 +1,19 @@
+model Store {
+  id           String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code         String                   @unique @db.VarChar(50)
+  name         String
+  latitude     Float?
+  longitude    Float?
+  metadata     Json?                    @db.JsonB
+  searchVector Unsupported("tsvector")? @map("search_vector")
+  workingHours Json?                    @map("working_hours") @db.JsonB
+  status       String                   @default("pending") // CHECK (status IN ('active', 'inactive', 'pending'))
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+  deleted   Boolean   @default(false)
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([code])
+  @@map("stores")
+}

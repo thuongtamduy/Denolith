@@ -5,6 +5,18 @@ export async function seedUsers(prisma: PrismaClient) {
   console.log("Seeding users...");
   const users = [
     {
+      username: "example",
+      email: "user@example.com",
+      password: "string",
+      roleCode: "owner",
+      firstName: "Example",
+      lastName: "Example",
+      displayName: "Example",
+      gender: "male",
+      bio: "Example account",
+      emailVerified: true,
+    },
+    {
       username: "owner",
       email: "owner@denolith.dev",
       password: "Owner@123456",

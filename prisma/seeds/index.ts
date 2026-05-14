@@ -7,6 +7,7 @@ import { seedUsers } from "./user.seed.ts";
 import { seedPermissions } from "./permission.seed.ts";
 import { seedProfiles } from "./profile.seed.ts";
 import { seedAppMenus } from "./app-menu.seed.ts";
+import { seedStores } from "./store.seed.ts";
 
 const connectionString = Deno.env.get("DATABASE_URL") || "";
 const pool = new pg.Pool({ connectionString });
@@ -33,6 +34,7 @@ async function main() {
   await seedPermissions(prisma);
   await seedProfiles(prisma);
   await seedAppMenus(prisma);
+  await seedStores(prisma);
 
   console.log("🌳 Database seeding completed successfully.");
 }

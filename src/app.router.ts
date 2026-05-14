@@ -9,6 +9,7 @@ import { createAuthRoutes } from "./modules/auth/auth.routes.ts";
 import { createPermissionRoutes } from "./modules/permission/permission.routes.ts";
 import { createRoleRoutes } from "./modules/role/role.routes.ts";
 import { createAppMenuRoutes } from "./modules/app-menu/app-menu.routes.ts";
+import { createStoreRoutes } from "./modules/store/store.routes.ts";
 
 export const createApiRouter = () => {
   const router = new Hono<AppEnv>();
@@ -22,6 +23,7 @@ export const createApiRouter = () => {
   );
   router.route("/roles", createRoleRoutes(container.roleService));
   router.route("/v1/app-menus", createAppMenuRoutes(container.appMenuService));
+  router.route("/v1/stores", createStoreRoutes(container.storeService));
 
   return router;
 };
