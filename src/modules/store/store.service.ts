@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from "@db";
+import type { Prisma, PrismaClient } from "@db";
 import { AppError } from "../../shared/errors/AppError.ts";
 import { AuditService } from "../../core/audit.ts";
 import type { PaginationParams } from "../../shared/utils/pagination.ts";
@@ -65,10 +65,10 @@ export class StoreService {
           longitude: data.longitude,
           metadata: data.metadata
             ? (data.metadata as Prisma.InputJsonValue)
-            : Prisma.JsonNull,
+            : undefined,
           workingHours: data.workingHours
             ? (data.workingHours as Prisma.InputJsonValue)
-            : Prisma.JsonNull,
+            : undefined,
           status: data.status,
         },
       });
