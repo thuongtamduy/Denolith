@@ -29,7 +29,7 @@ export interface AuthTokens {
 }
 
 export class AuthService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   async register(data: RegisterData) {
     // Check existing before transaction to fail fast
@@ -172,14 +172,40 @@ export class AuthService {
       throw AppError.unauthorized("Invalid or already consumed refresh token");
     }
 
-    // Xóa token cũ để đảm bảo token chỉ được sử dụng 1 lần (Rotated)
-    await this.prisma.refreshToken.delete({
-      where: { token: oldToken },
-    }).catch(() => null);
+    // --- BẪY PHÁT HIỆN TÁI SỬ DỤNG (REVOCATION TRAP / TOKEN FAMILY INVALIDATION) ---
+    // Nếu token đã bị thu hồi (revokedAt != null), đây là dấu hiệu Replay Attack / Bị đánh cắp token.
+    if (session.revokedAt) {
+      // Tiêu diệt toàn bộ chuỗi phiên: Xóa sạch toàn bộ refresh tokens đang hoạt động của tài khoản này
+      await this.prisma.refreshToken.deleteMany({
+        where: { userId: session.userId },
+      });
+
+      // Ghi Audit Log cảnh báo bảo mật nghiêm trọng
+      await AuditService.log({
+        action: "auth.security_compromised",
+        status: "failure",
+        targetType: "user",
+        targetId: session.userId,
+        metadata: {
+          reason: "Replay attack detected: consumed refresh token reused",
+          token: oldToken,
+        },
+      });
+
+      throw AppError.unauthorized(
+        "Security alert: Token reuse detected. All active sessions have been revoked. Please log in again.",
+      );
+    }
 
     if (new Date() > new Date(session.expiresAt)) {
       throw AppError.unauthorized("Refresh token expired");
     }
+
+    // Đánh dấu thu hồi token hiện tại (Revoke) thay vì xóa vật lý
+    await this.prisma.refreshToken.update({
+      where: { token: oldToken },
+      data: { revokedAt: new Date() },
+    });
 
     const user = await this.prisma.user.findUnique({
       where: { id: session.userId, deleted: false },
@@ -212,6 +238,7 @@ export class AuthService {
   }
 
   async logout(refreshToken: string, accessToken?: string, exp?: number) {
+    // Xóa refresh token đang đăng xuất
     await this.prisma.refreshToken.deleteMany({
       where: { token: refreshToken },
     });
