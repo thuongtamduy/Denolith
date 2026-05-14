@@ -1,9 +1,10 @@
 export type UserTier = "owner" | "admin" | "user";
 
 /**
- * Resolved permission set for a user.
- * Defined here in core so that both modules and middlewares can reference it
- * without circular dependencies.
+ * Thông tin quyền hạn đã được xử lý và đóng gói cho một user.
+ * - Được định nghĩa ở core để tất cả các tầng (module, middleware) có thể tham chiếu
+ *   mà không gây lỗi circular dependency.
+ * - Middleware requirePermission() sẽ tự động fill vào đây sau khi xác thực token.
  */
 export interface ResolvedPermissions {
   userId: string;
