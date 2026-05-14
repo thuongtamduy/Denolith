@@ -1,6 +1,7 @@
 # 🏛️ Denolith
 
-**Denolith** (**Deno** + **Monolith**) is a high-performance, type-safe monolithic backend framework built on Deno 2.x, Hono, and Prisma 7.
+**Denolith** (**Deno** + **Monolith**) is a high-performance, type-safe
+monolithic backend framework built on Deno 2.x, Hono, and Prisma 7.
 
 ---
 
@@ -9,9 +10,11 @@
 - 🚀 **Ultra-Fast**: Powered by Hono & Deno 2.x.
 - 🛡️ **100% Type-Safe**: From Database (Prisma) to API (Valibot).
 - 🏰 **Modular Architecture**: Domain-driven structure with a Lazy DI Container.
-- 🔐 **Advanced RBAC**: 3-tier Role System (`owner > admin > user`) + Permission Profiles.
+- 🔐 **Advanced RBAC**: 3-tier Role System (`owner > admin > user`) + Permission
+  Profiles.
 - ☁️ **Background Workers**: Redis-backed async queues and cronjobs.
-- ⚡ **Caching & Rate Limiting**: Atomic Lua-script rate limiting & response caching.
+- ⚡ **Caching & Rate Limiting**: Atomic Lua-script rate limiting & response
+  caching.
 - 📦 **Multi-Storage**: Supports `local`, `supabase`, and `s3`/MinIO.
 - 📖 **OpenAPI**: Auto-generated Swagger UI integration.
 
@@ -28,6 +31,7 @@ Run the automated setup script:
 ```
 
 **This script automatically:**
+
 1. Generates `.env` and `JWT_SECRET`.
 2. Cleans up stranded ports.
 3. Starts PostgreSQL 18 & Redis via `compose.local.yml`.
@@ -41,6 +45,7 @@ Run the automated setup script:
 ## 🛠️ Deployment & Docker
 
 ### Docker Compose
+
 - **Local Dev:** `docker-compose -f compose.local.yml up -d` (DB & Redis only)
 - **Production:** `docker-compose up -d --build` (API, DB, Redis)
 
@@ -63,13 +68,13 @@ A quick guide on how to manage database changes efficiently.
 
 ### `migrate:dev` vs `migrate`
 
-| Feature | `migrate:dev` | `migrate` |
-| --- | --- | --- |
-| **Use case** | Local development | Production deployment |
-| **Creates migration files?** | ✅ Yes | ❌ No |
-| **Generates Prisma Client?** | ✅ Yes | ❌ No |
-| **Can drop/reset data?** | ⚠️ Yes (if schema drift) | ❌ Never |
-| **Safe for Production?** | ❌ No | ✅ Yes |
+| Feature                      | `migrate:dev`            | `migrate`             |
+| ---------------------------- | ------------------------ | --------------------- |
+| **Use case**                 | Local development        | Production deployment |
+| **Creates migration files?** | ✅ Yes                   | ❌ No                 |
+| **Generates Prisma Client?** | ✅ Yes                   | ❌ No                 |
+| **Can drop/reset data?**     | ⚠️ Yes (if schema drift) | ❌ Never              |
+| **Safe for Production?**     | ❌ No                    | ✅ Yes                |
 
 ### 🧑‍💻 Development Workflow
 
@@ -106,7 +111,8 @@ deno task start
 ## ⚙️ Core Structure
 
 - `prisma/` - Database schema, migrations, and seed scripts.
-- `src/core/` - Core infrastructure (Database, Redis, Queue, Cron, Mail, Storage, DI).
+- `src/core/` - Core infrastructure (Database, Redis, Queue, Cron, Mail,
+  Storage, DI).
 - `src/modules/` - Domain logic and endpoints (Auth, User, Role, Permission).
 - `src/shared/` - Middlewares, Utils, and Error handlers.
 - `main.ts` - Application entrypoint.
@@ -114,4 +120,5 @@ deno task start
 ---
 
 ## 🛡️ License
+
 Proprietary / Closed Source.
