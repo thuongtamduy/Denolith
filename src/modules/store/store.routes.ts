@@ -93,7 +93,7 @@ export const createStoreRoutes = (service: StoreService) => {
     "/:id",
     describeRoute({
       tags: ["Stores"],
-      summary: "Update store details",
+      summary: "Update store details (Partial)",
       responses: {
         200: { description: "Store updated successfully" },
       },
@@ -101,6 +101,29 @@ export const createStoreRoutes = (service: StoreService) => {
     requirePermission("stores.manage"),
     validateUUID(),
     validateJson(updateStoreSchema),
+    async (c) => {
+      const id = c.req.param("id")!;
+      const body = c.req.valid("json") as UpdateStoreInput;
+      const actorId = c.get("jwtPayload")?.id;
+
+      const store = await service.update(id, body, actorId);
+      return c.json({ success: true, data: store });
+    },
+  );
+
+  // PUT /api/v1/stores/:id
+  router.put(
+    "/:id",
+    describeRoute({
+      tags: ["Stores"],
+      summary: "Update store details (Full/Alias)",
+      responses: {
+        200: { description: "Store updated successfully" },
+      },
+    }),
+    requirePermission("stores.manage"),
+    validateUUID(),
+    validateJson(updateStoreSchema), // Sử dụng chung schema update
     async (c) => {
       const id = c.req.param("id")!;
       const body = c.req.valid("json") as UpdateStoreInput;

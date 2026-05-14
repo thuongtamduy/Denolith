@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from "@db";
+import { Prisma, type PrismaClient } from "@db";
 import { AppError } from "../../shared/errors/AppError.ts";
 import { AuditService } from "../../core/audit.ts";
 import type { PaginationParams } from "../../shared/utils/pagination.ts";

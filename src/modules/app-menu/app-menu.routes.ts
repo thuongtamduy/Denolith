@@ -129,7 +129,7 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
     "/:idOrCode",
     describeRoute({
       tags: ["App Menus"],
-      summary: "Update App Menu",
+      summary: "Update App Menu (Partial)",
       responses: {
         200: { description: "App menu updated successfully" },
         400: { description: "Bad request or validation error" },
@@ -140,6 +140,35 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
     }),
     requirePermission("app_menu.update"),
     validateJson(updateAppMenuSchema),
+    async (c) => {
+      const idOrCode = c.req.param("idOrCode")!;
+      const body = c.req.valid("json") as UpdateAppMenuInput;
+      const actorId = c.get("jwtPayload").id;
+
+      const menu = await service.update(idOrCode, body, actorId);
+      return c.json({ success: true, data: menu });
+    },
+  );
+
+  /**
+   * PUT /api/v1/app-menus/:idOrCode
+   * Cập nhật menu (Full/Alias).
+   */
+  router.put(
+    "/:idOrCode",
+    describeRoute({
+      tags: ["App Menus"],
+      summary: "Update App Menu (Full/Alias)",
+      responses: {
+        200: { description: "App menu updated successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        404: { description: "App menu not found" },
+        500: { description: "Internal server error" },
+      },
+    }),
+    requirePermission("app_menu.update"),
+    validateJson(updateAppMenuSchema), // Sử dụng chung schema
     async (c) => {
       const idOrCode = c.req.param("idOrCode")!;
       const body = c.req.valid("json") as UpdateAppMenuInput;

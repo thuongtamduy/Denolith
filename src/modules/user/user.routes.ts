@@ -120,18 +120,31 @@ export const createUserRoutes = (service: UserService) => {
     "/:id",
     describeRoute({
       tags: ["Users"],
-      summary: "Update user details",
-      requestBody: {
-        content: {
-          "application/json": {
-            example: {
-              firstName: "Updated System",
-              lastName: "Owner",
-              bio: "Updated owner account bio",
-            },
-          },
-        },
+      summary: "Update user details (Partial)",
+      responses: {
+        200: { description: "User updated successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
       },
+    }),
+    validateUUID(),
+    validateJson(updateUserSchema),
+    async (c) => {
+      const id = c.req.param("id")!;
+      const body = c.req.valid("json") as UpdateUserInput;
+
+      const user = await service.update(id, body);
+      return c.json({ success: true, data: sanitizeUser(user) });
+    },
+  );
+
+  // PUT /api/users/:id — Cập nhật user (Full/Alias)
+  router.put(
+    "/:id",
+    describeRoute({
+      tags: ["Users"],
+      summary: "Update user details (Full/Alias)",
       responses: {
         200: { description: "User updated successfully" },
         400: { description: "Bad request or validation error" },
