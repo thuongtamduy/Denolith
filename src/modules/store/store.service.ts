@@ -11,14 +11,23 @@ export class StoreService {
     const { page, limit } = params;
     const skip = (page - 1) * limit;
 
+    const where: Prisma.StoreWhereInput = { deleted: false };
+
+    if (params.search) {
+      where.OR = [
+        { name: { contains: params.search, mode: "insensitive" } },
+        { code: { contains: params.search, mode: "insensitive" } },
+      ];
+    }
+
     const [data, total] = await Promise.all([
       this.prisma.store.findMany({
-        where: { deleted: false },
+        where,
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
       }),
-      this.prisma.store.count({ where: { deleted: false } }),
+      this.prisma.store.count({ where }),
     ]);
 
     return {

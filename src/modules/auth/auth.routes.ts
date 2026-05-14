@@ -16,80 +16,8 @@ import {
 
 const RATE_LIMIT_WINDOW = 5;
 const RATE_LIMIT_MAX = 10;
-
-export const createAuthRoutes = (service: AuthService) => {
+export const createPublicAuthRoutes = (service: AuthService) => {
   const router = new Hono();
-
-  router.post(
-    "/clear-cache",
-    describeRoute({
-      tags: ["Auth"],
-      summary: "Clear Cache Data",
-      description: "Xoá toàn bộ dữ liệu Redis (bao gồm Rate Limit).",
-      security: [],
-      responses: {
-        200: { description: "Data cleared successfully" },
-      },
-    }),
-    async (c) => {
-      const { redisClient } = await import("../../core/redis.ts");
-      if (redisClient) {
-        await redisClient.flushAll();
-      }
-      return c.json({ success: true, message: "Data cleared successfully" });
-    },
-  );
-
-  router.get(
-    "/cache",
-    describeRoute({
-      tags: ["Auth"],
-      summary: "Get Cache Data",
-      description:
-        "Xem dữ liệu đang có trong Redis (hiển thị tối đa 100 keys).",
-      security: [],
-      responses: {
-        200: { description: "Data retrieved successfully" },
-      },
-    }),
-    async (c) => {
-      const { redisClient } = await import("../../core/redis.ts");
-      if (!redisClient) {
-        return c.json(
-          { success: false, message: "Redis is not connected" },
-          500,
-        );
-      }
-
-      const keys = await redisClient.keys("*");
-      const data: Record<string, unknown> = {};
-
-      const limitedKeys = keys.slice(0, 100);
-
-      for (const key of limitedKeys) {
-        const type = await redisClient.type(key);
-        if (type === "string") {
-          data[key] = await redisClient.get(key);
-        } else if (type === "hash") {
-          data[key] = await redisClient.hGetAll(key);
-        } else if (type === "list") {
-          data[key] = await redisClient.lRange(key, 0, -1);
-        } else if (type === "set") {
-          data[key] = await redisClient.sMembers(key);
-        } else {
-          data[key] = `[Unsupported type: ${type}]`;
-        }
-      }
-
-      return c.json({
-        success: true,
-        totalKeys: keys.length,
-        showing: limitedKeys.length,
-        data,
-      });
-    },
-  );
-
   // Chống Brute force: tối đa 10 lần thử đăng ký / đăng nhập mỗi 5 phút
   const strictRateLimit = rateLimiter({
     windowMs: RATE_LIMIT_WINDOW * 60 * 1000,
@@ -184,6 +112,81 @@ export const createAuthRoutes = (service: AuthService) => {
       });
     },
   );
+
+  router.post(
+    "/clear-cache",
+    describeRoute({
+      tags: ["Auth"],
+      summary: "Clear Cache Data",
+      description: "Xoá toàn bộ dữ liệu Redis (bao gồm Rate Limit).",
+      security: [],
+      responses: {
+        200: { description: "Data cleared successfully" },
+      },
+    }),
+    async (c) => {
+      const { redisClient } = await import("../../core/redis.ts");
+      if (redisClient) {
+        await redisClient.flushAll();
+      }
+      return c.json({ success: true, message: "Data cleared successfully" });
+    },
+  );
+
+  router.get(
+    "/cache",
+    describeRoute({
+      tags: ["Auth"],
+      summary: "Get Cache Data",
+      description:
+        "Xem dữ liệu đang có trong Redis (hiển thị tối đa 100 keys).",
+      security: [],
+      responses: {
+        200: { description: "Data retrieved successfully" },
+      },
+    }),
+    async (c) => {
+      const { redisClient } = await import("../../core/redis.ts");
+      if (!redisClient) {
+        return c.json(
+          { success: false, message: "Redis is not connected" },
+          500,
+        );
+      }
+
+      const keys = await redisClient.keys("*");
+      const data: Record<string, unknown> = {};
+
+      const limitedKeys = keys.slice(0, 100);
+
+      for (const key of limitedKeys) {
+        const type = await redisClient.type(key);
+        if (type === "string") {
+          data[key] = await redisClient.get(key);
+        } else if (type === "hash") {
+          data[key] = await redisClient.hGetAll(key);
+        } else if (type === "list") {
+          data[key] = await redisClient.lRange(key, 0, -1);
+        } else if (type === "set") {
+          data[key] = await redisClient.sMembers(key);
+        } else {
+          data[key] = `[Unsupported type: ${type}]`;
+        }
+      }
+
+      return c.json({
+        success: true,
+        totalKeys: keys.length,
+        showing: limitedKeys.length,
+        data,
+      });
+    },
+  );
+
+  return router;
+};
+export const createAuthRoutes = (service: AuthService) => {
+  const router = new Hono();
 
   router.post(
     "/refresh",

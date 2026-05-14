@@ -67,17 +67,22 @@ app.get("/", async (c) => {
 });
 
 // Đăng ký toàn bộ các Route thông qua Router trung tâm
-app.route("/api", createApiRouter());
-app.route("/api/v0", createNormalRouter());
+const publicRouter = new Hono();
+publicRouter.route("/", createNormalRouter());
+app.route("/", publicRouter);
+
+const apiRouter = new Hono();
+apiRouter.route("/", createApiRouter());
+app.route("/v1", apiRouter);
 
 // Thêm Swagger UI ở root
 app.get(
-  "/api/swagger",
+  "/swagger",
   // deno-lint-ignore no-explicit-any
-  swaggerUI({ url: "/api/swagger/openapi.json" }) as any,
+  swaggerUI({ url: "/swagger/openapi.json" }) as any,
 );
 app.get(
-  "/api/swagger/openapi.json",
+  "/swagger/openapi.json",
   // deno-lint-ignore no-explicit-any
   openAPIRouteHandler(app as any, {
     documentation: {

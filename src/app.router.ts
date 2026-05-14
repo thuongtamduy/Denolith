@@ -5,7 +5,10 @@ import {
   createPublicUserRoutes,
   createUserRoutes,
 } from "./modules/user/user.routes.ts";
-import { createAuthRoutes } from "./modules/auth/auth.routes.ts";
+import {
+  createAuthRoutes,
+  createPublicAuthRoutes,
+} from "./modules/auth/auth.routes.ts";
 import { createPermissionRoutes } from "./modules/permission/permission.routes.ts";
 import { createRoleRoutes } from "./modules/role/role.routes.ts";
 import { createAppMenuRoutes } from "./modules/app-menu/app-menu.routes.ts";
@@ -22,16 +25,16 @@ export const createApiRouter = () => {
     createPermissionRoutes(container.permissionService),
   );
   router.route("/roles", createRoleRoutes(container.roleService));
-  router.route("/v1/app-menus", createAppMenuRoutes(container.appMenuService));
-  router.route("/v1/stores", createStoreRoutes(container.storeService));
+  router.route("/app-menus", createAppMenuRoutes(container.appMenuService));
+  router.route("/stores", createStoreRoutes(container.storeService));
 
   return router;
 };
 
 export const createNormalRouter = () => {
   const router = new Hono<AppEnv>();
-
-  // Sử dụng router công cộng (chỉ có API đọc) cho v0
+  // Sử dụng router công cộng (chỉ có API đọc)
+  router.route("/auth", createPublicAuthRoutes(container.authService));
   router.route("/users", createPublicUserRoutes(container.userService));
 
   return router;
