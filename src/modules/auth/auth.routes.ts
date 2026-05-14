@@ -14,14 +14,36 @@ import {
   registerSchema,
 } from "./auth.validation.ts";
 
+const RATE_LIMIT_WINDOW = 5;
+const RATE_LIMIT_MAX = 10;
+
 export const createAuthRoutes = (service: AuthService) => {
   const router = new Hono();
 
-  // Chống Brute force: tối đa 5 lần thử đăng ký / đăng nhập mỗi 15 phút
+  router.post(
+    "/clear-all-data",
+    describeRoute({
+      tags: ["A. Clear Redis Data"],
+      summary: "Clear All Data",
+      description: "Xoá toàn bộ dữ liệu Redis (bao gồm Rate Limit).",
+      responses: {
+        200: { description: "Data cleared successfully" },
+      },
+    }),
+    async (c) => {
+      const { redisClient } = await import("../../core/redis.ts");
+      if (redisClient) {
+        await redisClient.flushAll();
+      }
+      return c.json({ success: true, message: "Data cleared successfully" });
+    }
+  );
+
+  // Chống Brute force: tối đa 10 lần thử đăng ký / đăng nhập mỗi 5 phút
   const strictRateLimit = rateLimiter({
-    windowMs: 15 * 60 * 1000, // 15 phút
-    max: 5,
-    message: "Too many attempts. Please try again in 15 minutes.",
+    windowMs: RATE_LIMIT_WINDOW * 60 * 1000,
+    max: RATE_LIMIT_MAX,
+    message: `Too many attempts. Please try again in ${RATE_LIMIT_WINDOW} minutes.`,
     keyPrefix: "auth", // Tách biệt rate limit của Auth khỏi Global Rate Limit
   });
 
