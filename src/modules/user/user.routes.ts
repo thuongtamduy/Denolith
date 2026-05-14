@@ -27,7 +27,72 @@ import { requirePermission } from "../../shared/middlewares/permission.middlewar
 export const createUserRoutes = (service: UserService) => {
   const router = new Hono<AppEnv>();
 
-  // Phân quyền RBAC: Chỉ Admin mới được truy cập các đường dẫn quản lý Users
+  // GET /api/users/me — Lấy thông tin cá nhân và toàn bộ phân quyền (RBAC + ABAC)
+  // Route này dành cho tất cả user đăng nhập (không yêu cầu quyền admin)
+  router.get(
+    "/me",
+    describeRoute({
+      tags: ["Users"],
+      summary: "Get current logged-in user profile and permissions",
+      responses: {
+        200: { description: "Successful response" },
+        401: { description: "Unauthorized" },
+        500: { description: "Internal server error" },
+      },
+    }),
+    authMiddleware,
+    async (c) => {
+      const payload = c.get("jwtPayload");
+      const user = await service.findById(payload.id);
+
+      const { container } = await import("../../core/container.ts");
+      const permService = container.permissionService;
+
+      const resolved = await permService.resolvePermissions(
+        payload.id,
+        payload.tier,
+      );
+
+      // Lấy chi tiết RBAC profiles và ABAC overrides
+      const [profiles, overrides, allPerms] = await Promise.all([
+        permService.findUserProfiles(payload.id),
+        permService.findUserOverrides(payload.id),
+        permService.findAllPermissions(),
+      ]);
+
+      let grantedList: string[] = [];
+      if (payload.tier === "owner") {
+        grantedList = allPerms.map((p) => p.code);
+      } else {
+        grantedList = Array.from(resolved.granted);
+      }
+
+      return c.json({
+        success: true,
+        data: {
+          user: sanitizeUser(user),
+          permissions: {
+            granted: grantedList,
+            denied: Array.from(resolved.denied),
+            details: {
+              tier: payload.tier,
+              role: user.roleCode,
+              profiles: profiles.map((p) => ({
+                id: p.profileId,
+                name: p.profile.name,
+              })),
+              overrides: overrides.map((o) => ({
+                permissionCode: o.permissionCode,
+                granted: o.granted,
+              })),
+            },
+          },
+        },
+      });
+    },
+  );
+
+  // Phân quyền RBAC: Các route bên dưới chỉ Admin mới được truy cập
   router.use("*", authMiddleware, requireRole("admin"));
 
   // GET /api/users — Lấy danh sách user (chỉ user chưa bị xóa)
