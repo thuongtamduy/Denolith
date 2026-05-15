@@ -196,6 +196,7 @@ export class PermissionService {
       where: { id },
       data: {
         name: data.name,
+        tier: data.tier,
         description: data.description,
         active: data.active,
       },

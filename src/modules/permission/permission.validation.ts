@@ -21,6 +21,10 @@ export const createProfileSchema = v.object({
  */
 export const updateProfileSchema = v.partial(v.object({
   name: v.pipe(v.string(), v.minLength(1), v.maxLength(100)),
+  tier: v.union(
+    [v.literal("admin"), v.literal("user")],
+    "Tier must be 'admin' or 'user'.",
+  ),
   description: v.nullable(v.pipe(v.string(), v.maxLength(500))),
   active: v.boolean(),
 }));

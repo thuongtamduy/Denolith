@@ -1,9 +1,9 @@
 import type { Context, Next } from "@hono/core";
 import { AppError } from "../errors/AppError.ts";
 
-// Regex UUID v4 chuẩn RFC 4122
+// Regex UUID chung (chấp nhận mọi version, thay vì chỉ ép buộc v4)
 const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Middleware kiểm tra tham số `:id` trong URL có đúng định dạng UUID v4 không.
