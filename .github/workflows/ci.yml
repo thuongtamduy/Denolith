@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  test:
+    name: Check and test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: denolith
+          POSTGRES_PASSWORD: denolith
+          POSTGRES_DB: denolith_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U denolith -d denolith_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://denolith:denolith@localhost:5432/denolith_test
+      DIRECT_URL: postgresql://denolith:denolith@localhost:5432/denolith_test
+      DENO_ENV: test
+      FRONTEND_URL: http://localhost:5173
+      JWT_SECRET: ci_jwt_secret_64_chars_minimum_for_denolith_tests_1234567890
+      PORT: 9999
+      STORAGE_TYPE: local
+      TRUST_PROXY: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Check formatting
+        run: deno fmt --check
+
+      - name: Lint
+        run: deno lint
+
+      - name: Generate Prisma client
+        run: deno task prisma:generate
+
+      - name: Type check
+        run: deno task check
+
+      - name: Apply migrations
+        run: deno task migrate
+
+      - name: Integration tests
+        run: deno task test:integration
