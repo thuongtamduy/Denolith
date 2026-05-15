@@ -30,7 +30,7 @@ import { describeRoute } from "../../shared/utils/openapi.ts";
  * Tất cả routes yêu cầu "permissions.manage".
  * OWNER bypass tự động — không cần check.
  *
- * Base: /api/permissions
+ * Base: /v1/permissions
  */
 export const createPermissionRoutes = (service: PermissionService) => {
   const router = new Hono<AppEnv>();
@@ -43,7 +43,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   // ───────────────────────────────────────────
 
   /**
-   * GET /api/permissions/codes
+   * GET /v1/permissions/codes
    * Xem toàn bộ permission codes đang có trong hệ thống.
    */
   router.get(
@@ -69,7 +69,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   // ───────────────────────────────────────────
 
   /**
-   * GET /api/permissions/profiles?page=1&limit=20&tier=admin
+   * GET /v1/permissions/profiles?page=1&limit=20&tier=admin
    * Danh sách profiles, có thể filter theo tier.
    */
   router.get(
@@ -94,7 +94,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   );
 
   /**
-   * POST /api/permissions/profiles
+   * POST /v1/permissions/profiles
    * Tạo permission profile mới.
    */
   router.post(
@@ -114,13 +114,13 @@ export const createPermissionRoutes = (service: PermissionService) => {
       const body = c.req.valid("json") as CreateProfileInput;
       const actorId = c.get("jwtPayload").id;
       const profile = await service.createProfile(body, actorId);
-      c.header("Location", `/api/permissions/profiles/${profile.id}`);
+      c.header("Location", `/v1/permissions/profiles/${profile.id}`);
       return c.json({ success: true, data: profile }, 201);
     },
   );
 
   /**
-   * GET /api/permissions/profiles/:id
+   * GET /v1/permissions/profiles/:id
    * Chi tiết 1 profile kèm danh sách permissions bên trong.
    */
   router.get(
@@ -148,7 +148,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   );
 
   /**
-   * PATCH /api/permissions/profiles/:id
+   * PATCH /v1/permissions/profiles/:id
    * Cập nhật tên, mô tả, hoặc trạng thái active của profile.
    */
   router.patch(
@@ -175,7 +175,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   );
 
   /**
-   * PUT /api/permissions/profiles/:id
+   * PUT /v1/permissions/profiles/:id
    * Cập nhật permission profile (Full/Alias).
    */
   router.put(
@@ -202,7 +202,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   );
 
   /**
-   * DELETE /api/permissions/profiles/:id
+   * DELETE /v1/permissions/profiles/:id
    * Xóa profile. Toàn bộ user_profiles assignment bị cascade xóa.
    */
   router.delete(
@@ -234,7 +234,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   // ───────────────────────────────────────────
 
   /**
-   * PUT /api/permissions/profiles/:id/codes/:code
+   * PUT /v1/permissions/profiles/:id/codes/:code
    * Thêm hoặc cập nhật 1 permission code vào profile.
    * Body: { granted: boolean }
    */
@@ -267,7 +267,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   );
 
   /**
-   * DELETE /api/permissions/profiles/:id/codes/:code
+   * DELETE /v1/permissions/profiles/:id/codes/:code
    * Xóa 1 permission code khỏi profile.
    */
   router.delete(
@@ -299,7 +299,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   // ───────────────────────────────────────────
 
   /**
-   * GET /api/permissions/users/:userId/profiles
+   * GET /v1/permissions/users/:userId/profiles
    * Xem danh sách profiles đang được assign cho user.
    */
   router.get(
@@ -323,7 +323,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   );
 
   /**
-   * POST /api/permissions/users/:userId/profiles
+   * POST /v1/permissions/users/:userId/profiles
    * Assign 1 profile cho user.
    * Body: { profileId: UUID }
    */
@@ -354,7 +354,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   );
 
   /**
-   * DELETE /api/permissions/users/:userId/profiles/:profileId
+   * DELETE /v1/permissions/users/:userId/profiles/:profileId
    * Thu hồi 1 profile khỏi user.
    */
   router.delete(
@@ -388,7 +388,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   // ───────────────────────────────────────────
 
   /**
-   * GET /api/permissions/users/:userId/overrides
+   * GET /v1/permissions/users/:userId/overrides
    * Xem các override cá nhân của user.
    */
   router.get(
@@ -412,7 +412,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   );
 
   /**
-   * PUT /api/permissions/users/:userId/overrides/:code
+   * PUT /v1/permissions/users/:userId/overrides/:code
    * Cấp hoặc thu hồi 1 quyền cụ thể cho user (override cá nhân).
    * Body: { granted: boolean }
    */
@@ -446,7 +446,7 @@ export const createPermissionRoutes = (service: PermissionService) => {
   );
 
   /**
-   * DELETE /api/permissions/users/:userId/overrides/:code
+   * DELETE /v1/permissions/users/:userId/overrides/:code
    * Xóa override — user sẽ fallback về quyền từ profile.
    */
   router.delete(

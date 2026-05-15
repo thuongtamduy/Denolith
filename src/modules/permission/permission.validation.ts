@@ -1,7 +1,7 @@
 import * as v from "valibot";
 
 /**
- * Schema cho POST /api/permissions/profiles — Tạo permission profile mới.
+ * Schema cho POST /v1/permissions/profiles — Tạo permission profile mới.
  */
 export const createProfileSchema = v.object({
   name: v.pipe(
@@ -17,7 +17,7 @@ export const createProfileSchema = v.object({
 });
 
 /**
- * Schema cho PATCH /api/permissions/profiles/:id — Cập nhật profile.
+ * Schema cho PATCH /v1/permissions/profiles/:id — Cập nhật profile.
  */
 export const updateProfileSchema = v.partial(v.object({
   name: v.pipe(v.string(), v.minLength(1), v.maxLength(100)),
@@ -26,7 +26,7 @@ export const updateProfileSchema = v.partial(v.object({
 }));
 
 /**
- * Schema cho PUT /api/permissions/profiles/:id/codes/:code
+ * Schema cho PUT /v1/permissions/profiles/:id/codes/:code
  * Thêm hoặc cập nhật permission vào profile.
  */
 export const setProfilePermissionSchema = v.object({
@@ -34,7 +34,7 @@ export const setProfilePermissionSchema = v.object({
 });
 
 /**
- * Schema cho POST /api/permissions/users/:userId/profiles
+ * Schema cho POST /v1/permissions/users/:userId/profiles
  * Assign permission profile cho user.
  */
 export const assignProfileSchema = v.object({
@@ -45,7 +45,7 @@ export const assignProfileSchema = v.object({
 });
 
 /**
- * Schema cho PUT /api/permissions/users/:userId/overrides/:code
+ * Schema cho PUT /v1/permissions/users/:userId/overrides/:code
  * Set quyền override cá nhân.
  */
 export const setOverrideSchema = v.object({

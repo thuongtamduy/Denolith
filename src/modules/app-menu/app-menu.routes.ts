@@ -20,7 +20,7 @@ import * as v from "valibot";
 /**
  * App Menu management routes.
  *
- * Base: /api/v1/app-menus
+ * Base: /v1/app-menus
  */
 export const createAppMenuRoutes = (service: AppMenuService) => {
   const router = new Hono<AppEnv>();
@@ -29,7 +29,7 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
   router.use("*", authMiddleware);
 
   /**
-   * GET /api/v1/app-menus
+   * GET /v1/app-menus
    * Lấy danh sách menu (hỗ trợ phân trang, tìm kiếm, filter storeId, lang).
    */
   router.get(
@@ -65,7 +65,7 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
   );
 
   /**
-   * GET /api/v1/app-menus/:idOrCode
+   * GET /v1/app-menus/:idOrCode
    * Lấy chi tiết 1 menu (bao gồm data cấu trúc đầy đủ).
    */
   router.get(
@@ -94,7 +94,7 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
   );
 
   /**
-   * POST /api/v1/app-menus
+   * POST /v1/app-menus
    * Tạo menu mới.
    */
   router.post(
@@ -126,13 +126,13 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
 
       const menu = await service.create(inputData, actorId);
 
-      c.header("Location", `/api/v1/app-menus/${menu.code}`);
+      c.header("Location", `/v1/app-menus/${menu.code}`);
       return c.json({ success: true, data: menu }, 201);
     },
   );
 
   /**
-   * PATCH /api/v1/app-menus/:idOrCode
+   * PATCH /v1/app-menus/:idOrCode
    * Cập nhật menu (lang, name, data, storeId, active).
    */
   router.patch(
@@ -161,7 +161,7 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
   );
 
   /**
-   * PUT /api/v1/app-menus/:idOrCode
+   * PUT /v1/app-menus/:idOrCode
    * Cập nhật menu (Full/Alias).
    */
   router.put(
@@ -190,7 +190,7 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
   );
 
   /**
-   * DELETE /api/v1/app-menus/:idOrCode
+   * DELETE /v1/app-menus/:idOrCode
    * Xóa menu.
    */
   router.delete(

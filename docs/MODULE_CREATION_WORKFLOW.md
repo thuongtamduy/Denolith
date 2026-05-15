@@ -134,7 +134,7 @@ Khai báo API endpoints, tích hợp OpenAPI và Middleware.
      `createApiRouter()` (tất cả API ở đây sẽ tự động có prefix `/v1`):
      `router.route("/<module_names>", create<Module>Routes(container.<module>Service));`
    - **Đối với API công khai (Public)**: Thêm vào hàm `createNormalRouter()`
-     (không có prefix `v1`, nằm ở root `/`):
+     (không có prefix version, nằm ở root `/`):
      `router.route("/<module_names>", createPublic<Module>Routes(container.<module>Service));`
 
 ## Bước 10: Format Code & Kiểm Tra

@@ -24,7 +24,7 @@ export const createStoreRoutes = (service: StoreService) => {
   // Cần đăng nhập để sử dụng
   router.use("*", authMiddleware);
 
-  // GET /api/v1/stores
+  // GET /v1/stores
   router.get(
     "/",
     describeRoute({
@@ -47,7 +47,7 @@ export const createStoreRoutes = (service: StoreService) => {
     },
   );
 
-  // GET /api/v1/stores/:id
+  // GET /v1/stores/:id
   router.get(
     "/:id",
     describeRoute({
@@ -66,7 +66,7 @@ export const createStoreRoutes = (service: StoreService) => {
     },
   );
 
-  // POST /api/v1/stores
+  // POST /v1/stores
   router.post(
     "/",
     describeRoute({
@@ -83,12 +83,12 @@ export const createStoreRoutes = (service: StoreService) => {
       const actorId = c.get("jwtPayload")?.id;
       const store = await service.create(body, actorId);
 
-      c.header("Location", `/api/v1/stores/${store.id}`);
+      c.header("Location", `/v1/stores/${store.id}`);
       return c.json({ success: true, data: store }, 201);
     },
   );
 
-  // PATCH /api/v1/stores/:id
+  // PATCH /v1/stores/:id
   router.patch(
     "/:id",
     describeRoute({
@@ -111,7 +111,7 @@ export const createStoreRoutes = (service: StoreService) => {
     },
   );
 
-  // PUT /api/v1/stores/:id
+  // PUT /v1/stores/:id
   router.put(
     "/:id",
     describeRoute({
@@ -134,7 +134,7 @@ export const createStoreRoutes = (service: StoreService) => {
     },
   );
 
-  // DELETE /api/v1/stores/:id
+  // DELETE /v1/stores/:id
   router.delete(
     "/:id",
     describeRoute({
@@ -165,7 +165,7 @@ export const createStoreRoutes = (service: StoreService) => {
     },
   );
 
-  // POST /api/v1/stores/:id/restore
+  // POST /v1/stores/:id/restore
   router.post(
     "/:id/restore",
     describeRoute({

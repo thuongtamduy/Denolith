@@ -1,7 +1,7 @@
 import * as v from "valibot";
 
 /**
- * Schema cho POST /api/auth/register — Tạo tài khoản mới.
+ * Schema cho POST /auth/register — Tạo tài khoản mới.
  */
 export const registerSchema = v.object({
   username: v.pipe(
@@ -18,7 +18,7 @@ export const registerSchema = v.object({
 });
 
 /**
- * Schema cho POST /api/auth/login — Đăng nhập.
+ * Schema cho POST /auth/login — Đăng nhập.
  */
 export const loginSchema = v.object({
   email: v.pipe(

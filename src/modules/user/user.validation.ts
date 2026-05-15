@@ -13,7 +13,7 @@ export const phoneSchema = v.pipe(
 );
 
 /**
- * Schema cho POST /api/users — Admin tạo user mới.
+ * Schema cho POST /v1/users — Admin tạo user mới.
  */
 export const createUserSchema = v.object({
   username: v.pipe(v.string(), v.minLength(3), v.maxLength(50)),
@@ -29,7 +29,7 @@ export const createUserSchema = v.object({
 });
 
 /**
- * Schema cho PATCH /api/users/:id — Partial update, chỉ các field được phép chỉnh sửa.
+ * Schema cho PATCH /v1/users/:id — Partial update, chỉ các field được phép chỉnh sửa.
  * Không bao gồm: email, role, password, deleted — chống Mass Assignment ở tầng validation.
  */
 export const updateUserSchema = v.partial(
@@ -50,7 +50,7 @@ export type CreateUserInput = v.InferOutput<typeof createUserSchema>;
 export type UpdateUserInput = v.InferOutput<typeof updateUserSchema>;
 
 /**
- * Schema cho PATCH /api/users/:id/role
+ * Schema cho PATCH /v1/users/:id/role
  */
 export const updateUserRoleSchema = v.object({
   role: v.pipe(v.string(), v.minLength(3), v.maxLength(50)),

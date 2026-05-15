@@ -38,7 +38,7 @@ Run the automated setup script:
 4. Runs database migrations and seeds.
 5. Starts the dev server at `http://localhost:9999`.
 
-👉 **API Docs:** `http://localhost:9999/api/swagger`
+👉 **API Docs:** `http://localhost:9999/swagger`
 
 ---
 

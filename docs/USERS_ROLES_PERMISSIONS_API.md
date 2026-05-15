@@ -60,12 +60,12 @@ theft.
 
 ### Endpoints
 
-- `POST /api/auth/login`: Returns `accessToken` and `refreshToken` in JSON body
-  and `Set-Cookie` (path: `/`).
-- `POST /api/v1/auth/refresh`: Consumes old refresh token (marks as
+- `POST /auth/login`: Returns `accessToken` and `refreshToken` in JSON body and
+  `Set-Cookie` (path: `/`).
+- `POST /v1/auth/refresh`: Consumes old refresh token (marks as
   `revokedAt = now()`) and issues a new token pair. Supports reading token from
   cookie or JSON body (`{ "refreshToken": "..." }`).
-- `POST /api/v1/auth/logout`: Revokes current sessions.
+- `POST /v1/auth/logout`: Revokes current sessions.
 
 ### 🚨 Revocation Trap Mechanism
 
@@ -80,7 +80,7 @@ the system detects token reuse immediately. The **Kill Switch** activates:
 
 ## 👤 3. Users API
 
-### 🌟 3.1. Current User Breakdown — `/api/v1/users/me`
+### 🌟 3.1. Current User Breakdown — `/v1/users/me`
 
 Returns the currently logged-in user profile along with their **complete
 permission resolution picture**. Frontend only needs to check the
@@ -153,9 +153,9 @@ permission resolution picture**. Frontend only needs to check the
 
 ---
 
-### 3.2. Admin Management Routes — `/api/v1/users` _(requires: `admin` tier)_
+### 3.2. Admin Management Routes — `/v1/users` _(requires: `admin` tier)_
 
-#### `GET /api/v1/users`
+#### `GET /v1/users`
 
 List active users (paginated). **Query Params:** `page` (default: 1), `limit`
 (default: 20)
@@ -192,7 +192,7 @@ List active users (paginated). **Query Params:** `page` (default: 1), `limit`
 
 ---
 
-#### `GET /api/v1/users/:id`
+#### `GET /v1/users/:id`
 
 Get single user details.
 
@@ -230,7 +230,7 @@ Get single user details.
 
 ---
 
-#### `POST /api/v1/users`
+#### `POST /v1/users`
 
 Create new user.
 
@@ -281,7 +281,7 @@ Create new user.
 
 ---
 
-#### `PATCH /api/v1/users/:id`
+#### `PATCH /v1/users/:id`
 
 Partially update user info.
 
@@ -317,7 +317,7 @@ Partially update user info.
 
 ---
 
-#### `PATCH /api/v1/users/:id/role` _(requires: `permissions.manage`)_
+#### `PATCH /v1/users/:id/role` _(requires: `permissions.manage`)_
 
 Change user role.
 
@@ -350,7 +350,7 @@ Change user role.
 
 ---
 
-#### `DELETE /api/v1/users/:id`
+#### `DELETE /v1/users/:id`
 
 Soft-delete user (`?force=true` for hard delete).
 
@@ -367,7 +367,7 @@ _(Hard delete with `?force=true` returns `204 No Content` with an empty body)._
 
 ---
 
-#### `POST /api/v1/users/:id/restore`
+#### `POST /v1/users/:id/restore`
 
 Restore soft-deleted user.
 
@@ -393,9 +393,9 @@ Restore soft-deleted user.
 
 All role endpoints require: **`permissions.manage`** permission.
 
-Base: `/api/v1/roles`
+Base: `/v1/roles`
 
-#### `GET /api/v1/roles`
+#### `GET /v1/roles`
 
 List all roles. Response includes provenance tracking fields.
 
@@ -434,7 +434,7 @@ List all roles. Response includes provenance tracking fields.
 
 ---
 
-#### `POST /api/v1/roles`
+#### `POST /v1/roles`
 
 Create custom role.
 
@@ -472,7 +472,7 @@ Create custom role.
 
 ---
 
-#### `PATCH /api/v1/roles/:code`
+#### `PATCH /v1/roles/:code`
 
 Update role info (`name`, `description`, `active`).
 
@@ -504,7 +504,7 @@ Update role info (`name`, `description`, `active`).
 
 ---
 
-#### `DELETE /api/v1/roles/:code`
+#### `DELETE /v1/roles/:code`
 
 Delete custom role.
 
@@ -523,11 +523,11 @@ Delete custom role.
 
 All permission endpoints require: **`permissions.manage`** permission.
 
-Base: `/api/v1/permissions`
+Base: `/v1/permissions`
 
 ### 5.1. Atomic Permissions
 
-#### `GET /api/v1/permissions`
+#### `GET /v1/permissions`
 
 List all available atomic permission codes in the system.
 
@@ -558,7 +558,7 @@ List all available atomic permission codes in the system.
 
 A **Permission Profile** is a reusable bundle of permissions assigned to users.
 
-#### `GET /api/v1/permissions/profiles`
+#### `GET /v1/permissions/profiles`
 
 List profiles (filter with `?tier=admin` or `?tier=user`). Includes provenance
 fields.
@@ -592,7 +592,7 @@ fields.
 
 ---
 
-#### `POST /api/v1/permissions/profiles`
+#### `POST /v1/permissions/profiles`
 
 Create profile.
 
@@ -627,7 +627,7 @@ Create profile.
 
 ---
 
-#### `GET /api/v1/permissions/profiles/:id`
+#### `GET /v1/permissions/profiles/:id`
 
 Get profile + assigned permission codes.
 
@@ -656,7 +656,7 @@ Get profile + assigned permission codes.
 
 ---
 
-#### `PATCH /api/v1/permissions/profiles/:id`
+#### `PATCH /v1/permissions/profiles/:id`
 
 Update profile info.
 
@@ -687,7 +687,7 @@ Update profile info.
 
 ---
 
-#### `DELETE /api/v1/permissions/profiles/:id`
+#### `DELETE /v1/permissions/profiles/:id`
 
 Delete profile.
 
@@ -704,7 +704,7 @@ Delete profile.
 
 ### 5.3. Profile ↔ Permission Assignments
 
-#### `PUT /api/v1/permissions/profiles/:id/codes/:code`
+#### `PUT /v1/permissions/profiles/:id/codes/:code`
 
 Grant or update permission in profile.
 
@@ -727,7 +727,7 @@ Grant or update permission in profile.
 
 ---
 
-#### `DELETE /api/v1/permissions/profiles/:id/codes/:code`
+#### `DELETE /v1/permissions/profiles/:id/codes/:code`
 
 Remove permission from profile.
 
@@ -744,7 +744,7 @@ Remove permission from profile.
 
 ### 5.4. User ↔ Profile Assignments
 
-#### `GET /api/v1/permissions/users/:userId/profiles`
+#### `GET /v1/permissions/users/:userId/profiles`
 
 List profiles assigned to user.
 
@@ -770,7 +770,7 @@ List profiles assigned to user.
 
 ---
 
-#### `POST /api/v1/permissions/users/:userId/profiles`
+#### `POST /v1/permissions/users/:userId/profiles`
 
 Assign profile to user.
 
@@ -793,7 +793,7 @@ Assign profile to user.
 
 ---
 
-#### `DELETE /api/v1/permissions/users/:userId/profiles/:profileId`
+#### `DELETE /v1/permissions/users/:userId/profiles/:profileId`
 
 Revoke profile from user.
 
@@ -813,7 +813,7 @@ Revoke profile from user.
 An **Override** applies directly to a user, overriding their profile
 permissions.
 
-#### `GET /api/v1/permissions/users/:userId/overrides`
+#### `GET /v1/permissions/users/:userId/overrides`
 
 List user individual overrides.
 
@@ -840,7 +840,7 @@ List user individual overrides.
 
 ---
 
-#### `PUT /api/v1/permissions/users/:userId/overrides/:code`
+#### `PUT /v1/permissions/users/:userId/overrides/:code`
 
 Set individual override.
 
@@ -863,7 +863,7 @@ Set individual override.
 
 ---
 
-#### `DELETE /api/v1/permissions/users/:userId/overrides/:code`
+#### `DELETE /v1/permissions/users/:userId/overrides/:code`
 
 Remove override (falls back to profile permissions).
 

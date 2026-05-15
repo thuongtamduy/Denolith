@@ -27,7 +27,7 @@ import { requirePermission } from "../../shared/middlewares/permission.middlewar
 export const createUserRoutes = (service: UserService) => {
   const router = new Hono<AppEnv>();
 
-  // GET /api/users/me — Lấy thông tin cá nhân và toàn bộ phân quyền (RBAC + ABAC)
+  // GET /v1/users/me — Lấy thông tin cá nhân và toàn bộ phân quyền (RBAC + ABAC)
   // Route này dành cho tất cả user đăng nhập (không yêu cầu quyền admin)
   router.get(
     "/me",
@@ -95,7 +95,7 @@ export const createUserRoutes = (service: UserService) => {
   // Phân quyền RBAC: Các route bên dưới chỉ Admin mới được truy cập
   router.use("*", authMiddleware, requireRole("admin"));
 
-  // GET /api/users — Lấy danh sách user (chỉ user chưa bị xóa)
+  // GET /v1/users — Lấy danh sách user (chỉ user chưa bị xóa)
   router.get(
     "/",
     describeRoute({
@@ -121,7 +121,7 @@ export const createUserRoutes = (service: UserService) => {
     },
   );
 
-  // GET /api/users/:id — Lấy thông tin một user
+  // GET /v1/users/:id — Lấy thông tin một user
   router.get(
     "/:id",
     describeRoute({
@@ -140,7 +140,7 @@ export const createUserRoutes = (service: UserService) => {
     },
   );
 
-  // POST /api/users — Tạo user mới (Admin)
+  // POST /v1/users — Tạo user mới (Admin)
   router.post(
     "/",
     describeRoute({
@@ -176,12 +176,12 @@ export const createUserRoutes = (service: UserService) => {
       const body = c.req.valid("json") as CreateUserInput;
       const user = await service.create(body);
 
-      c.header("Location", `/api/users/${user.id}`);
+      c.header("Location", `/v1/users/${user.id}`);
       return c.json({ success: true, data: sanitizeUser(user) }, 201);
     },
   );
 
-  // PATCH /api/users/:id — Cập nhật user (Partial Update)
+  // PATCH /v1/users/:id — Cập nhật user (Partial Update)
   router.patch(
     "/:id",
     describeRoute({
@@ -205,7 +205,7 @@ export const createUserRoutes = (service: UserService) => {
     },
   );
 
-  // PUT /api/users/:id — Cập nhật user (Full/Alias)
+  // PUT /v1/users/:id — Cập nhật user (Full/Alias)
   router.put(
     "/:id",
     describeRoute({
@@ -229,7 +229,7 @@ export const createUserRoutes = (service: UserService) => {
     },
   );
 
-  // PATCH /api/users/:id/role — Cập nhật role của user (Thăng cấp / Hạ cấp)
+  // PATCH /v1/users/:id/role — Cập nhật role của user (Thăng cấp / Hạ cấp)
   // Yêu cầu quyền permissions.manage (hoặc OWNER bypass)
   router.patch(
     "/:id/role",
@@ -265,7 +265,7 @@ export const createUserRoutes = (service: UserService) => {
     },
   );
 
-  // DELETE /api/users/:id — Xóa user (Hỗ trợ query ?force=true để xóa cứng)
+  // DELETE /v1/users/:id — Xóa user (Hỗ trợ query ?force=true để xóa cứng)
   router.delete(
     "/:id",
     describeRoute({
@@ -321,7 +321,7 @@ export const createUserRoutes = (service: UserService) => {
     },
   );
 
-  // POST /api/users/:id/restore — Phục hồi user đã bị soft delete
+  // POST /v1/users/:id/restore — Phục hồi user đã bị soft delete
   // Dùng POST thay vì PATCH vì đây là "hành động" (action), không phải partial update resource
   router.post(
     "/:id/restore",
@@ -366,7 +366,7 @@ export const createUserRoutes = (service: UserService) => {
 export const createPublicUserRoutes = (service: UserService) => {
   const router = new Hono<AppEnv>();
 
-  // GET /api/v0/users — Lấy danh sách user
+  // GET /users — Lấy danh sách user
   router.get(
     "/",
     describeRoute({
@@ -393,7 +393,7 @@ export const createPublicUserRoutes = (service: UserService) => {
     },
   );
 
-  // GET /api/v0/users/:id — Lấy thông tin chi tiết
+  // GET /users/:id — Lấy thông tin chi tiết
   router.get(
     "/:id",
     describeRoute({

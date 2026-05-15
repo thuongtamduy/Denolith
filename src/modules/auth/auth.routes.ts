@@ -54,7 +54,7 @@ export const createPublicAuthRoutes = (service: AuthService) => {
         path: "/",
       });
 
-      c.header("Location", `/api/users/${result.user.id}`);
+      c.header("Location", `/v1/users/${result.user.id}`);
       return c.json({
         success: true,
         data: {

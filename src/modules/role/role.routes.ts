@@ -22,7 +22,7 @@ import { describeRoute } from "../../shared/utils/openapi.ts";
  *
  * Yêu cầu quyền "permissions.manage". (OWNER auto bypass).
  *
- * Base: /api/roles
+ * Base: /v1/roles
  */
 export const createRoleRoutes = (service: RoleService) => {
   const router = new Hono<AppEnv>();
@@ -31,7 +31,7 @@ export const createRoleRoutes = (service: RoleService) => {
   router.use("*", authMiddleware, requirePermission("permissions.manage"));
 
   /**
-   * GET /api/roles
+   * GET /v1/roles
    * Lấy danh sách toàn bộ roles.
    */
   router.get(
@@ -55,7 +55,7 @@ export const createRoleRoutes = (service: RoleService) => {
   );
 
   /**
-   * GET /api/roles/:code
+   * GET /v1/roles/:code
    * Lấy chi tiết 1 role.
    */
   router.get(
@@ -78,7 +78,7 @@ export const createRoleRoutes = (service: RoleService) => {
   );
 
   /**
-   * POST /api/roles
+   * POST /v1/roles
    * Tạo role mới. (Chỉ admin/user tier)
    */
   router.post(
@@ -99,13 +99,13 @@ export const createRoleRoutes = (service: RoleService) => {
       const actorId = c.get("jwtPayload").id;
       const role = await service.create(body, actorId);
 
-      c.header("Location", `/api/roles/${role.code}`);
+      c.header("Location", `/v1/roles/${role.code}`);
       return c.json({ success: true, data: role }, 201);
     },
   );
 
   /**
-   * PATCH /api/roles/:code
+   * PATCH /v1/roles/:code
    * Cập nhật thông tin role (name, description, active). Không được sửa code, tier, system.
    */
   router.patch(
@@ -132,7 +132,7 @@ export const createRoleRoutes = (service: RoleService) => {
   );
 
   /**
-   * DELETE /api/roles/:code
+   * DELETE /v1/roles/:code
    * Xóa role. Không cho xóa system role.
    */
   router.delete(

@@ -2,8 +2,8 @@
 
 Base URL: `http://localhost:9999`
 
-> **Rate Limit:** All auth endpoints are capped at **5 requests / 15 minutes**
-> per IP to prevent brute-force attacks.
+> **Rate Limit:** Register and login endpoints are capped at **10 requests / 5
+> minutes** per IP to prevent brute-force attacks.
 
 ---
 
@@ -15,7 +15,7 @@ this cookie:
 ```http
 Set-Cookie: refresh_token=<token>;
   HttpOnly;
-  Path=/api/auth;
+  Path=/;
   Max-Age=604800;
   SameSite=Lax (dev) | SameSite=None; Secure (prod)
 ```
@@ -26,7 +26,7 @@ Set-Cookie: refresh_token=<token>;
 | `Secure`         | Production only | Cookie is only sent over HTTPS. Off in dev so localhost works.                                                           |
 | `SameSite=Lax`   | Development     | Allows cross-page navigation but blocks third-party requests.                                                            |
 | `SameSite=None`  | Production      | Required when your frontend and API are on different domains (e.g. `app.com` → `api.com`). Must be paired with `Secure`. |
-| `Path=/api/auth` | Always          | The cookie is **only sent** to `/api/auth/*` routes, not every API call — minimizes exposure.                            |
+| `Path=/`         | Always          | The cookie is sent to both public auth routes (`/auth/*`) and private auth routes (`/v1/auth/*`).                        |
 | `Max-Age=604800` | 7 days          | Cookie lifetime in seconds.                                                                                              |
 
 > **Summary:** You never manually read or set this cookie. Just call the API
@@ -44,23 +44,23 @@ Denolith uses a **dual-token** strategy:
   the `Authorization` header.
 - **`refresh_token`** — Long-lived token (7 days). Automatically stored in an
   `httpOnly` cookie by the server. The frontend never touches it directly — just
-  call `/refresh` and the browser sends it automatically.
+  call `/v1/auth/refresh` and the browser sends it automatically.
 
 ```
 Login → get accessToken + refresh_token (cookie)
          ↓
 Use accessToken on every API request (in-memory)
          ↓
-accessToken expires? → call /refresh → get new accessToken
+accessToken expires? → call /v1/auth/refresh → get new accessToken
          ↓
-User logs out → call /logout → both tokens invalidated
+User logs out → call /v1/auth/logout → both tokens invalidated
 ```
 
 ---
 
 ## Endpoints
 
-### `POST /api/auth/register`
+### `POST /auth/register`
 
 Register a new user account.
 
@@ -98,11 +98,11 @@ Register a new user account.
 }
 ```
 
-> Also sets `Set-Cookie: refresh_token=...; HttpOnly; Path=/api/auth`
+> Also sets `Set-Cookie: refresh_token=...; HttpOnly; Path=/`
 
 ---
 
-### `POST /api/auth/login`
+### `POST /auth/login`
 
 Authenticate and get tokens.
 
@@ -127,11 +127,11 @@ Authenticate and get tokens.
 }
 ```
 
-> Also sets `Set-Cookie: refresh_token=...; HttpOnly; Path=/api/auth`
+> Also sets `Set-Cookie: refresh_token=...; HttpOnly; Path=/`
 
 ---
 
-### `POST /api/auth/refresh`
+### `POST /v1/auth/refresh`
 
 Get a new `accessToken` using the `refresh_token` cookie. No request body
 needed.
@@ -153,7 +153,7 @@ The browser sends the cookie automatically when `credentials: 'include'` is set.
 
 ---
 
-### `POST /api/auth/logout`
+### `POST /v1/auth/logout`
 
 Invalidates both the `accessToken` (server-side blacklist) and clears the
 `refresh_token` cookie.
@@ -180,7 +180,7 @@ Authorization: Bearer <accessToken>
 ### Sending the Access Token
 
 ```javascript
-fetch("/api/users", {
+fetch("/v1/users", {
   headers: {
     "Authorization": `Bearer ${accessToken}`,
     "Content-Type": "application/json",
@@ -196,7 +196,7 @@ async function apiCall(url, options) {
   let res = await fetch(url, { ...options, credentials: "include" });
 
   if (res.status === 401) {
-    const refresh = await fetch("/api/auth/refresh", {
+    const refresh = await fetch("/v1/auth/refresh", {
       method: "POST",
       credentials: "include",
     });
