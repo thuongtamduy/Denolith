@@ -14,7 +14,7 @@ interface RateLimitInfo {
 const store = new Map<string, RateLimitInfo>();
 
 // Dọn dẹp Memory Leak định kỳ mỗi 1 phút
-setInterval(() => {
+const cleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [ip, info] of store.entries()) {
     if (now > info.resetTime) {
@@ -22,6 +22,7 @@ setInterval(() => {
     }
   }
 }, 60000);
+Deno.unrefTimer(cleanupTimer);
 
 interface RateLimitOptions {
   windowMs: number; // Khoảng thời gian (millisecond)

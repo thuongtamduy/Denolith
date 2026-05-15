@@ -1,22 +1,11 @@
-import { Hono } from "@hono/core";
-import { swaggerUI } from "@hono/swagger-ui";
-import { openAPIRouteHandler } from "hono-openapi";
-
-// Core & Middlewares
-import { cors } from "@hono/cors";
-import { secureHeaders } from "@hono/secure-headers";
-import { globalErrorHandler } from "./src/shared/errors/error.handler.ts";
-import { rateLimiter } from "./src/shared/middlewares/rate-limit.middleware.ts";
 import { logger } from "./src/core/logger.ts";
 import { config } from "./src/core/config.ts";
-import { closeDb, prisma } from "./src/core/database.ts";
-import { closeRedis, initRedis, redisClient } from "./src/core/redis.ts";
+import { closeDb } from "./src/core/database.ts";
+import { closeRedis, initRedis } from "./src/core/redis.ts";
 import { initWorkers } from "./src/workers/index.ts";
 import { Queue } from "./src/core/queue.ts";
 import { initCrons } from "./src/core/cron.ts";
-
-// Router trung tâm
-import { createApiRouter, createNormalRouter } from "./src/app.router.ts";
+import { createApp } from "./src/app.ts";
 
 // 2.5 Kết nối Redis (phải trước khi khởi động Workers/Queue)
 await initRedis();
@@ -29,78 +18,7 @@ setTimeout(() => Queue.startWorkerLoop(), 0);
 const { stopCrons } = initCrons();
 
 // 3. Cấu hình Hono App
-const app = new Hono();
-app.onError(globalErrorHandler);
-
-// Áp dụng Security & CORS Global
-app.use("*", secureHeaders());
-app.use(
-  "*",
-  cors({
-    origin: config.frontendUrl,
-    credentials: true,
-  }),
-);
-
-// Áp dụng Rate Limit Global: Tối đa 100 requests / 1 phút
-app.use("*", rateLimiter({ windowMs: 60 * 1000, max: 100 }));
-
-// Advanced Health Check (Chủ động Ping DB & Redis)
-app.get("/", async (c) => {
-  try {
-    await prisma.$queryRaw`SELECT 1`; // Ping Database
-
-    if (redisClient) {
-      await redisClient.ping(); // Ping Redis
-    }
-
-    return c.json({
-      status: "ok",
-      db: "connected",
-      redis: redisClient ? "connected" : "memory_fallback",
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    logger.error("Health check failed", error);
-    return c.json({ status: "error", message: "Service unavailable" }, 503);
-  }
-});
-
-// Đăng ký toàn bộ các Route thông qua Router trung tâm
-const publicRouter = new Hono();
-publicRouter.route("/", createNormalRouter());
-app.route("/", publicRouter);
-
-const apiRouter = new Hono();
-apiRouter.route("/", createApiRouter());
-app.route("/v1", apiRouter);
-
-// Thêm Swagger UI ở root
-app.get(
-  "/swagger",
-  // deno-lint-ignore no-explicit-any
-  swaggerUI({ url: "/swagger/openapi.json" }) as any,
-);
-app.get(
-  "/swagger/openapi.json",
-  // deno-lint-ignore no-explicit-any
-  openAPIRouteHandler(app as any, {
-    documentation: {
-      info: {
-        title: "Denolith API",
-        version: "1.0.0",
-        description: "API for Denolith",
-      },
-      components: {
-        securitySchemes: {
-          BearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
-        },
-      },
-      security: [{ BearerAuth: [] }],
-    },
-    // deno-lint-ignore no-explicit-any
-  }) as any,
-);
+const app = createApp();
 
 // 4. Khởi động Server
 logger.info(
