@@ -12,7 +12,7 @@
     "migrate:status": "deno run -A --env npm:prisma migrate status --schema=prisma/schema",
     "seed": "deno run -A --env ./prisma/seeds/index.ts",
     "check": "deno check main.ts",
-    "test:integration": "deno test -A --env tests/integration",
+    "test:integration": "DENO_ENV=production deno test -A --env tests/integration",
     "reload": "deno task prisma:generate && deno cache --reload main.ts",
     "format": "deno fmt && deno lint --fix && deno task prisma:generate && deno task prisma:format",
     "prisma:format": "deno run -A --env npm:prisma format --schema=prisma/schema",

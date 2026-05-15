@@ -26,11 +26,6 @@ function bearer(accessToken: string) {
   return { Authorization: `Bearer ${accessToken}` };
 }
 
-function cookieHeader(response: Response) {
-  const cookie = response.headers.get("set-cookie");
-  return cookie ? { Cookie: cookie.split(";")[0] } : {};
-}
-
 Deno.test({
   name: "integration: auth, RBAC and permissions",
   ignore: !hasIntegrationEnv,
@@ -51,6 +46,7 @@ Deno.test({
     const registeredUsername = `it_user_${suffix}`;
     const adminEmail = `it-admin-${suffix}@denolith.test`;
     const ownerEmail = `it-owner-${suffix}@denolith.test`;
+    const profileName = `Integration Profile ${suffix}`;
 
     const ensureRole = (code: string, tier: string, name: string) =>
       prisma.role.upsert({
@@ -60,6 +56,9 @@ Deno.test({
       });
 
     const cleanup = async () => {
+      await prisma.permissionProfile.deleteMany({
+        where: { name: { in: [profileName, `${profileName} Updated`] } },
+      });
       await prisma.user.deleteMany({
         where: {
           email: { in: [registeredEmail, adminEmail, ownerEmail] },
@@ -73,6 +72,16 @@ Deno.test({
       ensureRole("admin", "admin", "Administrator"),
       ensureRole("user", "user", "Standard User"),
       prisma.permission.upsert({
+        where: { code: "users.read" },
+        update: { active: true },
+        create: {
+          code: "users.read",
+          module: "users",
+          description: "View user list and user details",
+          active: true,
+        },
+      }),
+      prisma.permission.upsert({
         where: { code: "permissions.manage" },
         update: { active: true },
         create: {
@@ -85,11 +94,12 @@ Deno.test({
     ]);
 
     let userAccessToken = "";
-    let userRefreshToken = "";
+    let consumedRefreshToken = "";
     let userId = "";
     let adminAccessToken = "";
     let adminId = "";
     let ownerAccessToken = "";
+    let testProfileId = "";
 
     try {
       await t.step(
@@ -121,7 +131,6 @@ Deno.test({
           const user = body.data.user as Record<string, unknown>;
           userId = String(user.id);
           userAccessToken = String(body.data.accessToken);
-          userRefreshToken = String(body.data.refreshToken);
         },
       );
 
@@ -134,14 +143,17 @@ Deno.test({
         const loginBody = await readJson(loginResponse);
         assertEquals(loginResponse.status, 200);
         assert(loginBody.data?.accessToken, "login should return accessToken");
+        assert(
+          loginBody.data?.refreshToken,
+          "login should return refreshToken",
+        );
+
+        consumedRefreshToken = String(loginBody.data.refreshToken);
 
         const refreshResponse = await app.request("/v1/auth/refresh", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...cookieHeader(loginResponse),
-          },
-          body: JSON.stringify({ refreshToken: userRefreshToken }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: consumedRefreshToken }),
         });
         const refreshBody = await readJson(refreshResponse);
         assertEquals(refreshResponse.status, 200);
@@ -150,6 +162,22 @@ Deno.test({
           "refresh should return accessToken",
         );
         userAccessToken = String(refreshBody.data.accessToken);
+      });
+
+      await t.step("refresh token replay revokes token family", async () => {
+        const replayResponse = await app.request("/v1/auth/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: consumedRefreshToken }),
+        });
+        const replayBody = await readJson(replayResponse);
+        assertEquals(replayResponse.status, 401);
+        assertEquals(replayBody.error?.code, "UNAUTHORIZED");
+
+        const remainingSessions = await prisma.refreshToken.count({
+          where: { userId },
+        });
+        assertEquals(remainingSessions, 0);
       });
 
       await t.step("RBAC blocks user tier from admin user list", async () => {
@@ -161,6 +189,29 @@ Deno.test({
         assertEquals(response.status, 403);
         assertEquals(body.error?.code, "FORBIDDEN");
       });
+
+      await t.step(
+        "disabled user cannot reuse existing access token",
+        async () => {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { active: false },
+          });
+
+          const response = await app.request("/v1/users/me", {
+            headers: bearer(userAccessToken),
+          });
+          const body = await readJson(response);
+
+          assertEquals(response.status, 401);
+          assertEquals(body.error?.code, "UNAUTHORIZED");
+
+          await prisma.user.update({
+            where: { id: userId },
+            data: { active: true },
+          });
+        },
+      );
 
       await t.step(
         "admin tier can access RBAC-protected user list",
@@ -223,6 +274,116 @@ Deno.test({
         },
       );
 
+      await t.step(
+        "permission profile CRUD works for permitted admin",
+        async () => {
+          const createResponse = await app.request("/v1/permissions/profiles", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...bearer(adminAccessToken),
+            },
+            body: JSON.stringify({
+              name: profileName,
+              tier: "admin",
+              description: "Created by integration test",
+            }),
+          });
+          const createBody = await readJson(createResponse);
+          assertEquals(createResponse.status, 201);
+          assertEquals(createBody.success, true);
+          assert(
+            createResponse.headers.get("location")?.startsWith(
+              "/v1/permissions/profiles/",
+            ),
+            "create profile should set Location header",
+          );
+
+          testProfileId = String(createBody.data?.id);
+          assert(testProfileId, "created profile should return id");
+
+          const readResponse = await app.request(
+            `/v1/permissions/profiles/${testProfileId}`,
+            { headers: bearer(adminAccessToken) },
+          );
+          const readBody = await readJson(readResponse);
+          assertEquals(readResponse.status, 200);
+          assertEquals(String(readBody.data?.name), profileName);
+
+          const updateResponse = await app.request(
+            `/v1/permissions/profiles/${testProfileId}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                ...bearer(adminAccessToken),
+              },
+              body: JSON.stringify({
+                name: `${profileName} Updated`,
+                description: "Updated by integration test",
+                active: true,
+              }),
+            },
+          );
+          const updateBody = await readJson(updateResponse);
+          assertEquals(updateResponse.status, 200);
+          assertEquals(String(updateBody.data?.name), `${profileName} Updated`);
+
+          const setCodeResponse = await app.request(
+            `/v1/permissions/profiles/${testProfileId}/codes/users.read`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                ...bearer(adminAccessToken),
+              },
+              body: JSON.stringify({ granted: true }),
+            },
+          );
+          const setCodeBody = await readJson(setCodeResponse);
+          assertEquals(setCodeResponse.status, 200);
+          assertEquals(setCodeBody.success, true);
+
+          const withCodeResponse = await app.request(
+            `/v1/permissions/profiles/${testProfileId}`,
+            { headers: bearer(adminAccessToken) },
+          );
+          const withCodeBody = await readJson(withCodeResponse);
+          const permissions = withCodeBody.data?.permissions as unknown[];
+          assert(
+            permissions.some((entry) =>
+              (entry as Record<string, unknown>).permissionCode === "users.read"
+            ),
+            "profile should include users.read after setting code",
+          );
+
+          const removeCodeResponse = await app.request(
+            `/v1/permissions/profiles/${testProfileId}/codes/users.read`,
+            { method: "DELETE", headers: bearer(adminAccessToken) },
+          );
+          const removeCodeBody = await readJson(removeCodeResponse);
+          assertEquals(removeCodeResponse.status, 200);
+          assertEquals(removeCodeBody.success, true);
+
+          const deleteResponse = await app.request(
+            `/v1/permissions/profiles/${testProfileId}`,
+            { method: "DELETE", headers: bearer(adminAccessToken) },
+          );
+          const deleteBody = await readJson(deleteResponse);
+          assertEquals(deleteResponse.status, 200);
+          assertEquals(deleteBody.success, true);
+
+          const missingResponse = await app.request(
+            `/v1/permissions/profiles/${testProfileId}`,
+            { headers: bearer(adminAccessToken) },
+          );
+          const missingBody = await readJson(missingResponse);
+          assertEquals(missingResponse.status, 404);
+          assertEquals(missingBody.error?.code, "NOT_FOUND");
+          testProfileId = "";
+        },
+      );
+
       await t.step("owner tier bypasses permission checks", async () => {
         const hashed = await hashPassword(password);
         await prisma.user.create({
@@ -250,6 +411,23 @@ Deno.test({
         const body = await readJson(response);
         assertEquals(response.status, 200);
         assertEquals(body.success, true);
+      });
+
+      await t.step("Redis debug routes require owner tier", async () => {
+        const deniedResponse = await app.request("/auth/cache", {
+          headers: bearer(userAccessToken),
+        });
+        const deniedBody = await readJson(deniedResponse);
+        assertEquals(deniedResponse.status, 403);
+        assertEquals(deniedBody.error?.code, "FORBIDDEN");
+
+        const ownerResponse = await app.request("/auth/clear-cache", {
+          headers: bearer(ownerAccessToken),
+          method: "POST",
+        });
+        const ownerBody = await readJson(ownerResponse);
+        assertEquals(ownerResponse.status, 200);
+        assertEquals(ownerBody.success, true);
       });
     } finally {
       await cleanup();

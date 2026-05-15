@@ -7,6 +7,8 @@ import type { AuthService } from "./auth.service.ts";
 import { rateLimiter } from "../../shared/middlewares/rate-limit.middleware.ts";
 import { config } from "../../core/config.ts";
 import { sanitizeUser } from "../../shared/utils/sanitize.ts";
+import { authMiddleware } from "../../shared/middlewares/auth.middleware.ts";
+import { requireRole } from "../../shared/middlewares/rbac.middleware.ts";
 import {
   type LoginInput,
   loginSchema,
@@ -121,11 +123,14 @@ export const createPublicAuthRoutes = (service: AuthService) => {
       tags: ["Auth"],
       summary: "Clear Cache Data",
       description: "Xoá toàn bộ dữ liệu Redis (bao gồm Rate Limit).",
-      security: [],
       responses: {
         200: { description: "Data cleared successfully" },
+        401: { description: "Unauthorized" },
+        403: { description: "Forbidden" },
       },
     }),
+    authMiddleware,
+    requireRole("owner"),
     async (c) => {
       const { redisClient } = await import("../../core/redis.ts");
       if (redisClient) {
@@ -142,11 +147,14 @@ export const createPublicAuthRoutes = (service: AuthService) => {
       summary: "Get Cache Data",
       description:
         "Xem dữ liệu đang có trong Redis (hiển thị tối đa 100 keys).",
-      security: [],
       responses: {
         200: { description: "Data retrieved successfully" },
+        401: { description: "Unauthorized" },
+        403: { description: "Forbidden" },
       },
     }),
+    authMiddleware,
+    requireRole("owner"),
     async (c) => {
       const { redisClient } = await import("../../core/redis.ts");
       if (!redisClient) {
