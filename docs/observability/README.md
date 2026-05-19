@@ -10,6 +10,7 @@ The stack includes:
 - **Alertmanager**: Handles alerts routing and notifications (Port `9093`).
 - **Loki**: Centralized log storage (Port `3100`).
 - **Promtail**: Log shipper that collects logs from Docker containers.
+- **cAdvisor**: Analyzes resource usage of running containers (Port `8080`).
 - **Exporters**: 
   - `postgres-exporter` (Port `9187`)
   - `redis-exporter` (Port `9121`)
@@ -38,9 +39,15 @@ Core metrics collected:
 
 - **URL**: `http://localhost:3000`
 - **Credentials**: `admin` / `admin`
-- **Auto-Provisioning**: You do not need to manually add data sources or import dashboards. They are automatically loaded on startup:
-  - Data sources: Prometheus and Loki are pre-configured.
-  - Dashboards: The "Denolith API Baseline" dashboard is pre-loaded.
+- **Auto-Provisioning**: Data sources and dashboards are automatically loaded on startup:
+  - **Data sources**: Prometheus, Loki, and Alertmanager are pre-configured.
+  - **Dashboards pre-loaded**:
+    - `Denolith API Baseline` (Your app metrics)
+    - `Node Exporter Full` (Host/OS metrics)
+    - `Postgres Exporter` (Database metrics)
+    - `Redis Exporter` (Cache metrics)
+    - `CADVISOR exporter` (Per-container metrics)
+    - `Prometheus 2.0 Overview` (Self-monitoring)
 
 ## Centralized Logs (Loki)
 
