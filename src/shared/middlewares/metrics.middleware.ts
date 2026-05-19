@@ -1,6 +1,9 @@
 import type { MiddlewareHandler } from "@hono/core";
 import type { AppEnv } from "../../core/context.ts";
-import { recordHttpErrorMetric, recordHttpRequestMetric } from "../../core/metrics.ts";
+import {
+  recordHttpErrorMetric,
+  recordHttpRequestMetric,
+} from "../../core/metrics.ts";
 
 function normalizeRoute(path: string): string {
   // Reduce cardinality for UUID-like and numeric segments.

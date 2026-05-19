@@ -1,24 +1,27 @@
 # Observability Baseline
 
-This folder provides a production-ready baseline for API metrics, logs, dashboards, and alerts.
+This folder provides a production-ready baseline for API metrics, logs,
+dashboards, and alerts.
 
 ## Components
 
 The stack includes:
+
 - **Prometheus**: Metrics collection and alerting evaluation (Port `9090`).
 - **Grafana**: Visualization of metrics and logs (Port `3000`).
 - **Alertmanager**: Handles alerts routing and notifications (Port `9093`).
 - **Loki**: Centralized log storage (Port `3100`).
 - **Promtail**: Log shipper that collects logs from Docker containers.
 - **cAdvisor**: Analyzes resource usage of running containers (Port `8080`).
-- **Exporters**: 
+- **Exporters**:
   - `postgres-exporter` (Port `9187`)
   - `redis-exporter` (Port `9121`)
   - `node-exporter` (Port `9100`)
 
 ## How to Run
 
-The infrastructure is separated into two Docker Compose files. To start them, run:
+The infrastructure is separated into two Docker Compose files. To start them,
+run:
 
 1. **Start Databases (Postgres & Redis)**:
    ```bash
@@ -33,10 +36,12 @@ The infrastructure is separated into two Docker Compose files. To start them, ru
 ## Metrics Endpoint
 
 The application exposes metrics at:
+
 - Endpoint: `GET /metrics` (on port `9999` by default)
 - Format: Prometheus text exposition
 
 Core metrics collected:
+
 - `denolith_http_requests_total{method,route,status}`
 - `denolith_http_errors_total{method,route,status,error_class}`
 - `denolith_http_request_duration_ms_bucket{method,route,status,le}`
@@ -45,7 +50,8 @@ Core metrics collected:
 
 - **URL**: `http://localhost:3000`
 - **Credentials**: `admin` / `admin`
-- **Auto-Provisioning**: Data sources and dashboards are automatically loaded on startup:
+- **Auto-Provisioning**: Data sources and dashboards are automatically loaded on
+  startup:
   - **Data sources**: Prometheus, Loki, and Alertmanager are pre-configured.
   - **Dashboards pre-loaded**:
     - `Denolith API Baseline` (Your app metrics)
@@ -59,9 +65,11 @@ Core metrics collected:
 
 Logs from all running Docker containers are automatically scraped by Promtail.
 To view logs:
+
 1. Go to the **Explore** tab in Grafana.
 2. Select **Loki** from the data source dropdown.
-3. Use a query like `{container="denolith-postgres-1"}` to view logs for a specific container.
+3. Use a query like `{container="denolith-postgres-1"}` to view logs for a
+   specific container.
 
 ## Alert Rules
 
@@ -72,4 +80,5 @@ To view logs:
   - High p95 latency (>1000ms for 10m)
   - No traffic for 15m
 
-Alerts are sent to Alertmanager. You can configure routing to Slack, Telegram, or Email in `docs/observability/alertmanager.yml`.
+Alerts are sent to Alertmanager. You can configure routing to Slack, Telegram,
+or Email in `docs/observability/alertmanager.yml`.

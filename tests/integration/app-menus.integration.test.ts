@@ -21,12 +21,14 @@ Deno.test({
       await ctx.cleanupUsers();
       await ctx.prisma.appMenu.deleteMany({ where: { code: appMenuCode } });
 
-      for (const [code, description] of [
-        ["app_menu.read", "Read app menus"],
-        ["app_menu.create", "Create app menus"],
-        ["app_menu.update", "Update app menus"],
-        ["app_menu.delete", "Delete app menus"],
-      ] as const) {
+      for (
+        const [code, description] of [
+          ["app_menu.read", "Read app menus"],
+          ["app_menu.create", "Create app menus"],
+          ["app_menu.update", "Update app menus"],
+          ["app_menu.delete", "Delete app menus"],
+        ] as const
+      ) {
         await ctx.upsertPermission(code, "app_menu", description);
       }
 
@@ -40,7 +42,9 @@ Deno.test({
         }),
       });
       const registerBody = await readJson(registerResponse);
-      const userId = String((registerBody.data?.user as Record<string, unknown>).id);
+      const userId = String(
+        (registerBody.data?.user as Record<string, unknown>).id,
+      );
 
       const hashed = await ctx.hashPassword(ctx.password);
       const admin = await ctx.prisma.user.create({
@@ -63,7 +67,10 @@ Deno.test({
 
       const deniedResponse = await ctx.app.request("/v1/app-menus", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...bearer(adminAccessToken) },
+        headers: {
+          "Content-Type": "application/json",
+          ...bearer(adminAccessToken),
+        },
         body: JSON.stringify({
           code: appMenuCode,
           name: "Integration Menu",
@@ -97,7 +104,10 @@ Deno.test({
 
       const createResponse = await ctx.app.request("/v1/app-menus", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...bearer(adminAccessToken) },
+        headers: {
+          "Content-Type": "application/json",
+          ...bearer(adminAccessToken),
+        },
         body: JSON.stringify({
           code: appMenuCode,
           name: "Integration Menu",
@@ -112,7 +122,10 @@ Deno.test({
 
       const updateResponse = await ctx.app.request(`/v1/app-menus/${menuId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", ...bearer(adminAccessToken) },
+        headers: {
+          "Content-Type": "application/json",
+          ...bearer(adminAccessToken),
+        },
         body: JSON.stringify({ name: "Integration Menu Updated" }),
       });
       assertEquals(updateResponse.status, 200);
@@ -123,4 +136,3 @@ Deno.test({
     }
   },
 });
-

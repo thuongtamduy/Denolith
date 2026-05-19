@@ -32,7 +32,9 @@ Deno.test({
         }),
       });
       const registerBody = await readJson(registerResponse);
-      const userId = String((registerBody.data?.user as Record<string, unknown>).id);
+      const userId = String(
+        (registerBody.data?.user as Record<string, unknown>).id,
+      );
 
       const hashed = await ctx.hashPassword(ctx.password);
       const admin = await ctx.prisma.user.create({
@@ -55,8 +57,15 @@ Deno.test({
 
       const deniedResponse = await ctx.app.request("/v1/stores", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...bearer(adminAccessToken) },
-        body: JSON.stringify({ code: storeCode, name: "Integration Store", status: "active" }),
+        headers: {
+          "Content-Type": "application/json",
+          ...bearer(adminAccessToken),
+        },
+        body: JSON.stringify({
+          code: storeCode,
+          name: "Integration Store",
+          status: "active",
+        }),
       });
       assertEquals(deniedResponse.status, 403);
 
@@ -71,8 +80,15 @@ Deno.test({
 
       const createResponse = await ctx.app.request("/v1/stores", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...bearer(adminAccessToken) },
-        body: JSON.stringify({ code: storeCode, name: "Integration Store", status: "active" }),
+        headers: {
+          "Content-Type": "application/json",
+          ...bearer(adminAccessToken),
+        },
+        body: JSON.stringify({
+          code: storeCode,
+          name: "Integration Store",
+          status: "active",
+        }),
       });
       const createBody = await readJson(createResponse);
       assertEquals(createResponse.status, 201);
@@ -85,4 +101,3 @@ Deno.test({
     }
   },
 });
-

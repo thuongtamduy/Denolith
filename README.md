@@ -10,10 +10,12 @@ monolithic backend framework built on Deno 2.x, Hono, and Prisma 7.
 - 🚀 **Fast Runtime**: Powered by Hono + Deno 2.x.
 - 🛡️ **Type-Safe API Layer**: Valibot validation + typed service architecture.
 - 🏰 **Modular Architecture**: Domain modules with lazy DI container.
-- 🔐 **RBAC + Permissions**: 3-tier roles (`owner > admin > user`) + permission profiles + user overrides.
+- 🔐 **RBAC + Permissions**: 3-tier roles (`owner > admin > user`) + permission
+  profiles + user overrides.
 - ☁️ **Background Workers**: Redis queue with memory fallback + cronjobs.
 - ⚡ **Caching & Rate Limiting**: Redis-first, in-memory fallback.
-- 📦 **Storage Integrations**: `local`, `supabase`, `s3`/MinIO configs available.
+- 📦 **Storage Integrations**: `local`, `supabase`, `s3`/MinIO configs
+  available.
 - 📖 **OpenAPI**: Swagger UI endpoint auto-generated from routes.
 
 ---

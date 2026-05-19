@@ -26,11 +26,13 @@ Deno.test({
         ctx.prisma.appMenu.deleteMany({ where: { code: appMenuCode } }),
       ]);
 
-      for (const [code, module, description] of [
-        ["permissions.manage", "permissions", "Manage permissions"],
-        ["stores.manage", "stores", "Manage stores"],
-        ["app_menu.create", "app_menu", "Create app menus"],
-      ] as const) {
+      for (
+        const [code, module, description] of [
+          ["permissions.manage", "permissions", "Manage permissions"],
+          ["stores.manage", "stores", "Manage stores"],
+          ["app_menu.create", "app_menu", "Create app menus"],
+        ] as const
+      ) {
         await ctx.upsertPermission(code, module, description);
       }
 
@@ -44,7 +46,9 @@ Deno.test({
         }),
       });
       const registerBody = await readJson(registerResponse);
-      const userId = String((registerBody.data?.user as Record<string, unknown>).id);
+      const userId = String(
+        (registerBody.data?.user as Record<string, unknown>).id,
+      );
 
       const hashed = await ctx.hashPassword(ctx.password);
       const admin = await ctx.prisma.user.create({
@@ -68,7 +72,10 @@ Deno.test({
       // 403: missing permissions.manage
       const deniedRoleCreate = await ctx.app.request("/v1/roles", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...bearer(adminAccessToken) },
+        headers: {
+          "Content-Type": "application/json",
+          ...bearer(adminAccessToken),
+        },
         body: JSON.stringify({
           code: roleCode,
           tier: "user",
@@ -87,17 +94,26 @@ Deno.test({
       });
 
       // 404: role not found
-      const missingRolePatch = await ctx.app.request("/v1/roles/not_exists_role", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", ...bearer(adminAccessToken) },
-        body: JSON.stringify({ name: "Role Missing" }),
-      });
+      const missingRolePatch = await ctx.app.request(
+        "/v1/roles/not_exists_role",
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...bearer(adminAccessToken),
+          },
+          body: JSON.stringify({ name: "Role Missing" }),
+        },
+      );
       assertEquals(missingRolePatch.status, 404);
 
       // 409: duplicate role code
       const roleCreate1 = await ctx.app.request("/v1/roles", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...bearer(adminAccessToken) },
+        headers: {
+          "Content-Type": "application/json",
+          ...bearer(adminAccessToken),
+        },
         body: JSON.stringify({
           code: roleCode,
           tier: "user",
@@ -107,7 +123,10 @@ Deno.test({
       assertEquals(roleCreate1.status, 201);
       const roleCreate2 = await ctx.app.request("/v1/roles", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...bearer(adminAccessToken) },
+        headers: {
+          "Content-Type": "application/json",
+          ...bearer(adminAccessToken),
+        },
         body: JSON.stringify({
           code: roleCode,
           tier: "user",
@@ -134,14 +153,28 @@ Deno.test({
       // 409: duplicate store code
       const storeCreate1 = await ctx.app.request("/v1/stores", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...bearer(adminAccessToken) },
-        body: JSON.stringify({ code: storeCode, name: "Store A", status: "active" }),
+        headers: {
+          "Content-Type": "application/json",
+          ...bearer(adminAccessToken),
+        },
+        body: JSON.stringify({
+          code: storeCode,
+          name: "Store A",
+          status: "active",
+        }),
       });
       assertEquals(storeCreate1.status, 201);
       const storeCreate2 = await ctx.app.request("/v1/stores", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...bearer(adminAccessToken) },
-        body: JSON.stringify({ code: storeCode, name: "Store B", status: "active" }),
+        headers: {
+          "Content-Type": "application/json",
+          ...bearer(adminAccessToken),
+        },
+        body: JSON.stringify({
+          code: storeCode,
+          name: "Store B",
+          status: "active",
+        }),
       });
       assertEquals(storeCreate2.status, 409);
 
@@ -157,7 +190,10 @@ Deno.test({
       // 400: invalid app-menu code (lowercase not allowed)
       const invalidMenuCreate = await ctx.app.request("/v1/app-menus", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...bearer(adminAccessToken) },
+        headers: {
+          "Content-Type": "application/json",
+          ...bearer(adminAccessToken),
+        },
         body: JSON.stringify({
           code: "invalid_lowercase_code",
           name: "Menu X",

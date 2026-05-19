@@ -15,4 +15,3 @@ export const requestIdMiddleware: MiddlewareHandler<AppEnv> = async (
 
   await next();
 };
-

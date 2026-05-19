@@ -9,7 +9,7 @@ const latencyBucketsMs = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
 const httpRequestDurationMsBucket = new Map<string, number>();
 
 function normalizeLabelValue(value: string): string {
-  return value.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"");
+  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
 
 function createLabelKey(labels: MetricLabels): string {
@@ -93,7 +93,9 @@ export function renderPrometheusMetrics(): string {
       }),
     );
     lines.push(
-      `denolith_http_request_duration_ms_bucket${formatLabels(labels)} ${value}`,
+      `denolith_http_request_duration_ms_bucket${
+        formatLabels(labels)
+      } ${value}`,
     );
   }
 

@@ -13,7 +13,9 @@ export const globalErrorHandler = (err: Error, c: Context) => {
   const path = c.req.path;
 
   if (err instanceof AppError) {
-    logger.warn(`[${requestId}] [${method} ${path}] [${err.code}] ${err.message}`);
+    logger.warn(
+      `[${requestId}] [${method} ${path}] [${err.code}] ${err.message}`,
+    );
     return c.json<ApiErrorResponse>(
       {
         success: false as const,

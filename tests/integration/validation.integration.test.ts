@@ -20,9 +20,11 @@ Deno.test({
       await ctx.cleanupUsers();
       await ctx.prisma.appMenu.deleteMany({ where: { code: appMenuCode } });
 
-      for (const [code, description] of [
-        ["app_menu.create", "Create app menus"],
-      ] as const) {
+      for (
+        const [code, description] of [
+          ["app_menu.create", "Create app menus"],
+        ] as const
+      ) {
         await ctx.upsertPermission(code, "app_menu", description);
       }
 
@@ -36,7 +38,9 @@ Deno.test({
         }),
       });
       const registerBody = await readJson(registerResponse);
-      const userId = String((registerBody.data?.user as Record<string, unknown>).id);
+      const userId = String(
+        (registerBody.data?.user as Record<string, unknown>).id,
+      );
 
       const hashed = await ctx.hashPassword(ctx.password);
       const admin = await ctx.prisma.user.create({
@@ -90,4 +94,3 @@ Deno.test({
     }
   },
 });
-

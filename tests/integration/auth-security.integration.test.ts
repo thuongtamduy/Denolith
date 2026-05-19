@@ -38,7 +38,10 @@ Deno.test({
       const loginResponse = await ctx.app.request("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: ctx.registeredEmail, password: ctx.password }),
+        body: JSON.stringify({
+          email: ctx.registeredEmail,
+          password: ctx.password,
+        }),
       });
       const loginBody = await readJson(loginResponse);
       assertEquals(loginResponse.status, 200);
@@ -77,7 +80,10 @@ Deno.test({
       const reloginResponse = await ctx.app.request("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: ctx.registeredEmail, password: ctx.password }),
+        body: JSON.stringify({
+          email: ctx.registeredEmail,
+          password: ctx.password,
+        }),
       });
       const reloginBody = await readJson(reloginResponse);
       assertEquals(reloginResponse.status, 200);
@@ -124,4 +130,3 @@ Deno.test({
     }
   },
 });
-

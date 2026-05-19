@@ -13,34 +13,95 @@ function timestamp(): string {
   return new Date().toISOString();
 }
 
-export const logger = {
-  info(message: string, ...args: unknown[]) {
-    console.log(
-      `${COLORS.dim}[${timestamp()}]${COLORS.reset} ${COLORS.green}[INFO]${COLORS.reset} ${message}`,
+function log(
+  level: "INFO" | "WARN" | "ERROR" | "DEBUG",
+  message: string,
+  ...args: unknown[]
+) {
+  const time = timestamp();
+
+  if (isProduction) {
+    const logObject: Record<string, unknown> = {
+      timestamp: time,
+      level,
+      message,
+    };
+
+    if (args.length > 0) {
+      logObject.details = args.map((arg) => {
+        if (arg instanceof Error) {
+          return {
+            name: arg.name,
+            message: arg.message,
+            stack: arg.stack,
+          };
+        }
+        return arg;
+      });
+    }
+
+    const jsonString = JSON.stringify(logObject);
+
+    switch (level) {
+      case "INFO":
+        console.log(jsonString);
+        break;
+      case "WARN":
+        console.warn(jsonString);
+        break;
+      case "ERROR":
+        console.error(jsonString);
+        break;
+      case "DEBUG":
+        console.debug(jsonString);
+        break;
+    }
+  } else {
+    let color = COLORS.reset;
+    let consoleMethod = console.log;
+
+    switch (level) {
+      case "INFO":
+        color = COLORS.green;
+        consoleMethod = console.log;
+        break;
+      case "WARN":
+        color = COLORS.yellow;
+        consoleMethod = console.warn;
+        break;
+      case "ERROR":
+        color = COLORS.red;
+        consoleMethod = console.error;
+        break;
+      case "DEBUG":
+        color = COLORS.cyan;
+        consoleMethod = console.debug;
+        break;
+    }
+
+    consoleMethod(
+      `${COLORS.dim}[${time}]${COLORS.reset} ${color}[${level}]${COLORS.reset} ${message}`,
       ...args,
     );
+  }
+}
+
+export const logger = {
+  info(message: string, ...args: unknown[]) {
+    log("INFO", message, ...args);
   },
 
   warn(message: string, ...args: unknown[]) {
-    console.warn(
-      `${COLORS.dim}[${timestamp()}]${COLORS.reset} ${COLORS.yellow}[WARN]${COLORS.reset} ${message}`,
-      ...args,
-    );
+    log("WARN", message, ...args);
   },
 
   error(message: string, ...args: unknown[]) {
-    console.error(
-      `${COLORS.dim}[${timestamp()}]${COLORS.reset} ${COLORS.red}[ERROR]${COLORS.reset} ${message}`,
-      ...args,
-    );
+    log("ERROR", message, ...args);
   },
 
   debug(message: string, ...args: unknown[]) {
     if (!isProduction) {
-      console.debug(
-        `${COLORS.dim}[${timestamp()}]${COLORS.reset} ${COLORS.cyan}[DEBUG]${COLORS.reset} ${message}`,
-        ...args,
-      );
+      log("DEBUG", message, ...args);
     }
   },
 };

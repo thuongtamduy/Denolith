@@ -19,7 +19,11 @@ Deno.test({
     try {
       await ctx.cleanupUsers();
       await ctx.prisma.role.deleteMany({ where: { code: roleCode } });
-      await ctx.upsertPermission("permissions.manage", "permissions", "Manage permissions");
+      await ctx.upsertPermission(
+        "permissions.manage",
+        "permissions",
+        "Manage permissions",
+      );
 
       const registerResponse = await ctx.app.request("/auth/register", {
         method: "POST",
@@ -31,7 +35,9 @@ Deno.test({
         }),
       });
       const registerBody = await readJson(registerResponse);
-      const userId = String((registerBody.data?.user as Record<string, unknown>).id);
+      const userId = String(
+        (registerBody.data?.user as Record<string, unknown>).id,
+      );
 
       const hashed = await ctx.hashPassword(ctx.password);
       const admin = await ctx.prisma.user.create({
@@ -82,7 +88,10 @@ Deno.test({
           "Content-Type": "application/json",
           ...bearer(adminAccessToken),
         },
-        body: JSON.stringify({ name: "Integration Role Updated", active: true }),
+        body: JSON.stringify({
+          name: "Integration Role Updated",
+          active: true,
+        }),
       });
       assertEquals(updateResponse.status, 200);
 
@@ -98,4 +107,3 @@ Deno.test({
     }
   },
 });
-
