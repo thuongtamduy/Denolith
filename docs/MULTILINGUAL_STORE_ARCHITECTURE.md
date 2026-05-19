@@ -60,7 +60,7 @@ erDiagram
         Uuid id PK
         Uuid menuId FK "Cascade"
         Uuid langId FK
-        String lang "vi, en..."
+        String lang "vi, en, ko... (denormalized)"
         String name "Tên hiển thị"
         String data "JSON cấu trúc"
         Boolean isLangRef "false = gốc, true = tham chiếu"
@@ -71,12 +71,48 @@ erDiagram
 
 ### Quy Tắc Ràng Buộc Duy Nhất (Unique Constraints):
 
-- **Bảng Master (`AppMenu`)**: Ràng buộc duy nhất `@@unique([code, storeId])`
-  đảm bảo một mã menu chỉ tồn tại tối đa một lần cho mỗi cửa hàng (hoặc ở cấp
-  global nếu `storeId` mang giá trị `null`).
+- **Bảng Master (`AppMenu`)**: Do PostgreSQL cho phép nhiều giá trị `NULL` trong
+  unique key, việc sử dụng `@@unique([code, storeId])` không đủ để chặn trùng
+  lặp ở cấp global (`storeId = null`). Để giải quyết triệt để, hệ thống áp dụng
+  **DB-level partial unique index**:
+  - `CREATE UNIQUE INDEX app_menus_code_global_idx ON app_menus(code) WHERE store_id IS NULL;`
+    Từ đó đảm bảo một mã `code` là duy nhất ở phạm vi toàn cầu (global), đồng
+    thời vẫn cho phép các cửa hàng tạo menu riêng.
 - **Bảng Dịch (`AppMenuTranslation`)**: Ràng buộc duy nhất
-  `@@unique([menuId, lang])` đảm bảo mỗi menu chỉ có duy nhất một bản dịch cho
-  một ngôn ngữ cụ thể.
+  `@@unique([menuId, lang])` được sử dụng để dễ dàng quản lý, tối ưu hóa tốc độ
+  truy vấn theo mã ngôn ngữ trực tiếp và tương thích tốt với Frontend.
+  - **Bảo toàn dữ liệu**: Để tránh nguy cơ lệch dữ liệu giữa khóa ngoại `langId`
+    và mã `lang`, Service Layer bắt buộc thực hiện kiểm tra đồng bộ trong một
+    transaction nguyên tố: luôn truy vấn đối tượng `Language` hệ thống bằng mã
+    ngôn ngữ trước khi ghi nhận giá trị `langId = language.id` và
+    `lang = language.code`.
+
+Ví dụ Prisma/SQL triển khai:
+
+```prisma
+model AppMenuTranslation {
+  id        String   @id @default(uuid()) @db.Uuid
+  menuId    String   @db.Uuid
+  langId    String   @db.Uuid
+  lang      String   @db.VarChar(10)
+  name      String
+  data      String
+  isLangRef Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  menu      AppMenu   @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  language  Language  @relation(fields: [langId], references: [id])
+
+  @@unique([menuId, lang])
+}
+```
+
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS app_menus_code_global_idx
+ON app_menus (code)
+WHERE store_id IS NULL;
+```
 
 ---
 
@@ -92,7 +128,7 @@ flowchart TD
     B -- Có --> C[Trả về bản dịch 'ja']
     B -- Không --> D{Tìm ngôn ngữ gốc\nisLangRef = false}
     D -- Có --> E[Trả về bản dịch gốc]
-    D -- Không --> F[Trả về bản dịch đầu tiên tìm thấy]
+    D -- Không --> F[Trả về bản dịch bất kỳ đầu tiên]
     E --> G[Trả về kết quả]
     F --> G
     C --> G
@@ -107,22 +143,19 @@ const rawMenus = await this.prisma.appMenu.findMany({
   take: limit,
   include: {
     translations: {
-      where: {
-        OR: [
-          { lang },
-          { isLangRef: false }, // Lấy kèm ngôn ngữ gốc làm fallback
-        ],
-      },
+      include: { language: true },
     },
   },
 });
 
 // Map kết quả trong JavaScript
 const result = rawMenus.map((menu) => {
-  let translation = menu.translations.find((t) => t.lang === requestedLang);
+  let translation = menu.translations.find((t) =>
+    t.language.code === requestedLang
+  );
   if (!translation) {
-    // Dự phòng ngôn ngữ gốc
-    translation = menu.translations.find((t) => !t.isLangRef) ||
+    // Dự phòng 3 tầng: ngôn ngữ gốc -> bản dịch bất kỳ đầu tiên
+    translation = menu.translations.find((t) => !t.isLangRef) ??
       menu.translations[0];
   }
   return {
@@ -168,7 +201,8 @@ hoặc query).
 
 1. **Lọc dữ liệu**: Mọi câu lệnh truy vấn tìm kiếm (`findMany`, `findById`,
    `findByCode`) của người dùng có cấp bậc thường (Non-Owner) đều bị cưỡng chế
-   lọc theo `clientCtx.storeId` lấy từ JWT Token đã kiểm định.
+   lọc theo `clientCtx.storeId` lấy từ Header `x-api-key` (xác thực & cache)
+   thông qua `clientContextMiddleware`.
 2. **Cưỡng chế ghi đè ghi nhận (Mutation Overwrite)**: Tại các Route thay đổi dữ
    liệu (`POST`, `PATCH`, `PUT`), nếu người dùng không thuộc nhóm quản trị hệ
    thống (`payload.tier !== "owner"`), hệ thống sẽ **luôn luôn bắt buộc ghi đè**
@@ -197,7 +231,8 @@ và **API dành cho Admin (Quản trị dịch thuật)**.
 - **Lấy toàn bộ menu phù hợp**:
   - **Endpoint**: `GET /v1/app-menus`
   - **Header**:
-    - `x-api-key`: `STORE_ID` (Bắt buộc với non-owner)
+    - `Authorization: Bearer <token>` (Nguồn store context chuẩn)
+    - `x-api-key`: API key nhận diện client app (không dùng làm nguồn `storeId`)
     - `x-lang`: `en` (Ngôn ngữ yêu cầu, mặc định `vi`)
   - **Response**: Danh sách menu chứa `name` và `data` đã tự động phân giải hoặc
     fallback.

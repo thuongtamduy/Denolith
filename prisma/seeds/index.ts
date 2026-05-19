@@ -36,6 +36,12 @@ async function main() {
   await seedPermissions(prisma);
   await seedProfiles(prisma);
   await seedLanguages(prisma);
+
+  // Apply DB-level partial unique index to avoid Postgres NULL != NULL duplicate global codes
+  await prisma.$executeRawUnsafe(
+    `CREATE UNIQUE INDEX IF NOT EXISTS app_menus_code_global_idx ON app_menus(code) WHERE store_id IS NULL;`,
+  );
+
   await seedAppMenus(prisma);
   await seedStores(prisma);
   await seedUserStores(prisma);
