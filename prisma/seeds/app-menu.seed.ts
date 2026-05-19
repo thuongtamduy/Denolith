@@ -116,21 +116,85 @@ export async function seedAppMenus(prisma: PrismaClient) {
 
   // 2. Upsert menu mẫu
   console.log("Seeding sample app menus...");
-  const menus = [
-    {
-      code: "MENU-ADMIN",
+
+  const viLang = await prisma.language.findUnique({ where: { code: "vi" } });
+  if (!viLang) {
+    throw new Error(
+      "Default language 'vi' not found. Please run seedLanguages first.",
+    );
+  }
+
+  // Find or create the AppMenu (Master)
+  let menu = await prisma.appMenu.findFirst({
+    where: { code: "MENU-ADMIN", storeId: null },
+  });
+
+  if (!menu) {
+    menu = await prisma.appMenu.create({
+      data: {
+        code: "MENU-ADMIN",
+        active: true,
+      },
+    });
+  }
+
+  // Create or update the translation for 'vi'
+  await prisma.appMenuTranslation.upsert({
+    where: {
+      menuId_lang: {
+        menuId: menu.id,
+        lang: "vi",
+      },
+    },
+    update: {
+      name: "Menu Admin",
+      data: SAMPLE_MENU_DATA,
+      isLangRef: false,
+    },
+    create: {
+      menuId: menu.id,
+      langId: viLang.id,
       lang: "vi",
       name: "Menu Admin",
       data: SAMPLE_MENU_DATA,
+      isLangRef: false,
     },
-  ];
+  });
 
-  for (const menu of menus) {
-    await prisma.appMenu.upsert({
-      where: { code: menu.code },
-      update: { name: menu.name, data: menu.data },
-      create: menu,
+  // Create or update translation for 'en'
+  const enLang = await prisma.language.findUnique({ where: { code: "en" } });
+  if (enLang) {
+    // English menu data (we translate key words for testing)
+    const englishMenuData = SAMPLE_MENU_DATA
+      .replace("Trang chủ", "Home")
+      .replace("Người dùng & phân quyền", "Users & Permissions")
+      .replace("Nhóm khách hàng", "Customer Groups")
+      .replace("Phân quyền", "Permissions");
+
+    await prisma.appMenuTranslation.upsert({
+      where: {
+        menuId_lang: {
+          menuId: menu.id,
+          lang: "en",
+        },
+      },
+      update: {
+        name: "Admin Menu",
+        data: englishMenuData,
+        isLangRef: true,
+      },
+      create: {
+        menuId: menu.id,
+        langId: enLang.id,
+        lang: "en",
+        name: "Admin Menu",
+        data: englishMenuData,
+        isLangRef: true,
+      },
     });
   }
-  console.log(`✅ Seeded ${menus.length} app menus.`);
+
+  console.log(
+    `✅ Seeded sample app menus (Vietnamese and English translations).`,
+  );
 }

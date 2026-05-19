@@ -5,45 +5,81 @@ import type { PaginationParams } from "../../shared/utils/pagination.ts";
 import { isUuid } from "../../shared/utils/uuid.ts";
 import type {
   CreateAppMenuInput,
+  CreateAppMenuTranslationInput,
   UpdateAppMenuInput,
 } from "./app-menu.validation.ts";
 
 export class AppMenuService {
   constructor(private prisma: PrismaClient) {}
 
-  private async findExistingByIdOrCode(idOrCode: string) {
-    const where = isUuid(idOrCode) ? { id: idOrCode } : { code: idOrCode };
-    return await this.prisma.appMenu.findUnique({ where });
-  }
-
   async findMany(
-    params: PaginationParams & { storeId?: string; lang?: string },
+    params: PaginationParams & { storeId?: string | null; lang?: string },
   ) {
-    const { page, limit, search, storeId, lang } = params;
+    const { page, limit, search, storeId, lang = "vi" } = params;
     const skip = (page - 1) * limit;
 
     const where = {
       ...(search
         ? {
           OR: [
-            { name: { contains: search, mode: "insensitive" as const } },
             { code: { contains: search, mode: "insensitive" as const } },
+            {
+              translations: {
+                some: {
+                  name: { contains: search, mode: "insensitive" as const },
+                },
+              },
+            },
           ],
         }
         : {}),
-      ...(storeId ? { storeId } : {}),
-      ...(lang ? { lang } : {}),
+      storeId: storeId ?? null,
     };
 
-    const [data, total] = await Promise.all([
+    const [rawMenus, total] = await Promise.all([
       this.prisma.appMenu.findMany({
         where,
         skip,
         take: limit,
+        include: {
+          translations: {
+            where: {
+              OR: [
+                { lang },
+                { isLangRef: false }, // Fallback to original language
+              ],
+            },
+          },
+        },
         orderBy: { createdAt: "desc" },
       }),
       this.prisma.appMenu.count({ where }),
     ]);
+
+    // Map each menu to extract the correct translation matching requested lang,
+    // or fallback to the original/default translation.
+    const data = rawMenus.map((menu) => {
+      let translation = menu.translations.find((t) => t.lang === lang);
+      if (!translation && menu.translations.length > 0) {
+        // Fallback to original/default translation
+        translation = menu.translations.find((t) => !t.isLangRef) ||
+          menu.translations[0];
+      }
+
+      return {
+        id: menu.id,
+        code: menu.code,
+        storeId: menu.storeId,
+        active: menu.active,
+        createdAt: menu.createdAt,
+        createdBy: menu.createdBy,
+        updatedAt: menu.updatedAt,
+        updatedBy: menu.updatedBy,
+        name: translation?.name ?? "",
+        data: translation?.data ?? "[]",
+        lang: translation?.lang ?? "",
+      };
+    });
 
     return {
       data,
@@ -56,38 +92,152 @@ export class AppMenuService {
     };
   }
 
-  async findByCode(code: string) {
-    const menu = await this.prisma.appMenu.findUnique({ where: { code } });
+  async findByCode(code: string, storeId?: string | null, lang: string = "vi") {
+    const menu = await this.prisma.appMenu.findFirst({
+      where: { code, storeId: storeId ?? null },
+      include: {
+        translations: {
+          where: {
+            OR: [
+              { lang },
+              { isLangRef: false },
+            ],
+          },
+        },
+      },
+    });
+
     if (!menu) {
       throw AppError.notFound(`App menu '${code}' not found.`);
     }
-    return menu;
+
+    let translation = menu.translations.find((t) => t.lang === lang);
+    if (!translation && menu.translations.length > 0) {
+      translation = menu.translations.find((t) => !t.isLangRef) ||
+        menu.translations[0];
+    }
+
+    return {
+      id: menu.id,
+      code: menu.code,
+      storeId: menu.storeId,
+      active: menu.active,
+      createdAt: menu.createdAt,
+      createdBy: menu.createdBy,
+      updatedAt: menu.updatedAt,
+      updatedBy: menu.updatedBy,
+      name: translation?.name ?? "",
+      data: translation?.data ?? "[]",
+      lang: translation?.lang ?? "",
+    };
   }
 
-  async findById(id: string) {
-    const menu = await this.prisma.appMenu.findUnique({ where: { id } });
+  async findById(id: string, lang: string = "vi") {
+    const menu = await this.prisma.appMenu.findUnique({
+      where: { id },
+      include: {
+        translations: {
+          where: {
+            OR: [
+              { lang },
+              { isLangRef: false },
+            ],
+          },
+        },
+      },
+    });
+
     if (!menu) {
       throw AppError.notFound(`App menu '${id}' not found.`);
     }
+
+    let translation = menu.translations.find((t) => t.lang === lang);
+    if (!translation && menu.translations.length > 0) {
+      translation = menu.translations.find((t) => !t.isLangRef) ||
+        menu.translations[0];
+    }
+
+    return {
+      id: menu.id,
+      code: menu.code,
+      storeId: menu.storeId,
+      active: menu.active,
+      createdAt: menu.createdAt,
+      createdBy: menu.createdBy,
+      updatedAt: menu.updatedAt,
+      updatedBy: menu.updatedBy,
+      name: translation?.name ?? "",
+      data: translation?.data ?? "[]",
+      lang: translation?.lang ?? "",
+    };
+  }
+
+  async findAllTranslations(idOrCode: string, storeId?: string | null) {
+    const where = isUuid(idOrCode)
+      ? { id: idOrCode }
+      : { code: idOrCode, storeId: storeId ?? null };
+
+    const menu = await this.prisma.appMenu.findFirst({
+      where,
+      include: {
+        translations: true,
+      },
+    });
+
+    if (!menu) {
+      throw AppError.notFound(`App menu '${idOrCode}' not found.`);
+    }
+
     return menu;
   }
 
   async create(data: CreateAppMenuInput, actorId?: string) {
-    const existing = await this.prisma.appMenu.findUnique({
-      where: { code: data.code },
+    const langCode = data.lang ?? "vi";
+    const language = await this.prisma.language.findUnique({
+      where: { code: langCode },
     });
-    if (existing) {
-      throw AppError.conflict(`App menu code '${data.code}' already exists.`);
+    if (!language) {
+      throw AppError.badRequest(
+        `Language '${langCode}' is not supported in the system.`,
+      );
     }
 
-    const menu = await this.prisma.appMenu.create({
-      data: {
-        code: data.code,
-        lang: data.lang ?? "vi",
-        name: data.name,
-        data: data.data,
-        storeId: data.storeId,
-      },
+    const existing = await this.prisma.appMenu.findFirst({
+      where: { code: data.code, storeId: data.storeId ?? null },
+    });
+    if (existing) {
+      throw AppError.conflict(
+        `App menu code '${data.code}' already exists for this store.`,
+      );
+    }
+
+    const menu = await this.prisma.$transaction(async (tx) => {
+      const master = await tx.appMenu.create({
+        data: {
+          code: data.code,
+          storeId: data.storeId ?? null,
+          active: data.active ?? true,
+        },
+      });
+
+      const translation = await tx.appMenuTranslation.create({
+        data: {
+          menuId: master.id,
+          langId: language.id,
+          lang: langCode,
+          name: data.name,
+          data: data.data,
+          isLangRef: false, // Original language translation
+        },
+      });
+
+      return {
+        ...master,
+        translations: [translation],
+        name: translation.name,
+        data: translation.data,
+        lang: translation.lang,
+      };
     });
 
     await AuditService.log({
@@ -101,48 +251,187 @@ export class AppMenuService {
     return menu;
   }
 
-  async update(idOrCode: string, data: UpdateAppMenuInput, actorId?: string) {
-    const existing = await this.findExistingByIdOrCode(idOrCode);
-    if (!existing) {
+  async addTranslation(
+    idOrCode: string,
+    storeId: string | null,
+    data: CreateAppMenuTranslationInput,
+    actorId?: string,
+  ) {
+    const masterWhere = isUuid(idOrCode)
+      ? { id: idOrCode }
+      : { code: idOrCode, storeId: storeId ?? null };
+
+    const master = await this.prisma.appMenu.findFirst({
+      where: masterWhere,
+    });
+    if (!master) {
       throw AppError.notFound(`App menu '${idOrCode}' not found.`);
     }
 
-    const updated = await this.prisma.appMenu.update({
-      where: { id: existing.id },
+    const language = await this.prisma.language.findUnique({
+      where: { code: data.lang },
+    });
+    if (!language) {
+      throw AppError.badRequest(
+        `Language '${data.lang}' is not supported in the system.`,
+      );
+    }
+
+    const existingTranslation = await this.prisma.appMenuTranslation
+      .findUnique({
+        where: {
+          menuId_lang: {
+            menuId: master.id,
+            lang: data.lang,
+          },
+        },
+      });
+    if (existingTranslation) {
+      throw AppError.conflict(
+        `Translation for language '${data.lang}' already exists for this menu.`,
+      );
+    }
+
+    const translation = await this.prisma.appMenuTranslation.create({
       data: {
-        ...(data.lang !== undefined ? { lang: data.lang } : {}),
-        ...(data.name !== undefined ? { name: data.name } : {}),
-        ...(data.data !== undefined ? { data: data.data } : {}),
-        ...(data.storeId !== undefined ? { storeId: data.storeId } : {}),
-        ...(data.active !== undefined ? { active: data.active } : {}),
+        menuId: master.id,
+        langId: language.id,
+        lang: data.lang,
+        name: data.name,
+        data: data.data,
+        isLangRef: true, // Translated reference
       },
     });
 
     await AuditService.log({
       actorId,
-      action: "app_menu.update",
+      action: "app_menu.add_translation",
       targetType: "app_menu",
-      targetId: existing.id,
-      metadata: { old: { name: existing.name }, new: { name: updated.name } },
+      targetId: master.id,
+      metadata: { code: master.code, lang: translation.lang },
     });
 
-    return updated;
+    return translation;
   }
 
-  async delete(idOrCode: string, actorId?: string): Promise<void> {
-    const existing = await this.findExistingByIdOrCode(idOrCode);
-    if (!existing) {
+  async update(
+    idOrCode: string,
+    storeId: string | null,
+    data: UpdateAppMenuInput,
+    actorId?: string,
+  ) {
+    const masterWhere = isUuid(idOrCode)
+      ? { id: idOrCode }
+      : { code: idOrCode, storeId: storeId ?? null };
+
+    const master = await this.prisma.appMenu.findFirst({
+      where: masterWhere,
+      include: {
+        translations: true,
+      },
+    });
+    if (!master) {
       throw AppError.notFound(`App menu '${idOrCode}' not found.`);
     }
 
-    await this.prisma.appMenu.delete({ where: { id: existing.id } });
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // 1. Update master fields if provided
+      const masterUpdates: Record<string, unknown> = {};
+      if (data.active !== undefined) masterUpdates.active = data.active;
+      if (data.storeId !== undefined) masterUpdates.storeId = data.storeId;
+      if (data.code !== undefined) masterUpdates.code = data.code;
+
+      let updatedMaster = master;
+      if (Object.keys(masterUpdates).length > 0) {
+        updatedMaster = await tx.appMenu.update({
+          where: { id: master.id },
+          data: masterUpdates,
+          include: { translations: true },
+        });
+      }
+
+      // 2. Update translation fields if provided
+      if (data.name !== undefined || data.data !== undefined) {
+        let targetLangCode = data.lang;
+        if (!targetLangCode) {
+          const originalTrans = master.translations.find((t) => !t.isLangRef);
+          targetLangCode = originalTrans?.lang ?? "vi";
+        }
+
+        const language = await tx.language.findUnique({
+          where: { code: targetLangCode },
+        });
+        if (!language) {
+          throw AppError.badRequest(
+            `Language '${targetLangCode}' is not supported.`,
+          );
+        }
+
+        const transUpdates: Record<string, unknown> = {};
+        if (data.name !== undefined) transUpdates.name = data.name;
+        if (data.data !== undefined) transUpdates.data = data.data;
+
+        await tx.appMenuTranslation.upsert({
+          where: {
+            menuId_lang: {
+              menuId: master.id,
+              lang: targetLangCode,
+            },
+          },
+          update: transUpdates,
+          create: {
+            menuId: master.id,
+            langId: language.id,
+            lang: targetLangCode,
+            name: data.name ?? "",
+            data: data.data ?? "[]",
+            isLangRef: targetLangCode !== "vi",
+          },
+        });
+      }
+
+      return updatedMaster;
+    });
+
+    const responseLang = data.lang ??
+      master.translations.find((t) => !t.isLangRef)?.lang ?? "vi";
+    const finalMenu = await this.findById(updated.id, responseLang);
+
+    await AuditService.log({
+      actorId,
+      action: "app_menu.update",
+      targetType: "app_menu",
+      targetId: master.id,
+      metadata: { old: { code: master.code }, new: { code: finalMenu.code } },
+    });
+
+    return finalMenu;
+  }
+
+  async delete(
+    idOrCode: string,
+    storeId: string | null,
+    actorId?: string,
+  ): Promise<void> {
+    const masterWhere = isUuid(idOrCode)
+      ? { id: idOrCode }
+      : { code: idOrCode, storeId: storeId ?? null };
+
+    const master = await this.prisma.appMenu.findFirst({
+      where: masterWhere,
+    });
+    if (!master) {
+      throw AppError.notFound(`App menu '${idOrCode}' not found.`);
+    }
+
+    await this.prisma.appMenu.delete({ where: { id: master.id } });
 
     await AuditService.log({
       actorId,
       action: "app_menu.delete",
       targetType: "app_menu",
-      targetId: existing.id,
-      metadata: { code: existing.code, name: existing.name },
+      targetId: master.id,
+      metadata: { code: master.code },
     });
   }
 }

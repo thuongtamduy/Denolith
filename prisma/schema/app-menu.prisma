@@ -1,11 +1,10 @@
 model AppMenu {
-  id        String    @id @default(uuid()) @db.Uuid
-  code      String    @unique
-  lang      String    @default("vi") // Ngôn ngữ: vi, en...
-  name      String
-  data      String    @db.Text // JSON string chứa cấu trúc menu
-  storeId   String?   @map("store_id") // ID của store (nếu multi-tenant)
-  active    Boolean   @default(true)
+  id      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code    String
+  storeId String? @map("store_id") @db.Uuid // ID của store (nếu multi-tenant)
+  active  Boolean @default(true)
+
+  // 7 standard fields for Audit & Provenance
   createdAt DateTime  @default(now()) @map("created_at")
   createdBy String?   @map("created_by") @db.Uuid
   updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
@@ -14,9 +13,39 @@ model AppMenu {
   deletedAt DateTime? @map("deleted_at")
   deletedBy String?   @map("deleted_by") @db.Uuid
 
+  translations AppMenuTranslation[]
+
+  @@unique([code, storeId])
   @@index([code])
-  @@index([lang])
   @@index([storeId])
   @@index([active])
   @@map("app_menus")
+}
+
+model AppMenuTranslation {
+  id     String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  menuId String  @map("menu_id") @db.Uuid
+  menu   AppMenu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  langId   String   @map("lang_id") @db.Uuid
+  language Language @relation(fields: [langId], references: [id])
+
+  lang      String  @db.VarChar(10) // e.g. "vi", "en", denormalized for speed
+  name      String  @db.VarChar(200)
+  data      String  @db.Text // JSON string chứa cấu trúc menu
+  isLangRef Boolean @default(false) @map("is_lang_ref") // true nếu là bản dịch tham chiếu, false nếu là bản ghi gốc
+
+  // 7 standard fields for Audit & Provenance
+  createdAt DateTime  @default(now()) @map("created_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deleted   Boolean   @default(false)
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") @db.Uuid
+
+  @@unique([menuId, lang])
+  @@index([menuId])
+  @@index([lang])
+  @@map("app_menu_translations")
 }

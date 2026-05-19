@@ -148,15 +148,21 @@ Khai báo API endpoints, tích hợp OpenAPI và Middleware.
      (không có prefix version, nằm ở root `/`):
      `router.route("/<module_names>", createPublic<Module>Routes(container.<module>Service));`
 
-## Bước 10: Format Code & Kiểm Tra
+## Bước 10: Format Code, Fix Lint & Kiểm Tra (BẮT BUỘC)
 
-Chạy format code tổng thể và bật server test:
+Sau khi hoàn thành phát triển module, việc chạy định dạng và kiểm tra lỗi cú
+pháp là **BẮT BUỘC** để đảm bảo code sạch, không chứa kiểu `any` lỏng lẻo và
+vượt qua các tiêu chuẩn kiểm thử tự động của hệ thống.
 
 ```bash
-# Sửa tự động các lỗi cú pháp, lint, format
+# 1. Chạy định dạng, kiểm tra và sửa tự động các lỗi cú pháp, lint, format
 deno task format
 
-# Chạy server
+# 2. BẮT BUỘC: Nếu Deno báo lỗi linter hoặc type check, hãy sửa triệt để 
+# (ví dụ: tránh dùng kiểu 'any', dùng đúng type cụ thể hoặc Record<string, unknown>).
+# Chạy lại lệnh trên cho đến khi hoàn toàn thành công (Exit code: 0).
+
+# 3. Chạy server thử nghiệm
 deno task dev
 ```
 

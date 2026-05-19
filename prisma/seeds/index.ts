@@ -6,6 +6,7 @@ import { seedRoles } from "./role.seed.ts";
 import { seedUsers } from "./user.seed.ts";
 import { seedPermissions } from "./permission.seed.ts";
 import { seedProfiles } from "./profile.seed.ts";
+import { seedLanguages } from "./language.seed.ts";
 import { seedAppMenus } from "./app-menu.seed.ts";
 import { seedStores } from "./store.seed.ts";
 import { seedUserStores } from "./user-store.seed.ts";
@@ -34,6 +35,7 @@ async function main() {
   await seedUsers(prisma);
   await seedPermissions(prisma);
   await seedProfiles(prisma);
+  await seedLanguages(prisma);
   await seedAppMenus(prisma);
   await seedStores(prisma);
   await seedUserStores(prisma);

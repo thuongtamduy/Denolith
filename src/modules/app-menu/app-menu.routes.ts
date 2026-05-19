@@ -10,6 +10,8 @@ import type { AppMenuService } from "./app-menu.service.ts";
 import {
   type CreateAppMenuInput,
   createAppMenuSchema,
+  type CreateAppMenuTranslationInput,
+  createAppMenuTranslationSchema,
   type UpdateAppMenuInput,
   updateAppMenuSchema,
 } from "./app-menu.validation.ts";
@@ -75,8 +77,42 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
   );
 
   /**
+   * GET /v1/app-menus/:idOrCode/translations
+   * Lấy toàn bộ danh sách bản dịch của 1 menu (dành cho Admin quản trị).
+   */
+  router.get(
+    "/:idOrCode/translations",
+    describeRoute({
+      tags: ["App Menus"],
+      summary: "Get All Translations of App Menu",
+      responses: {
+        200: { description: "Get all translations successfully" },
+        401: { description: "Unauthorized" },
+        404: { description: "App menu not found" },
+        500: { description: "Internal server error" },
+      },
+    }),
+    requirePermission("app_menu.read"),
+    async (c) => {
+      const idOrCode = c.req.param("idOrCode")!;
+      const clientCtx = c.get("clientContext");
+      const payload = c.get("jwtPayload");
+
+      let forcedStoreId: string | null = null;
+      if (payload.tier !== "owner") {
+        forcedStoreId = clientCtx.storeId ?? null;
+      } else {
+        forcedStoreId = c.req.query("storeId") ?? clientCtx.storeId ?? null;
+      }
+
+      const result = await service.findAllTranslations(idOrCode, forcedStoreId);
+      return c.json({ success: true, data: result });
+    },
+  );
+
+  /**
    * GET /v1/app-menus/:idOrCode
-   * Lấy chi tiết 1 menu (bao gồm data cấu trúc đầy đủ).
+   * Lấy chi tiết 1 menu (bao gồm data cấu trúc tương ứng với ngôn ngữ yêu cầu).
    */
   router.get(
     "/:idOrCode",
@@ -93,16 +129,28 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
     requirePermission("app_menu.read"),
     async (c) => {
       const idOrCode = c.req.param("idOrCode")!;
+      const clientCtx = c.get("clientContext");
+      const payload = c.get("jwtPayload");
+
+      let forcedStoreId: string | null = null;
+      if (payload.tier !== "owner") {
+        forcedStoreId = clientCtx.storeId ?? null;
+      } else {
+        forcedStoreId = c.req.query("storeId") ?? clientCtx.storeId ?? null;
+      }
+
+      const lang = c.req.query("lang") ?? clientCtx.lang ?? "vi";
+
       const menu = isUuid(idOrCode)
-        ? await service.findById(idOrCode)
-        : await service.findByCode(idOrCode);
+        ? await service.findById(idOrCode, lang)
+        : await service.findByCode(idOrCode, forcedStoreId, lang);
       return c.json({ success: true, data: menu });
     },
   );
 
   /**
    * POST /v1/app-menus
-   * Tạo menu mới.
+   * Tạo menu mới kèm ngôn ngữ gốc đầu tiên.
    */
   router.post(
     "/",
@@ -123,12 +171,20 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
       const body = c.req.valid("json") as CreateAppMenuInput;
       const actorId = c.get("jwtPayload").id;
       const clientCtx = c.get("clientContext");
+      const payload = c.get("jwtPayload");
+
+      let forcedStoreId = body.storeId;
+      if (payload.tier !== "owner") {
+        forcedStoreId = clientCtx.storeId;
+      } else {
+        forcedStoreId = body.storeId ?? clientCtx.storeId;
+      }
 
       // Bổ sung lang/storeId từ header nếu client không gửi trong body
       const inputData = {
         ...body,
         lang: body.lang ?? clientCtx.lang,
-        storeId: body.storeId ?? clientCtx.storeId,
+        storeId: forcedStoreId,
       };
 
       const menu = await service.create(inputData, actorId);
@@ -139,8 +195,53 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
   );
 
   /**
+   * POST /v1/app-menus/:idOrCode/translations
+   * Bổ sung bản dịch mới cho menu đã tồn tại.
+   */
+  router.post(
+    "/:idOrCode/translations",
+    describeRoute({
+      tags: ["App Menus"],
+      summary: "Add App Menu Translation",
+      responses: {
+        201: { description: "Translation added successfully" },
+        400: { description: "Bad request or validation error" },
+        401: { description: "Unauthorized" },
+        404: { description: "App menu not found" },
+        409: { description: "Translation already exists" },
+        500: { description: "Internal server error" },
+      },
+    }),
+    requirePermission("app_menu.update"),
+    validateJson(createAppMenuTranslationSchema),
+    async (c) => {
+      const idOrCode = c.req.param("idOrCode")!;
+      const body = c.req.valid("json") as CreateAppMenuTranslationInput;
+      const actorId = c.get("jwtPayload").id;
+      const clientCtx = c.get("clientContext");
+      const payload = c.get("jwtPayload");
+
+      let forcedStoreId: string | null = null;
+      if (payload.tier !== "owner") {
+        forcedStoreId = clientCtx.storeId ?? null;
+      } else {
+        forcedStoreId = c.req.query("storeId") ?? clientCtx.storeId ?? null;
+      }
+
+      const translation = await service.addTranslation(
+        idOrCode,
+        forcedStoreId,
+        body,
+        actorId,
+      );
+
+      return c.json({ success: true, data: translation }, 201);
+    },
+  );
+
+  /**
    * PATCH /v1/app-menus/:idOrCode
-   * Cập nhật menu (lang, name, data, storeId, active).
+   * Cập nhật thông số menu (Master / Translation).
    */
   router.patch(
     "/:idOrCode",
@@ -161,15 +262,38 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
       const idOrCode = c.req.param("idOrCode")!;
       const body = c.req.valid("json") as UpdateAppMenuInput;
       const actorId = c.get("jwtPayload").id;
+      const clientCtx = c.get("clientContext");
+      const payload = c.get("jwtPayload");
 
-      const menu = await service.update(idOrCode, body, actorId);
+      let forcedStoreId: string | null = null;
+      if (payload.tier !== "owner") {
+        forcedStoreId = clientCtx.storeId ?? null;
+      } else {
+        forcedStoreId = c.req.query("storeId") ?? clientCtx.storeId ?? null;
+      }
+
+      const inputData: UpdateAppMenuInput = {
+        ...body,
+        lang: body.lang ?? clientCtx.lang,
+      };
+
+      if (payload.tier !== "owner" && body.storeId !== undefined) {
+        inputData.storeId = clientCtx.storeId;
+      }
+
+      const menu = await service.update(
+        idOrCode,
+        forcedStoreId,
+        inputData,
+        actorId,
+      );
       return c.json({ success: true, data: menu });
     },
   );
 
   /**
    * PUT /v1/app-menus/:idOrCode
-   * Cập nhật menu (Full/Alias).
+   * Cập nhật menu (Full).
    */
   router.put(
     "/:idOrCode",
@@ -185,20 +309,43 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
       },
     }),
     requirePermission("app_menu.update"),
-    validateJson(updateAppMenuSchema), // Sử dụng chung schema
+    validateJson(updateAppMenuSchema),
     async (c) => {
       const idOrCode = c.req.param("idOrCode")!;
       const body = c.req.valid("json") as UpdateAppMenuInput;
       const actorId = c.get("jwtPayload").id;
+      const clientCtx = c.get("clientContext");
+      const payload = c.get("jwtPayload");
 
-      const menu = await service.update(idOrCode, body, actorId);
+      let forcedStoreId: string | null = null;
+      if (payload.tier !== "owner") {
+        forcedStoreId = clientCtx.storeId ?? null;
+      } else {
+        forcedStoreId = c.req.query("storeId") ?? clientCtx.storeId ?? null;
+      }
+
+      const inputData: UpdateAppMenuInput = {
+        ...body,
+        lang: body.lang ?? clientCtx.lang,
+      };
+
+      if (payload.tier !== "owner" && body.storeId !== undefined) {
+        inputData.storeId = clientCtx.storeId;
+      }
+
+      const menu = await service.update(
+        idOrCode,
+        forcedStoreId,
+        inputData,
+        actorId,
+      );
       return c.json({ success: true, data: menu });
     },
   );
 
   /**
    * DELETE /v1/app-menus/:idOrCode
-   * Xóa menu.
+   * Xóa menu (và tự động cascade xóa tất cả bản dịch).
    */
   router.delete(
     "/:idOrCode",
@@ -216,8 +363,17 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
     async (c) => {
       const idOrCode = c.req.param("idOrCode")!;
       const actorId = c.get("jwtPayload").id;
+      const clientCtx = c.get("clientContext");
+      const payload = c.get("jwtPayload");
 
-      await service.delete(idOrCode, actorId);
+      let forcedStoreId: string | null = null;
+      if (payload.tier !== "owner") {
+        forcedStoreId = clientCtx.storeId ?? null;
+      } else {
+        forcedStoreId = c.req.query("storeId") ?? clientCtx.storeId ?? null;
+      }
+
+      await service.delete(idOrCode, forcedStoreId, actorId);
       return c.json({
         success: true,
         message: `App menu '${idOrCode}' has been deleted.`,

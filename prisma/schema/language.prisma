@@ -1,0 +1,22 @@
+model Language {
+  id        String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code      String  @unique @db.VarChar(10) // e.g. "vi", "en", "ja"
+  name      String  @db.VarChar(100) // e.g. "Tiếng Việt", "English"
+  active    Boolean @default(true)
+  isDefault Boolean @default(false) @map("is_default")
+
+  // 7 standard fields for Audit & Provenance
+  createdAt DateTime  @default(now()) @map("created_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deleted   Boolean   @default(false)
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") @db.Uuid
+
+  appMenuTranslations AppMenuTranslation[]
+
+  @@index([code])
+  @@index([active])
+  @@map("languages")
+}
