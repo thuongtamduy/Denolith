@@ -30,7 +30,9 @@ Tạo file `.prisma` mới trong thư mục `prisma/schema/`.
      gán ngầm bởi Prisma Extension thông qua `requestContextStore`, không cần
      gán thủ công ở Service)._
    - Đánh Index cho các cột hay được tìm kiếm hoặc filter.
-   - **Hỗ trợ Multi-Store**: Nếu bảng dữ liệu cần chia theo từng cửa hàng, bắt buộc thêm cột `storeId String? @map("store_id") @db.Uuid` và đánh index `@@index([storeId])`.
+   - **Hỗ trợ Multi-Store**: Nếu bảng dữ liệu cần chia theo từng cửa hàng, bắt
+     buộc thêm cột `storeId String? @map("store_id") @db.Uuid` và đánh index
+     `@@index([storeId])`.
 
 ## Bước 2: Format & Tạo Migration
 
@@ -115,9 +117,14 @@ Khai báo API endpoints, tích hợp OpenAPI và Middleware.
    `requestBody.example` nếu validation schema đã rõ ràng).
 4. **Validation**: Dùng `validateJson(...)` và `validateQuery(...)`.
 5. **Caching (Tùy chọn)**: Dùng `cacheResponse(giây)` cho các GET endpoints.
-6. **Bảo mật Multi-Store Context (x-api-key)**: Nếu module có chứa dữ liệu phân mảnh theo cửa hàng (`storeId`):
-   - **GET List**: Ép buộc dùng `clientCtx.storeId` làm tham số filter nếu `payload.tier !== "owner"` (tuyệt đối không cho phép query tự do qua URL `?storeId=...`). Owner có quyền không truyền hoặc truyền tự do.
-   - **POST/PUT/PATCH**: Bổ sung `storeId: body.storeId ?? clientCtx.storeId` vào `inputData` để dữ liệu tự động gắn chặt vào cửa hàng mà nhân viên đang thao tác.
+6. **Bảo mật Multi-Store Context (x-api-key)**: Nếu module có chứa dữ liệu phân
+   mảnh theo cửa hàng (`storeId`):
+   - **GET List**: Ép buộc dùng `clientCtx.storeId` làm tham số filter nếu
+     `payload.tier !== "owner"` (tuyệt đối không cho phép query tự do qua URL
+     `?storeId=...`). Owner có quyền không truyền hoặc truyền tự do.
+   - **POST/PUT/PATCH**: Bổ sung `storeId: body.storeId ?? clientCtx.storeId`
+     vào `inputData` để dữ liệu tự động gắn chặt vào cửa hàng mà nhân viên đang
+     thao tác.
 
 ## Bước 8: Đăng ký Dependency Injection (DI Container)
 

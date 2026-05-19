@@ -57,7 +57,9 @@ export const authMiddleware = async (c: Context, next: Next) => {
   const userId = payload.id as string;
 
   // Thử đọc từ Redis cache trước
-  let userStatus: { roleCode: string; tier: string } | null = null;
+  let userStatus:
+    | { roleCode: string; tier: string; storeIds: string[] }
+    | null = null;
 
   if (redisClient) {
     try {
@@ -74,7 +76,11 @@ export const authMiddleware = async (c: Context, next: Next) => {
   if (!userStatus) {
     const user = await prisma.user.findFirst({
       where: { id: userId, deleted: false, active: true },
-      select: { roleCode: true, role: { select: { tier: true } } },
+      select: {
+        roleCode: true,
+        role: { select: { tier: true } },
+        userStores: { select: { storeId: true } },
+      },
     });
 
     if (!user) {
@@ -83,7 +89,11 @@ export const authMiddleware = async (c: Context, next: Next) => {
       );
     }
 
-    userStatus = { roleCode: user.roleCode, tier: user.role.tier };
+    userStatus = {
+      roleCode: user.roleCode,
+      tier: user.role.tier,
+      storeIds: user.userStores.map((us) => us.storeId),
+    };
 
     // Ghi vào Redis cache (TTL 30s) — lần truy vấn tiếp theo sẽ không chạm DB
     if (redisClient) {
@@ -120,6 +130,13 @@ export const authMiddleware = async (c: Context, next: Next) => {
       if (!clientCtx?.storeId) {
         throw AppError.forbidden(
           "Header 'x-api-key' (Store ID) is required to perform this action.",
+        );
+      }
+
+      // Kiểm tra xem Store ID truyền lên có thuộc danh sách cửa hàng của User hay không
+      if (!userStatus.storeIds.includes(clientCtx.storeId)) {
+        throw AppError.forbidden(
+          "You don't have permission to access this store context.",
         );
       }
     }
