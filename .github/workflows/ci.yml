@@ -2,17 +2,52 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: ["**"]
   pull_request:
   workflow_dispatch:
 
-jobs:
-  test:
-    name: Check and test
-    runs-on: ubuntu-latest
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  static-check:
+    name: Static checks
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://denolith:denolith@localhost:5432/denolith_test
+      DIRECT_URL: postgresql://denolith:denolith@localhost:5432/denolith_test
+      DENO_ENV: test
+      FRONTEND_URL: http://localhost:5173
+      JWT_SECRET: ci_jwt_secret_64_chars_minimum_for_denolith_tests_1234567890
+      PORT: 9999
+      STORAGE_TYPE: local
+      TRUST_PROXY: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Check formatting
+        run: deno fmt --check
+
+      - name: Lint
+        run: deno lint
+
+      - name: Generate Prisma client
+        run: deno task prisma:generate
+
+      - name: Type check
+        run: deno task check
+
+  integration-test:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs: static-check
     services:
       postgres:
         image: postgres:16
@@ -47,17 +82,8 @@ jobs:
         with:
           deno-version: v2.x
 
-      - name: Check formatting
-        run: deno fmt --check
-
-      - name: Lint
-        run: deno lint
-
       - name: Generate Prisma client
         run: deno task prisma:generate
-
-      - name: Type check
-        run: deno task check
 
       - name: Apply migrations
         run: deno task migrate

@@ -8,8 +8,12 @@ import type { ApiErrorResponse } from "../types/index.ts";
  * Global Hono error handler.
  */
 export const globalErrorHandler = (err: Error, c: Context) => {
+  const requestId = c.get("requestId") || "unknown-request-id";
+  const method = c.req.method;
+  const path = c.req.path;
+
   if (err instanceof AppError) {
-    logger.warn(`[${err.code}] ${err.message}`);
+    logger.warn(`[${requestId}] [${method} ${path}] [${err.code}] ${err.message}`);
     return c.json<ApiErrorResponse>(
       {
         success: false as const,
@@ -19,7 +23,10 @@ export const globalErrorHandler = (err: Error, c: Context) => {
     );
   }
 
-  logger.error(`[UNHANDLED] ${err.message}`, err.stack);
+  logger.error(
+    `[${requestId}] [${method} ${path}] [UNHANDLED] ${err.message}`,
+    err.stack,
+  );
   return c.json<ApiErrorResponse>(
     {
       success: false as const,

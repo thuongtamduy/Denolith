@@ -5,6 +5,7 @@ import { cors } from "@hono/cors";
 import { secureHeaders } from "@hono/secure-headers";
 import { globalErrorHandler } from "./shared/errors/error.handler.ts";
 import { rateLimiter } from "./shared/middlewares/rate-limit.middleware.ts";
+import { requestIdMiddleware } from "./shared/middlewares/request-id.middleware.ts";
 import { logger } from "./core/logger.ts";
 import { config } from "./core/config.ts";
 import { prisma } from "./core/database.ts";
@@ -15,6 +16,7 @@ export const createApp = () => {
   const app = new Hono();
   app.onError(globalErrorHandler);
 
+  app.use("*", requestIdMiddleware);
   app.use("*", secureHeaders());
   app.use(
     "*",

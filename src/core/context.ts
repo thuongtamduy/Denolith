@@ -47,6 +47,7 @@ export const requestContextStore = new AsyncLocalStorage<RequestContextStore>();
 
 export type AppEnv = {
   Variables: {
+    requestId: string;
     // Được set bởi authMiddleware sau khi xác thực token thành công
     jwtPayload: JwtPayload;
     // Được set bởi requirePermission() sau khi resolve permissions từ cache/DB
