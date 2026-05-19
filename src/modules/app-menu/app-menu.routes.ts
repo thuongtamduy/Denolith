@@ -15,6 +15,7 @@ import {
 } from "./app-menu.validation.ts";
 import { authMiddleware } from "../../shared/middlewares/auth.middleware.ts";
 import { describeRoute } from "../../shared/utils/openapi.ts";
+import { isUuid } from "../../shared/utils/uuid.ts";
 import * as v from "valibot";
 
 /**
@@ -83,10 +84,7 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
     requirePermission("app_menu.read"),
     async (c) => {
       const idOrCode = c.req.param("idOrCode")!;
-      const isUuid =
-        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
-          .test(idOrCode);
-      const menu = isUuid
+      const menu = isUuid(idOrCode)
         ? await service.findById(idOrCode)
         : await service.findByCode(idOrCode);
       return c.json({ success: true, data: menu });

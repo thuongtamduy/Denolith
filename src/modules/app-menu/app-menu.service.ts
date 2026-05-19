@@ -2,6 +2,7 @@ import type { PrismaClient } from "@db";
 import { AppError } from "../../shared/errors/AppError.ts";
 import { AuditService } from "../../core/audit.ts";
 import type { PaginationParams } from "../../shared/utils/pagination.ts";
+import { isUuid } from "../../shared/utils/uuid.ts";
 import type {
   CreateAppMenuInput,
   UpdateAppMenuInput,
@@ -9,6 +10,11 @@ import type {
 
 export class AppMenuService {
   constructor(private prisma: PrismaClient) {}
+
+  private async findExistingByIdOrCode(idOrCode: string) {
+    const where = isUuid(idOrCode) ? { id: idOrCode } : { code: idOrCode };
+    return await this.prisma.appMenu.findUnique({ where });
+  }
 
   async findMany(
     params: PaginationParams & { storeId?: string; lang?: string },
@@ -95,14 +101,14 @@ export class AppMenuService {
     return menu;
   }
 
-  async update(code: string, data: UpdateAppMenuInput, actorId?: string) {
-    const existing = await this.prisma.appMenu.findUnique({ where: { code } });
+  async update(idOrCode: string, data: UpdateAppMenuInput, actorId?: string) {
+    const existing = await this.findExistingByIdOrCode(idOrCode);
     if (!existing) {
-      throw AppError.notFound(`App menu '${code}' not found.`);
+      throw AppError.notFound(`App menu '${idOrCode}' not found.`);
     }
 
     const updated = await this.prisma.appMenu.update({
-      where: { code },
+      where: { id: existing.id },
       data: {
         ...(data.lang !== undefined ? { lang: data.lang } : {}),
         ...(data.name !== undefined ? { name: data.name } : {}),
@@ -123,13 +129,13 @@ export class AppMenuService {
     return updated;
   }
 
-  async delete(code: string, actorId?: string): Promise<void> {
-    const existing = await this.prisma.appMenu.findUnique({ where: { code } });
+  async delete(idOrCode: string, actorId?: string): Promise<void> {
+    const existing = await this.findExistingByIdOrCode(idOrCode);
     if (!existing) {
-      throw AppError.notFound(`App menu '${code}' not found.`);
+      throw AppError.notFound(`App menu '${idOrCode}' not found.`);
     }
 
-    await this.prisma.appMenu.delete({ where: { code } });
+    await this.prisma.appMenu.delete({ where: { id: existing.id } });
 
     await AuditService.log({
       actorId,
