@@ -11,6 +11,19 @@ if ! docker info > /dev/null 2>&1; then
 fi
 echo "✅ Docker đang hoạt động."
 
+# Kiểm tra Docker Compose
+echo "🐳 Đang kiểm tra Docker Compose..."
+if docker compose version > /dev/null 2>&1; then
+  COMPOSE_CMD="docker compose"
+elif docker-compose --version > /dev/null 2>&1; then
+  COMPOSE_CMD="docker-compose"
+else
+  echo "❌ LỖI NGHIÊM TRỌNG: Không tìm thấy lệnh 'docker compose' hoặc 'docker-compose'!"
+  echo "💡 Gợi ý: Hãy cài đặt Docker Compose. Nếu dùng Colima, bạn có thể chạy 'brew install docker-compose'."
+  exit 1
+fi
+echo "✅ Tìm thấy Docker Compose: $COMPOSE_CMD"
+
 # 1. Kiểm tra và tạo file .env nếu chưa có
 if [ ! -f .env ]; then
   echo "📝 Không tìm thấy file .env. Đang tự động tạo mới..."
@@ -58,7 +71,7 @@ fi
 
 # 2. Khởi động PostgreSQL và Redis
 echo "🐳 Đang khởi động Database và Redis (compose.local.yml)..."
-docker-compose -f compose.local.yml up -d
+$COMPOSE_CMD -f compose.local.yml up -d
 
 # Đợi một chút để Database sẵn sàng kết nối
 echo "⏳ Chờ 3 giây để Database khởi động..."
@@ -67,6 +80,9 @@ sleep 3
 # 3. Chạy Migrate và Seed (chỉ tạo bảng và seed nếu chưa có)
 echo "🛠️ Đang kiểm tra và chạy Database Migrate..."
 deno task migrate
+
+echo "📦 Đang tạo Prisma Client..."
+deno task prisma:generate
 
 echo "🌱 Đang kiểm tra và chạy Seed dữ liệu mẫu..."
 deno task seed

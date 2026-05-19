@@ -7,16 +7,14 @@ monolithic backend framework built on Deno 2.x, Hono, and Prisma 7.
 
 ## ✨ Features
 
-- 🚀 **Ultra-Fast**: Powered by Hono & Deno 2.x.
-- 🛡️ **100% Type-Safe**: From Database (Prisma) to API (Valibot).
-- 🏰 **Modular Architecture**: Domain-driven structure with a Lazy DI Container.
-- 🔐 **Advanced RBAC**: 3-tier Role System (`owner > admin > user`) + Permission
-  Profiles.
-- ☁️ **Background Workers**: Redis-backed async queues and cronjobs.
-- ⚡ **Caching & Rate Limiting**: Atomic Lua-script rate limiting & response
-  caching.
-- 📦 **Multi-Storage**: Supports `local`, `supabase`, and `s3`/MinIO.
-- 📖 **OpenAPI**: Auto-generated Swagger UI integration.
+- 🚀 **Fast Runtime**: Powered by Hono + Deno 2.x.
+- 🛡️ **Type-Safe API Layer**: Valibot validation + typed service architecture.
+- 🏰 **Modular Architecture**: Domain modules with lazy DI container.
+- 🔐 **RBAC + Permissions**: 3-tier roles (`owner > admin > user`) + permission profiles + user overrides.
+- ☁️ **Background Workers**: Redis queue with memory fallback + cronjobs.
+- ⚡ **Caching & Rate Limiting**: Redis-first, in-memory fallback.
+- 📦 **Storage Integrations**: `local`, `supabase`, `s3`/MinIO configs available.
+- 📖 **OpenAPI**: Swagger UI endpoint auto-generated from routes.
 
 ---
 
@@ -40,6 +38,8 @@ Run the automated setup script:
 
 👉 **API Docs:** `http://localhost:9999/swagger`
 
+👉 **Health Check:** `GET http://localhost:9999/`
+
 ---
 
 ## 🛠️ Deployment & Docker
@@ -56,8 +56,12 @@ Run the automated setup script:
 - `deno task prisma:generate` - Generate Prisma Client.
 - `deno task migrate:dev` - Create and apply new database migrations.
 - `deno task migrate` - Apply pending migrations (Production).
+- `deno task migrate:status` - Show migration status.
+- `deno task migrate:reset` - Reset database (dev use only).
 - `deno task seed` - Seed database.
-- `deno task format` - Format and lint code.
+- `deno task test:integration` - Run integration test suite.
+- `deno task check` - Type-check entrypoint.
+- `deno task format` - Format, lint, and refresh Prisma artifacts.
 - `deno task compile` - Compile application to standalone binary.
 
 ---
@@ -108,12 +112,34 @@ deno task start
 
 ---
 
+## 🌐 API Route Map
+
+Current route mounting in code:
+
+- Public routes:
+  - `POST /auth/register`
+  - `POST /auth/login`
+  - `GET /users`
+  - `GET /users/:id`
+- Protected routes under `/v1`:
+  - `POST /v1/auth/refresh`
+  - `POST /v1/auth/logout`
+  - `GET /v1/users/me` + admin user management endpoints
+  - `GET/POST/PATCH/DELETE /v1/permissions/*`
+  - `GET/POST/PATCH/DELETE /v1/roles/*`
+  - `GET/POST/PATCH/DELETE /v1/app-menus/*`
+  - `GET/POST/PATCH/DELETE /v1/stores/*`
+- Swagger:
+  - `GET /swagger`
+  - `GET /swagger/openapi.json`
+
 ## ⚙️ Core Structure
 
 - `prisma/` - Database schema, migrations, and seed scripts.
 - `src/core/` - Core infrastructure (Database, Redis, Queue, Cron, Mail,
   Storage, DI).
-- `src/modules/` - Domain logic and endpoints (Auth, User, Role, Permission).
+- `src/modules/` - Domain logic and endpoints (`auth`, `user`, `permission`,
+  `role`, `app-menu`, `store`).
 - `src/shared/` - Middlewares, Utils, and Error handlers.
 - `main.ts` - Application entrypoint.
 
