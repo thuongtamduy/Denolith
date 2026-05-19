@@ -2,8 +2,8 @@ services:
   prometheus:
     image: prom/prometheus:latest
     restart: always
-    ports:
-      - "9090:9090"
+    #    ports:
+    #      - "9090:9090"
     volumes:
       - ./docs/observability/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./docs/observability/prometheus-alert-rules.yml:/etc/prometheus/prometheus-alert-rules.yml
@@ -33,8 +33,8 @@ services:
     restart: always
     environment:
       DATA_SOURCE_NAME: "postgresql://denolith:denolith_password@postgres:5432/denolith_db?sslmode=disable"
-    ports:
-      - "9187:9187"
+    #    ports:
+    #      - "9187:9187"
     networks:
       - denolith_network
 
@@ -43,16 +43,16 @@ services:
     restart: always
     environment:
       - REDIS_ADDR=redis:6379
-    ports:
-      - "9121:9121"
+    #    ports:
+    #      - "9121:9121"
     networks:
       - denolith_network
 
   alertmanager:
     image: prom/alertmanager:latest
     restart: always
-    ports:
-      - "9093:9093"
+    #    ports:
+    #      - "9093:9093"
     volumes:
       - ./docs/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml
     networks:
@@ -61,8 +61,8 @@ services:
   node-exporter:
     image: prom/node-exporter:latest
     restart: always
-    ports:
-      - "9100:9100"
+    #    ports:
+    #      - "9100:9100"
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -77,8 +77,8 @@ services:
   loki:
     image: grafana/loki:latest
     restart: always
-    ports:
-      - "3100:3100"
+    #    ports:
+    #      - "3100:3100"
     volumes:
       - ./docs/observability/loki-config.yml:/etc/loki/local-config.yaml
     networks:
@@ -97,8 +97,8 @@ services:
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     restart: always
-    ports:
-      - "8080:8080"
+    #    ports:
+    #      - "8080:8080"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
