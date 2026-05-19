@@ -6,7 +6,8 @@ import type { MiddlewareHandler } from "@hono/core";
  * between npm:hono and jsr:@hono/hono.
  */
 export const describeRoute = (
-  options: Parameters<typeof openapiDescribeRoute>[0],
+  // deno-lint-ignore no-explicit-any
+  options: any,
 ): MiddlewareHandler => {
   // deno-lint-ignore no-explicit-any
   return openapiDescribeRoute(options) as any;

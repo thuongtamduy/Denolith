@@ -1,0 +1,65 @@
+model MediaFolder {
+  id       String  @id @default(uuid()) @db.Uuid
+  name     String
+  parentId String? @map("parent_id") @db.Uuid
+  storeId  String? @map("store_id") @db.Uuid
+  path     String  @default("/") // Root folder has "/", children have "/parent_name/"
+
+  parent   MediaFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id])
+  children MediaFolder[] @relation("FolderHierarchy")
+  files    MediaFile[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deleted   Boolean   @default(false)
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") @db.Uuid
+
+  @@index([storeId])
+  @@index([parentId])
+  @@map("media_folders")
+}
+
+model MediaFile {
+  id       String  @id @default(uuid()) @db.Uuid
+  folderId String? @map("folder_id") @db.Uuid
+  storeId  String? @map("store_id") @db.Uuid
+
+  // Thông tin cơ bản
+  fileName  String @map("file_name")
+  mimeType  String @map("mime_type")
+  sizeBytes Int    @map("size_bytes")
+
+  // Thông tin lưu trữ (local, s3, supabase)
+  storageType String  @default("local") @map("storage_type")
+  storagePath String  @map("storage_path")
+  publicUrl   String? @map("public_url")
+
+  // Chuẩn SEO tốt (alt, title, description)
+  altText     String? @map("alt_text")
+  title       String?
+  description String?
+  width       Int?
+  height      Int?
+
+  // Hỗ trợ cache các phiên bản scale ảnh
+  // Lưu dạng JSON: { "100x100_cover": "url", "500x500_contain": "url" }
+  variants Json? @default("{}")
+
+  folder MediaFolder? @relation(fields: [folderId], references: [id])
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deleted   Boolean   @default(false)
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") @db.Uuid
+
+  @@index([storeId])
+  @@index([folderId])
+  @@index([storageType])
+  @@map("media_files")
+}

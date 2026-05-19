@@ -65,11 +65,27 @@ Deno.test({
       const loginBody = await readJson(loginResponse);
       const adminAccessToken = String(loginBody.data?.accessToken);
 
+      const dummyStore = await ctx.prisma.store.create({
+        data: {
+          code: `STORE_DUMMY_${suffix}`,
+          name: "Dummy Store",
+          status: "active",
+        },
+      });
+
+      await ctx.prisma.userStore.create({
+        data: {
+          userId: admin.id,
+          storeId: dummyStore.id,
+        },
+      });
+
       const deniedResponse = await ctx.app.request("/v1/app-menus", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
         },
         body: JSON.stringify({
           code: appMenuCode,
@@ -107,6 +123,7 @@ Deno.test({
         headers: {
           "Content-Type": "application/json",
           ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
         },
         body: JSON.stringify({
           code: appMenuCode,
@@ -125,11 +142,14 @@ Deno.test({
         headers: {
           "Content-Type": "application/json",
           ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
         },
         body: JSON.stringify({ name: "Integration Menu Updated" }),
       });
       assertEquals(updateResponse.status, 200);
     } finally {
+      await ctx.prisma.userStore.deleteMany({});
+      await ctx.prisma.store.deleteMany({});
       await ctx.prisma.appMenu.deleteMany({ where: { code: appMenuCode } });
       await ctx.cleanupUsers();
       await ctx.closeDb();

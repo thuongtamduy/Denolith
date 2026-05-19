@@ -16,6 +16,8 @@ export interface IStorageProvider {
 
   delete(bucket: string, filePath: string): Promise<void>;
 
+  download(bucket: string, filePath: string): Promise<Uint8Array>;
+
   getPresignedPutUrl(
     bucket: string,
     filePath: string,
@@ -64,8 +66,9 @@ export class LocalStorageProvider implements IStorageProvider {
     _mimeType?: string,
   ): Promise<string> {
     const dir = `./uploads/${bucket}`;
-    await Deno.mkdir(dir, { recursive: true });
     const dest = `${dir}/${filePath}`;
+    const parentDir = dest.substring(0, dest.lastIndexOf("/"));
+    await Deno.mkdir(parentDir, { recursive: true });
     await Deno.writeFile(dest, await toUint8Array(fileData));
     logger.info(`✅ Uploaded file to Local Storage: ${dest}`);
     return `/uploads/${bucket}/${filePath}`;
@@ -74,6 +77,10 @@ export class LocalStorageProvider implements IStorageProvider {
   async delete(bucket: string, filePath: string): Promise<void> {
     await Deno.remove(`./uploads/${bucket}/${filePath}`);
     logger.info(`🗑 Deleted from Local Storage: ${bucket}/${filePath}`);
+  }
+
+  download(bucket: string, filePath: string): Promise<Uint8Array> {
+    return Deno.readFile(`./uploads/${bucket}/${filePath}`);
   }
 
   // Local storage không hỗ trợ presigned URL
@@ -145,6 +152,20 @@ export class SupabaseStorageProvider implements IStorageProvider {
     logger.info(`🗑 Deleted from Supabase Storage: ${bucket}/${filePath}`);
   }
 
+  async download(bucket: string, filePath: string): Promise<Uint8Array> {
+    const url = `${this.baseUrl}/storage/v1/object/${bucket}/${filePath}`;
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${this.serviceKey}` },
+    });
+    if (!response.ok) {
+      throw new Error(
+        `Failed to download from Supabase Storage: ${response.statusText}`,
+      );
+    }
+    return new Uint8Array(await response.arrayBuffer());
+  }
+
   // Supabase có API riêng tạo signed URL nếu bucket là private
   async getPresignedPutUrl(
     bucket: string,
@@ -209,6 +230,11 @@ export class S3StorageProvider implements IStorageProvider {
     await client.deleteObject(filePath);
   }
 
+  download(bucket: string, filePath: string): Promise<Uint8Array> {
+    const client = this.getClient(bucket);
+    return client.getObject(filePath);
+  }
+
   getPresignedPutUrl(
     bucket: string,
     filePath: string,
@@ -223,24 +249,24 @@ export class S3StorageProvider implements IStorageProvider {
  * STORAGE SERVICE CHÍNH: Quản lý Strategy Pattern
  */
 export class StorageService {
-  private provider: IStorageProvider;
+  private providers: Record<string, IStorageProvider> = {};
 
   constructor() {
     logger.info(
-      `📦 Initializing Storage Module with type: [${config.storageType}]`,
+      `📦 Initializing Storage Module with default type: [${config.storageType}]`,
     );
-    switch (config.storageType) {
-      case "s3":
-        this.provider = new S3StorageProvider();
-        break;
-      case "supabase":
-        this.provider = new SupabaseStorageProvider();
-        break;
-      case "local":
-      default:
-        this.provider = new LocalStorageProvider();
-        break;
+    this.providers["local"] = new LocalStorageProvider();
+    this.providers["s3"] = new S3StorageProvider();
+    this.providers["supabase"] = new SupabaseStorageProvider();
+  }
+
+  getProvider(storageType?: string): IStorageProvider {
+    const type = storageType || config.storageType || "local";
+    const provider = this.providers[type];
+    if (!provider) {
+      return this.providers["local"];
     }
+    return provider;
   }
 
   upload(
@@ -248,20 +274,43 @@ export class StorageService {
     filePath: string,
     fileData: BodyInit | Uint8Array | Blob | File,
     mimeType?: string,
+    storageType?: string,
   ): Promise<string> {
-    return this.provider.upload(bucket, filePath, fileData, mimeType);
+    return this.getProvider(storageType).upload(
+      bucket,
+      filePath,
+      fileData,
+      mimeType,
+    );
   }
 
-  delete(bucket: string, filePath: string): Promise<void> {
-    return this.provider.delete(bucket, filePath);
+  delete(
+    bucket: string,
+    filePath: string,
+    storageType?: string,
+  ): Promise<void> {
+    return this.getProvider(storageType).delete(bucket, filePath);
+  }
+
+  download(
+    bucket: string,
+    filePath: string,
+    storageType?: string,
+  ): Promise<Uint8Array> {
+    return this.getProvider(storageType).download(bucket, filePath);
   }
 
   getPresignedPutUrl(
     bucket: string,
     filePath: string,
     expiresInSeconds?: number,
+    storageType?: string,
   ): Promise<string> {
-    return this.provider.getPresignedPutUrl(bucket, filePath, expiresInSeconds);
+    return this.getProvider(storageType).getPresignedPutUrl(
+      bucket,
+      filePath,
+      expiresInSeconds,
+    );
   }
 }
 

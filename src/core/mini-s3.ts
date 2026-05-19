@@ -203,6 +203,37 @@ export class MiniS3Client {
   }
 
   /**
+   * Tải object về dưới dạng Uint8Array (Sử dụng AWS Signature V4).
+   */
+  public async getObject(key: string): Promise<Uint8Array> {
+    const url = new URL(`${this.config.endpoint}/${this.config.bucket}/${key}`);
+    const timestamp = new Date();
+
+    const signedHeaders = await this.signV4(
+      "GET",
+      url,
+      {},
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      timestamp,
+    );
+
+    const res = await fetch(url.toString(), {
+      method: "GET",
+      headers: signedHeaders,
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      logger.error(
+        `S3 GetObject Error: ${res.status} ${res.statusText} - ${errorText}`,
+      );
+      throw new Error(`S3 GetObject failed: ${res.statusText}`);
+    }
+
+    return new Uint8Array(await res.arrayBuffer());
+  }
+
+  /**
    * Tạo Presigned URL tạm thời để Frontend upload thẳng lên S3 không qua Backend.
    * Rất hữu ích để giảm tải cho server khi upload file lớn.
    * @param key Đường dẫn file trong bucket

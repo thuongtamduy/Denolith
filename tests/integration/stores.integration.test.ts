@@ -55,11 +55,27 @@ Deno.test({
       const loginBody = await readJson(loginResponse);
       const adminAccessToken = String(loginBody.data?.accessToken);
 
+      const dummyStore = await ctx.prisma.store.create({
+        data: {
+          code: `STORE_DUMMY_${suffix}`,
+          name: "Dummy Store",
+          status: "active",
+        },
+      });
+
+      await ctx.prisma.userStore.create({
+        data: {
+          userId: admin.id,
+          storeId: dummyStore.id,
+        },
+      });
+
       const deniedResponse = await ctx.app.request("/v1/stores", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
         },
         body: JSON.stringify({
           code: storeCode,
@@ -83,6 +99,7 @@ Deno.test({
         headers: {
           "Content-Type": "application/json",
           ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
         },
         body: JSON.stringify({
           code: storeCode,
@@ -95,7 +112,8 @@ Deno.test({
       const storeId = String(createBody.data?.id);
       assert(storeId, "store create should return id");
     } finally {
-      await ctx.prisma.store.deleteMany({ where: { code: storeCode } });
+      await ctx.prisma.userStore.deleteMany({});
+      await ctx.prisma.store.deleteMany({});
       await ctx.cleanupUsers();
       await ctx.closeDb();
     }

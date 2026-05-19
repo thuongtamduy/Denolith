@@ -64,6 +64,27 @@ export const createApp = () => {
   apiRouter.route("/", createApiRouter());
   app.route("/v1", apiRouter);
 
+  // Phục vụ file tĩnh cho Local Storage Uploads
+  app.get("/uploads/*", async (c) => {
+    const path = c.req.path;
+    try {
+      const fileData = await Deno.readFile(`.${path}`);
+      const ext = path.split(".").pop()?.toLowerCase() || "";
+      let contentType = "application/octet-stream";
+      if (ext === "jpg" || ext === "jpeg") contentType = "image/jpeg";
+      else if (ext === "png") contentType = "image/png";
+      else if (ext === "gif") contentType = "image/gif";
+      else if (ext === "webp") contentType = "image/webp";
+      else if (ext === "svg") contentType = "image/svg+xml";
+      else if (ext === "pdf") contentType = "application/pdf";
+
+      c.header("Content-Type", contentType);
+      return c.body(fileData);
+    } catch {
+      return c.text("File not found", 404);
+    }
+  });
+
   app.get(
     "/swagger",
     // deno-lint-ignore no-explicit-any

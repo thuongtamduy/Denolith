@@ -67,8 +67,26 @@ Deno.test({
       const loginBody = await readJson(loginResponse);
       adminAccessToken = String(loginBody.data?.accessToken);
 
+      const dummyStore = await ctx.prisma.store.create({
+        data: {
+          code: `STORE_DUMMY_${suffix}`,
+          name: "Dummy Store",
+          status: "active",
+        },
+      });
+
+      await ctx.prisma.userStore.create({
+        data: {
+          userId: admin.id,
+          storeId: dummyStore.id,
+        },
+      });
+
       const deniedResponse = await ctx.app.request("/v1/permissions", {
-        headers: bearer(adminAccessToken),
+        headers: {
+          ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
+        },
       });
       assertEquals(deniedResponse.status, 403);
 
@@ -86,6 +104,7 @@ Deno.test({
         headers: {
           "Content-Type": "application/json",
           ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
         },
         body: JSON.stringify({
           name: profileName,
@@ -105,12 +124,15 @@ Deno.test({
           headers: {
             "Content-Type": "application/json",
             ...bearer(adminAccessToken),
+            "x-api-key": dummyStore.id,
           },
           body: JSON.stringify({ granted: true }),
         },
       );
       assertEquals(setCodeResponse.status, 200);
     } finally {
+      await ctx.prisma.userStore.deleteMany({});
+      await ctx.prisma.store.deleteMany({});
       await ctx.prisma.permissionProfile.deleteMany({
         where: { name: { in: [profileName, `${profileName} Updated`] } },
       });

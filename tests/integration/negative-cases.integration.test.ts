@@ -69,12 +69,28 @@ Deno.test({
       const loginBody = await readJson(loginResponse);
       const adminAccessToken = String(loginBody.data?.accessToken);
 
+      const dummyStore = await ctx.prisma.store.create({
+        data: {
+          code: `STORE_DUMMY_${suffix}`,
+          name: "Dummy Store",
+          status: "active",
+        },
+      });
+
+      await ctx.prisma.userStore.create({
+        data: {
+          userId: admin.id,
+          storeId: dummyStore.id,
+        },
+      });
+
       // 403: missing permissions.manage
       const deniedRoleCreate = await ctx.app.request("/v1/roles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
         },
         body: JSON.stringify({
           code: roleCode,
@@ -101,6 +117,7 @@ Deno.test({
           headers: {
             "Content-Type": "application/json",
             ...bearer(adminAccessToken),
+            "x-api-key": dummyStore.id,
           },
           body: JSON.stringify({ name: "Role Missing" }),
         },
@@ -113,6 +130,7 @@ Deno.test({
         headers: {
           "Content-Type": "application/json",
           ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
         },
         body: JSON.stringify({
           code: roleCode,
@@ -126,6 +144,7 @@ Deno.test({
         headers: {
           "Content-Type": "application/json",
           ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
         },
         body: JSON.stringify({
           code: roleCode,
@@ -146,7 +165,10 @@ Deno.test({
 
       // 400: invalid UUID
       const invalidStoreId = await ctx.app.request("/v1/stores/not-a-uuid", {
-        headers: bearer(adminAccessToken),
+        headers: {
+          ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
+        },
       });
       assertEquals(invalidStoreId.status, 400);
 
@@ -156,6 +178,7 @@ Deno.test({
         headers: {
           "Content-Type": "application/json",
           ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
         },
         body: JSON.stringify({
           code: storeCode,
@@ -169,6 +192,7 @@ Deno.test({
         headers: {
           "Content-Type": "application/json",
           ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
         },
         body: JSON.stringify({
           code: storeCode,
@@ -193,6 +217,7 @@ Deno.test({
         headers: {
           "Content-Type": "application/json",
           ...bearer(adminAccessToken),
+          "x-api-key": dummyStore.id,
         },
         body: JSON.stringify({
           code: "invalid_lowercase_code",
@@ -205,6 +230,8 @@ Deno.test({
       assertEquals(invalidMenuCreate.status, 400);
       assertEquals(invalidMenuBody.error?.code, "BAD_REQUEST");
     } finally {
+      await ctx.prisma.userStore.deleteMany({});
+      await ctx.prisma.store.deleteMany({});
       await Promise.all([
         ctx.prisma.role.deleteMany({ where: { code: roleCode } }),
         ctx.prisma.store.deleteMany({ where: { code: storeCode } }),

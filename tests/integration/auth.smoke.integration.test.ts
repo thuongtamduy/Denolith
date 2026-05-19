@@ -59,6 +59,25 @@ Deno.test({
       const accessToken = String(refreshBody.data?.accessToken ?? "");
       assert(accessToken, "refresh should return access token");
 
+      const store = await ctx.prisma.store.create({
+        data: {
+          code: `STORE_SMOKE_${suffix}`,
+          name: "Smoke Store",
+          status: "active",
+        },
+      });
+
+      const userDb = await ctx.prisma.user.findUnique({
+        where: { email: ctx.registeredEmail },
+      });
+
+      await ctx.prisma.userStore.create({
+        data: {
+          userId: userDb!.id,
+          storeId: store.id,
+        },
+      });
+
       const meResponse = await ctx.app.request("/v1/users/me", {
         headers: bearer(accessToken),
       });
@@ -66,6 +85,8 @@ Deno.test({
       assertEquals(meResponse.status, 200);
       assertEquals(meBody.success, true);
     } finally {
+      await ctx.prisma.userStore.deleteMany({});
+      await ctx.prisma.store.deleteMany({});
       await ctx.cleanupUsers();
       await ctx.closeDb();
     }

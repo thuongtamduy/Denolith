@@ -5,6 +5,7 @@ import { PermissionService } from "../modules/permission/permission.service.ts";
 import { RoleService } from "../modules/role/role.service.ts";
 import { AppMenuService } from "../modules/app-menu/app-menu.service.ts";
 import { StoreService } from "../modules/store/store.service.ts";
+import { MediaService } from "../modules/media/media.service.ts";
 
 // Lightweight Lazy Dependency Injection Container (10/10 Pattern)
 class DIContainer {
@@ -14,6 +15,7 @@ class DIContainer {
   private _roleService?: RoleService;
   private _appMenuService?: AppMenuService;
   private _storeService?: StoreService;
+  private _mediaService?: MediaService;
 
   get userService() {
     if (!this._userService) this._userService = new UserService(prisma);
@@ -49,6 +51,13 @@ class DIContainer {
       this._storeService = new StoreService(prisma);
     }
     return this._storeService;
+  }
+
+  get mediaService() {
+    if (!this._mediaService) {
+      this._mediaService = new MediaService(prisma);
+    }
+    return this._mediaService;
   }
 }
 
