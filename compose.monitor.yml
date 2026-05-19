@@ -1,37 +1,4 @@
 services:
-  postgres:
-    image: postgres:18-alpine
-    restart: always
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: denolith
-      POSTGRES_PASSWORD: denolith_password
-      POSTGRES_DB: denolith_db
-    volumes:
-      - denolith_local_postgres_data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U denolith -d denolith_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7.4.9
-    restart: always
-    ports:
-      - "6379:6379"
-    volumes:
-      - denolith_local_redis_data:/data
-    command: redis-server --save 60 1 --loglevel warning
-    sysctls:
-      - net.core.somaxconn=1024
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   prometheus:
     image: prom/prometheus:latest
     restart: always
@@ -43,6 +10,8 @@ services:
       - denolith_local_prometheus_data:/prometheus
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - denolith_network
 
   grafana:
     image: grafana/grafana:latest
@@ -56,6 +25,8 @@ services:
       - ./docs/observability/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - denolith_network
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:latest
@@ -64,9 +35,8 @@ services:
       DATA_SOURCE_NAME: "postgresql://denolith:denolith_password@postgres:5432/denolith_db?sslmode=disable"
     ports:
       - "9187:9187"
-    depends_on:
-      postgres:
-        condition: service_healthy
+    networks:
+      - denolith_network
 
   redis-exporter:
     image: oliver006/redis_exporter:latest
@@ -75,9 +45,8 @@ services:
       - REDIS_ADDR=redis:6379
     ports:
       - "9121:9121"
-    depends_on:
-      redis:
-        condition: service_healthy
+    networks:
+      - denolith_network
 
   alertmanager:
     image: prom/alertmanager:latest
@@ -86,6 +55,8 @@ services:
       - "9093:9093"
     volumes:
       - ./docs/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    networks:
+      - denolith_network
 
   node-exporter:
     image: prom/node-exporter:latest
@@ -100,6 +71,8 @@ services:
       - '--path.procfs=/host/proc'
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - denolith_network
 
   loki:
     image: grafana/loki:latest
@@ -108,6 +81,8 @@ services:
       - "3100:3100"
     volumes:
       - ./docs/observability/loki-config.yml:/etc/loki/local-config.yaml
+    networks:
+      - denolith_network
 
   promtail:
     image: grafana/promtail:latest
@@ -116,6 +91,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docs/observability/promtail-config.yml:/etc/promtail/config.yml
     command: -config.file=/etc/promtail/config.yml
+    networks:
+      - denolith_network
 
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
@@ -128,9 +105,13 @@ services:
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
+    networks:
+      - denolith_network
 
 volumes:
-  denolith_local_postgres_data:
-  denolith_local_redis_data:
   denolith_local_prometheus_data:
   denolith_local_grafana_data:
+
+networks:
+  denolith_network:
+    name: denolith_network

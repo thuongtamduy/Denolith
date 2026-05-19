@@ -18,11 +18,17 @@ The stack includes:
 
 ## How to Run
 
-All observability services are integrated into the local Docker Compose file. To start them along with your databases, run:
+The infrastructure is separated into two Docker Compose files. To start them, run:
 
-```bash
-docker compose -f compose.local.yml up -d
-```
+1. **Start Databases (Postgres & Redis)**:
+   ```bash
+   docker compose -f compose.db.yml up -d
+   ```
+
+2. **Start Observability Stack**:
+   ```bash
+   docker compose -f compose.monitor.yml up -d
+   ```
 
 ## Metrics Endpoint
 
