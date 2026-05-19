@@ -1,0 +1,21 @@
+model UserStore {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId  String @map("user_id") @db.Uuid
+  storeId String @map("store_id") @db.Uuid
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  createdBy String?   @map("created_by") @db.Uuid
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+  updatedBy String?   @map("updated_by") @db.Uuid
+  deleted   Boolean   @default(false)
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") @db.Uuid
+
+  @@unique([userId, storeId])
+  @@index([userId])
+  @@index([storeId])
+  @@map("user_stores")
+}

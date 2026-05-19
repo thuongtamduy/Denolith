@@ -15,8 +15,12 @@ import { validateUUID } from "../../shared/middlewares/validate-uuid.middleware.
 import { AuditService } from "../../core/audit.ts";
 import { AppError } from "../../shared/errors/AppError.ts";
 import {
+  type AssignStoresInput,
+  assignStoresSchema,
   type CreateUserInput,
   createUserSchema,
+  type UnassignStoresInput,
+  unassignStoresSchema,
   type UpdateUserInput,
   type UpdateUserRoleInput,
   updateUserRoleSchema,
@@ -44,6 +48,15 @@ export const createUserRoutes = (service: UserService) => {
     async (c) => {
       const payload = c.get("jwtPayload");
       const user = await service.findById(payload.id);
+
+      // Nếu không phải owner mà chưa được gán vào store nào thì báo lỗi
+      if (payload.tier !== "owner") {
+        if (!user.userStores || user.userStores.length === 0) {
+          throw AppError.forbidden(
+            "You have not been assigned to any store yet. Please contact your administrator.",
+          );
+        }
+      }
 
       const { container } = await import("../../core/container.ts");
       const permService = container.permissionService;
@@ -262,6 +275,77 @@ export const createUserRoutes = (service: UserService) => {
 
       const user = await service.updateRole(id, body.role, actorId);
       return c.json({ success: true, data: sanitizeUser(user) });
+    },
+  );
+
+  // POST /v1/users/:id/stores — Gắn user vào nhiều store
+  router.post(
+    "/:id/stores",
+    describeRoute({
+      tags: ["Users"],
+      summary: "Assign user to stores",
+      requestBody: {
+        content: {
+          "application/json": {
+            example: {
+              storeIds: [
+                "d8a5996a-3507-4db8-8424-6f913d85d774",
+                "380b2a5d-4f1b-4f91-88df-9c02d189eb81",
+              ],
+            },
+          },
+        },
+      },
+      responses: {
+        200: { description: "User successfully assigned to stores" },
+        400: { description: "Bad request or validation error" },
+        404: { description: "User not found" },
+      },
+    }),
+    validateUUID(),
+    validateJson(assignStoresSchema),
+    async (c) => {
+      const id = c.req.param("id")!;
+      const body = c.req.valid("json") as AssignStoresInput;
+      const actorId = c.get("jwtPayload")?.id;
+
+      const result = await service.assignStores(id, body.storeIds, actorId);
+      return c.json({ success: true, data: result });
+    },
+  );
+
+  // DELETE /v1/users/:id/stores — Gỡ user khỏi store
+  router.delete(
+    "/:id/stores",
+    describeRoute({
+      tags: ["Users"],
+      summary: "Unassign user from stores",
+      requestBody: {
+        content: {
+          "application/json": {
+            example: {
+              storeIds: [
+                "d8a5996a-3507-4db8-8424-6f913d85d774",
+              ],
+            },
+          },
+        },
+      },
+      responses: {
+        200: { description: "User successfully unassigned from stores" },
+        400: { description: "Bad request or validation error" },
+        404: { description: "User not found" },
+      },
+    }),
+    validateUUID(),
+    validateJson(unassignStoresSchema),
+    async (c) => {
+      const id = c.req.param("id")!;
+      const body = c.req.valid("json") as UnassignStoresInput;
+      const actorId = c.get("jwtPayload")?.id;
+
+      const result = await service.unassignStores(id, body.storeIds, actorId);
+      return c.json({ success: true, data: result });
     },
   );
 

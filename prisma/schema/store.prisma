@@ -17,6 +17,8 @@ model Store {
   deletedAt DateTime? @map("deleted_at")
   deletedBy String?   @map("deleted_by") @db.Uuid
 
+  userStores UserStore[]
+
   @@index([code])
   @@map("stores")
 }

@@ -8,7 +8,7 @@ export const phoneSchema = v.pipe(
   v.string(),
   v.regex(
     /^(0|\+)\d{9,10}$/,
-    "Số điện thoại phải dài 10-11 ký tự và bắt đầu bằng 0 hoặc +",
+    "Invalid phone number format. Length must be 10-11 and start with 0 or +", // Số điện thoại phải dài 10-11 ký tự và bắt đầu bằng 0 hoặc +
   ),
 );
 
@@ -56,3 +56,14 @@ export const updateUserRoleSchema = v.object({
   role: v.pipe(v.string(), v.minLength(3), v.maxLength(50)),
 });
 export type UpdateUserRoleInput = v.InferOutput<typeof updateUserRoleSchema>;
+
+/**
+ * Schema cho gán và gỡ stores của user
+ */
+export const assignStoresSchema = v.object({
+  storeIds: v.array(v.pipe(v.string(), v.uuid("Invalid store ID format"))),
+});
+export type AssignStoresInput = v.InferOutput<typeof assignStoresSchema>;
+
+export const unassignStoresSchema = assignStoresSchema;
+export type UnassignStoresInput = AssignStoresInput;

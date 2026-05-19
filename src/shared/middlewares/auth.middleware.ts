@@ -106,6 +106,25 @@ export const authMiddleware = async (c: Context, next: Next) => {
   // Bước 4: Gán payload vào context để RBAC middleware và handler dùng
   c.set("jwtPayload", payload);
 
+  // Bước 5: Bắt buộc truyền x-api-key (storeId) cho user thường (không phải owner)
+  if (userStatus.tier !== "owner") {
+    const path = c.req.path;
+    // Bỏ qua cho các API không cần context của store
+    const isExcluded = path.endsWith("/auth/logout") ||
+      path.endsWith("/users/me");
+
+    if (!isExcluded) {
+      const clientCtx = c.get("clientContext") as
+        | { storeId?: string }
+        | undefined;
+      if (!clientCtx?.storeId) {
+        throw AppError.forbidden(
+          "Header 'x-api-key' (Store ID) is required to perform this action.",
+        );
+      }
+    }
+  }
+
   await requestContextStore.run({ actorId: userId }, async () => {
     await next();
   });

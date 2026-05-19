@@ -60,7 +60,21 @@ export class UserService {
   async findById(id: string) {
     const user = await this.prisma.user.findFirst({
       where: { id, deleted: false },
-      include: { role: { select: { tier: true } } },
+      include: {
+        role: { select: { tier: true } },
+        userStores: {
+          include: {
+            store: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+                status: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!user) throw AppError.notFound(`User with id ${id} not found`);
@@ -128,6 +142,95 @@ export class UserService {
         `Role '${roleCode}' does not exist or user not found.`,
       );
     }
+  }
+
+  async assignStores(userId: string, storeIds: string[], actorId?: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deleted: false },
+    });
+    if (!user) throw AppError.notFound(`User with id ${userId} not found`);
+
+    const existingStores = await this.prisma.store.findMany({
+      where: { id: { in: storeIds }, deleted: false },
+      select: { id: true },
+    });
+    const validStoreIds = existingStores.map((s) => s.id);
+
+    if (validStoreIds.length === 0) {
+      throw AppError.badRequest(
+        "None of the provided store IDs are valid or exist.",
+      );
+    }
+
+    const existingAssignments = await this.prisma.userStore.findMany({
+      where: { userId, storeId: { in: validStoreIds } },
+      select: { storeId: true },
+    });
+    const assignedStoreIds = new Set(
+      existingAssignments.map((ea) => ea.storeId),
+    );
+
+    const newStoreIds = validStoreIds.filter((id) => !assignedStoreIds.has(id));
+
+    if (newStoreIds.length === 0) {
+      return {
+        count: 0,
+        message: "All valid stores provided are already assigned to this user",
+      };
+    }
+
+    const dataToInsert = newStoreIds.map((storeId) => ({
+      userId,
+      storeId,
+    }));
+
+    const result = await this.prisma.userStore.createMany({
+      data: dataToInsert,
+      skipDuplicates: true,
+    });
+
+    await AuditService.log({
+      actorId,
+      action: "user.assign_stores",
+      targetType: "user",
+      targetId: userId,
+      metadata: { assignedStoreIds: newStoreIds },
+    });
+
+    return { count: result.count, assigned: newStoreIds };
+  }
+
+  async unassignStores(userId: string, storeIds: string[], actorId?: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, deleted: false },
+    });
+    if (!user) throw AppError.notFound(`User with id ${userId} not found`);
+
+    if (storeIds.length === 0) {
+      return { count: 0, message: "No store IDs provided" };
+    }
+
+    const result = await this.prisma.userStore.deleteMany({
+      where: {
+        userId,
+        storeId: { in: storeIds },
+      },
+    });
+
+    if (result.count > 0) {
+      await AuditService.log({
+        actorId,
+        action: "user.unassign_stores",
+        targetType: "user",
+        targetId: userId,
+        metadata: { unassignedStoreIds: storeIds },
+      });
+    }
+
+    return {
+      count: result.count,
+      message: `Successfully unassigned ${result.count} store(s)`,
+    };
   }
 
   async softDelete(id: string) {
