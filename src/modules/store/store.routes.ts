@@ -37,8 +37,13 @@ export const createStoreRoutes = (service: StoreService) => {
     validateQuery(paginationQuerySchema),
     cacheResponse(60),
     async (c) => {
+      const payload = c.get("jwtPayload");
       const params = extractPagination(c.req.query());
-      const result = await service.findMany(params);
+      const result = await service.findMany({
+        ...params,
+        userId: payload.id as string,
+        tier: payload.tier as string,
+      });
       return c.json({
         success: true,
         data: result.data,

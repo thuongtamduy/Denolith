@@ -54,10 +54,19 @@ export const createAppMenuRoutes = (service: AppMenuService) => {
     ),
     async (c) => {
       const clientCtx = c.get("clientContext");
+      const payload = c.get("jwtPayload");
       const query = c.req.query();
+
+      let forcedStoreId: string | undefined = query.storeId;
+      if (payload.tier !== "owner") {
+        forcedStoreId = clientCtx.storeId;
+      } else {
+        forcedStoreId = query.storeId ?? clientCtx.storeId;
+      }
+
       const params = {
         ...extractPagination(query),
-        storeId: query.storeId ?? clientCtx.storeId,
+        storeId: forcedStoreId,
         lang: query.lang ?? clientCtx.lang,
       };
       const result = await service.findMany(params);

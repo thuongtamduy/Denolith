@@ -7,8 +7,10 @@ import type { CreateStoreInput, UpdateStoreInput } from "./store.validation.ts";
 export class StoreService {
   constructor(private prisma: PrismaClient) {}
 
-  async findMany(params: PaginationParams) {
-    const { page, limit } = params;
+  async findMany(
+    params: PaginationParams & { userId?: string; tier?: string },
+  ) {
+    const { page, limit, userId, tier } = params;
     const skip = (page - 1) * limit;
 
     const where: Prisma.StoreWhereInput = { deleted: false };
@@ -18,6 +20,12 @@ export class StoreService {
         { name: { contains: params.search, mode: "insensitive" } },
         { code: { contains: params.search, mode: "insensitive" } },
       ];
+    }
+
+    if (tier && tier !== "owner" && userId) {
+      where.userStores = {
+        some: { userId: userId },
+      };
     }
 
     const [data, total] = await Promise.all([

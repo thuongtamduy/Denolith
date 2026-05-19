@@ -82,9 +82,15 @@ export const createApp = () => {
         components: {
           securitySchemes: {
             BearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
+            ApiKeyAuth: {
+              type: "apiKey",
+              in: "header",
+              name: "x-api-key",
+              description: "Store ID",
+            },
           },
         },
-        security: [{ BearerAuth: [] }],
+        security: [{ BearerAuth: [], ApiKeyAuth: [] }],
       },
       // deno-lint-ignore no-explicit-any
     }) as any,
