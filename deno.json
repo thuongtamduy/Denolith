@@ -40,7 +40,7 @@
     "@hono/swagger-ui": "npm:@hono/swagger-ui@^0.6.1",
     "@prisma/adapter-pg": "npm:@prisma/adapter-pg@^7.8.0",
     "@types/pg": "npm:@types/pg@^8.20.0",
-    "pg": "npm:pg@^8.20.0",
+    "pg": "npm:pg@^8.21.0",
     "prisma": "npm:prisma@^7.8.0",
     "@db": "npm:@prisma/client@^7.8.0"
   },
