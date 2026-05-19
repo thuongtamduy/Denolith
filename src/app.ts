@@ -6,10 +6,12 @@ import { secureHeaders } from "@hono/secure-headers";
 import { globalErrorHandler } from "./shared/errors/error.handler.ts";
 import { rateLimiter } from "./shared/middlewares/rate-limit.middleware.ts";
 import { requestIdMiddleware } from "./shared/middlewares/request-id.middleware.ts";
+import { metricsMiddleware } from "./shared/middlewares/metrics.middleware.ts";
 import { logger } from "./core/logger.ts";
 import { config } from "./core/config.ts";
 import { prisma } from "./core/database.ts";
 import { redisClient } from "./core/redis.ts";
+import { renderPrometheusMetrics } from "./core/metrics.ts";
 import { createApiRouter, createNormalRouter } from "./app.router.ts";
 
 export const createApp = () => {
@@ -17,6 +19,7 @@ export const createApp = () => {
   app.onError(globalErrorHandler);
 
   app.use("*", requestIdMiddleware);
+  app.use("*", metricsMiddleware);
   app.use("*", secureHeaders());
   app.use(
     "*",
@@ -46,6 +49,11 @@ export const createApp = () => {
       logger.error("Health check failed", error);
       return c.json({ status: "error", message: "Service unavailable" }, 503);
     }
+  });
+
+  app.get("/metrics", (c) => {
+    c.header("Content-Type", "text/plain; version=0.0.4");
+    return c.body(renderPrometheusMetrics());
   });
 
   const publicRouter = new Hono();

@@ -32,6 +32,93 @@ services:
       timeout: 5s
       retries: 5
 
+  prometheus:
+    image: prom/prometheus:latest
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docs/observability/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./docs/observability/prometheus-alert-rules.yml:/etc/prometheus/prometheus-alert-rules.yml
+      - denolith_local_prometheus_data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - denolith_local_grafana_data:/var/lib/grafana
+      - ./docs/observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./docs/observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./docs/observability/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    restart: always
+    environment:
+      DATA_SOURCE_NAME: "postgresql://denolith:denolith_password@postgres:5432/denolith_db?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    restart: always
+    environment:
+      - REDIS_ADDR=redis:6379
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    restart: always
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./docs/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: always
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+
+  loki:
+    image: grafana/loki:latest
+    restart: always
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./docs/observability/loki-config.yml:/etc/loki/local-config.yaml
+
+  promtail:
+    image: grafana/promtail:latest
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./docs/observability/promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+
 volumes:
   denolith_local_postgres_data:
   denolith_local_redis_data:
+  denolith_local_prometheus_data:
+  denolith_local_grafana_data:
