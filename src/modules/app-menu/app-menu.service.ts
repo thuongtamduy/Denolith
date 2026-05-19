@@ -36,35 +36,34 @@ export class AppMenuService {
       storeId: storeId ?? null,
     };
 
-    const [rawMenus, total] = await Promise.all([
+    const [rawMenus, total, activeLanguages] = await Promise.all([
       this.prisma.appMenu.findMany({
         where,
         skip,
         take: limit,
         include: {
-          translations: {
-            where: {
-              OR: [
-                { lang },
-                { isLangRef: false }, // Fallback to original language
-              ],
-            },
-          },
+          translations: true, // Fetch all translations to compute missing languages
         },
         orderBy: { createdAt: "desc" },
       }),
       this.prisma.appMenu.count({ where }),
+      this.prisma.language.findMany({
+        where: { active: true },
+        select: { code: true, name: true },
+      }),
     ]);
 
-    // Map each menu to extract the correct translation matching requested lang,
-    // or fallback to the original/default translation.
     const data = rawMenus.map((menu) => {
       let translation = menu.translations.find((t) => t.lang === lang);
       if (!translation && menu.translations.length > 0) {
-        // Fallback to original/default translation
         translation = menu.translations.find((t) => !t.isLangRef) ||
           menu.translations[0];
       }
+
+      const existingLangCodes = new Set(menu.translations.map((t) => t.lang));
+      const missingLanguages = activeLanguages.filter(
+        (l) => !existingLangCodes.has(l.code),
+      );
 
       return {
         id: menu.id,
@@ -78,6 +77,7 @@ export class AppMenuService {
         name: translation?.name ?? "",
         data: translation?.data ?? "[]",
         lang: translation?.lang ?? "",
+        missingLanguages,
       };
     });
 
@@ -93,19 +93,18 @@ export class AppMenuService {
   }
 
   async findByCode(code: string, storeId?: string | null, lang: string = "vi") {
-    const menu = await this.prisma.appMenu.findFirst({
-      where: { code, storeId: storeId ?? null },
-      include: {
-        translations: {
-          where: {
-            OR: [
-              { lang },
-              { isLangRef: false },
-            ],
-          },
+    const [menu, activeLanguages] = await Promise.all([
+      this.prisma.appMenu.findFirst({
+        where: { code, storeId: storeId ?? null },
+        include: {
+          translations: true,
         },
-      },
-    });
+      }),
+      this.prisma.language.findMany({
+        where: { active: true },
+        select: { code: true, name: true },
+      }),
+    ]);
 
     if (!menu) {
       throw AppError.notFound(`App menu '${code}' not found.`);
@@ -117,6 +116,11 @@ export class AppMenuService {
         menu.translations[0];
     }
 
+    const existingLangCodes = new Set(menu.translations.map((t) => t.lang));
+    const missingLanguages = activeLanguages.filter(
+      (l) => !existingLangCodes.has(l.code),
+    );
+
     return {
       id: menu.id,
       code: menu.code,
@@ -129,23 +133,23 @@ export class AppMenuService {
       name: translation?.name ?? "",
       data: translation?.data ?? "[]",
       lang: translation?.lang ?? "",
+      missingLanguages,
     };
   }
 
   async findById(id: string, lang: string = "vi") {
-    const menu = await this.prisma.appMenu.findUnique({
-      where: { id },
-      include: {
-        translations: {
-          where: {
-            OR: [
-              { lang },
-              { isLangRef: false },
-            ],
-          },
+    const [menu, activeLanguages] = await Promise.all([
+      this.prisma.appMenu.findUnique({
+        where: { id },
+        include: {
+          translations: true,
         },
-      },
-    });
+      }),
+      this.prisma.language.findMany({
+        where: { active: true },
+        select: { code: true, name: true },
+      }),
+    ]);
 
     if (!menu) {
       throw AppError.notFound(`App menu '${id}' not found.`);
@@ -157,6 +161,11 @@ export class AppMenuService {
         menu.translations[0];
     }
 
+    const existingLangCodes = new Set(menu.translations.map((t) => t.lang));
+    const missingLanguages = activeLanguages.filter(
+      (l) => !existingLangCodes.has(l.code),
+    );
+
     return {
       id: menu.id,
       code: menu.code,
@@ -169,6 +178,7 @@ export class AppMenuService {
       name: translation?.name ?? "",
       data: translation?.data ?? "[]",
       lang: translation?.lang ?? "",
+      missingLanguages,
     };
   }
 
@@ -177,18 +187,32 @@ export class AppMenuService {
       ? { id: idOrCode }
       : { code: idOrCode, storeId: storeId ?? null };
 
-    const menu = await this.prisma.appMenu.findFirst({
-      where,
-      include: {
-        translations: true,
-      },
-    });
+    const [menu, activeLanguages] = await Promise.all([
+      this.prisma.appMenu.findFirst({
+        where,
+        include: {
+          translations: true,
+        },
+      }),
+      this.prisma.language.findMany({
+        where: { active: true },
+        select: { code: true, name: true },
+      }),
+    ]);
 
     if (!menu) {
       throw AppError.notFound(`App menu '${idOrCode}' not found.`);
     }
 
-    return menu;
+    const existingLangCodes = new Set(menu.translations.map((t) => t.lang));
+    const missingLanguages = activeLanguages.filter(
+      (l) => !existingLangCodes.has(l.code),
+    );
+
+    return {
+      ...menu,
+      missingLanguages,
+    };
   }
 
   async create(data: CreateAppMenuInput, actorId?: string) {

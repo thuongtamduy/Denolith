@@ -15,6 +15,36 @@ export async function seedLanguages(prisma: PrismaClient) {
       isDefault: false,
       active: true,
     },
+    {
+      code: "ko",
+      name: "한국어",
+      isDefault: false,
+      active: true,
+    },
+    {
+      code: "ja",
+      name: "日本語",
+      isDefault: false,
+      active: true,
+    },
+    {
+      code: "zh",
+      name: "中文",
+      isDefault: false,
+      active: true,
+    },
+    {
+      code: "fr",
+      name: "Français",
+      isDefault: false,
+      active: true,
+    },
+    {
+      code: "ru",
+      name: "Русский",
+      isDefault: false,
+      active: false, // Inactive language to test filtering
+    },
   ];
 
   for (const lang of languages) {

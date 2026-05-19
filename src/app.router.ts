@@ -14,6 +14,7 @@ import { createRoleRoutes } from "./modules/role/role.routes.ts";
 import { createAppMenuRoutes } from "./modules/app-menu/app-menu.routes.ts";
 import { createStoreRoutes } from "./modules/store/store.routes.ts";
 import { createMediaRoutes } from "./modules/media/media.routes.ts";
+import { createLanguageRoutes } from "./modules/language/language.routes.ts";
 import { clientContextMiddleware } from "./shared/middlewares/client-context.middleware.ts";
 
 export const createApiRouter = () => {
@@ -33,6 +34,7 @@ export const createApiRouter = () => {
   router.route("/app-menus", createAppMenuRoutes(container.appMenuService));
   router.route("/stores", createStoreRoutes(container.storeService));
   router.route("/media", createMediaRoutes(container.mediaService));
+  router.route("/languages", createLanguageRoutes(container.languageService));
 
   return router;
 };
